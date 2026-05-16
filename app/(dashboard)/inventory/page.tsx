@@ -1,9 +1,26 @@
-import React from 'react'
+import { currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { UserButton } from "@clerk/nextjs";
 
-const page = () => {
+export default async function InventoryPage() {
+  const user = await currentUser();
+
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  const role = user.publicMetadata?.role as string;
+
+  if (!["admin", "manager", "staff"].includes(role)) {
+    redirect("/access-denied");
+  }
+
   return (
-    <div>Inventory</div>
-  )
+    <section>
+      <header className="flex justify-between p-4 bg-neutral-200">
+        <h4>Welcome! This is Inventory</h4>
+        <UserButton />
+      </header>
+    </section>
+  );
 }
-
-export default page

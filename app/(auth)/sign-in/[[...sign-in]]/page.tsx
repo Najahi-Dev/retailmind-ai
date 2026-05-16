@@ -6,27 +6,47 @@ import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { SignIn } from "@clerk/nextjs";
 
+
+const ROLE_DESTINATIONS: Record<string, string> = {
+  admin: "/dashboard",
+  manager: "/dashboard",
+  staff: "/inventory",
+  supplier: "/reorders/purchase-orders",
+}
+
 export default function SignInPage() {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, isLoaded } = useUser();
   const router = useRouter();
 
   // Getting role from Database
   const currentUser = useQuery(api.users.getCurrentUser);
 
   useEffect(() => {
+    // Clerk still loading → wait
+    if (!isLoaded) return;
+
     // Not logged in → stay here
     if (!isSignedIn) return;
 
-    // Still loading → wait
+    // User data still loading → wait
     if (currentUser === undefined) return;
 
-    // Role check and redirect
-    if (currentUser?.role === "admin")    router.replace("/dashboard");
-    if (currentUser?.role === "manager")  router.replace("/dashboard");
-    if (currentUser?.role === "staff")    router.replace("/inventory");
-    if (currentUser?.role === "supplier") router.replace("/reorders/purchase-orders");
+    // User not found in database (shouldn't happen, but handle it)
+    if (!currentUser) {
+      console.warn("User signed in but not found in database. Waiting for webhook sync...");
+      return;
+    }
 
-  }, [isSignedIn, currentUser]);
+    // Role check and redirect based on user role
+    const role = currentUser.role;
+    console.log("User logged in - Role: ", role);
+    console.log("User data: ", currentUser);
+
+    const destination = ROLE_DESTINATIONS[role] ?? "/dashboard";
+    console.log("Redirecting to: ", destination);
+    router.replace(destination);
+
+  }, [isSignedIn, isLoaded, currentUser, router]);
 
   return (
     <div className='flex items-center justify-center h-screen'>

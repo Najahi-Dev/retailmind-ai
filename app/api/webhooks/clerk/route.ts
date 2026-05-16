@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       isActive: true,
     });
 
-    console.log(`User synced: ${id} as ${role}`);
+    console.log(`User synced: ${id} with role: ${role}`);
   }
 
   if (evt.type === "user.deleted") {
