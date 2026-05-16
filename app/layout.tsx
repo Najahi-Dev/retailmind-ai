@@ -4,6 +4,7 @@ import { Poppins, Montserrat } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
 import ConvexClientProvider from "@/lib/convex-client";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const poppins = Poppins({
   subsets:  ["latin"],
@@ -32,7 +33,7 @@ export default function RootLayout({
       <html lang="en" data-theme="dark">
         <body className={`${poppins.variable} ${montserrat.variable}`}>
           <ConvexClientProvider>
-              {children}
+            <TooltipProvider>{children}</TooltipProvider>
           </ConvexClientProvider>
         </body>
       </html>
