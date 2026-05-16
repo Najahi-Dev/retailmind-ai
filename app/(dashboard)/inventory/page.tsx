@@ -16,11 +16,6 @@ export default async function InventoryPage() {
   }
 
   return (
-    <section>
-      <header className="flex justify-between p-4 bg-neutral-200">
-        <h4>Welcome! This is Inventory</h4>
-        <UserButton />
-      </header>
-    </section>
+    <></>
   );
 }

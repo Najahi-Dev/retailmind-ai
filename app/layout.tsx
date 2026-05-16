@@ -1,45 +1,39 @@
-import type { Metadata } from "next";
-import { Montserrat, Inter, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
+// app/layout.tsx
 import { ClerkProvider } from "@clerk/nextjs";
+import { Poppins, Montserrat } from "next/font/google";
+import type { Metadata } from "next";
+import "./globals.css";
 import ConvexClientProvider from "@/lib/convex-client";
 
+const poppins = Poppins({
+  subsets:  ["latin"],
+  weight:   ["300", "400", "500", "600", "700"],
+  variable: "--font-poppins",
+});
+
 const montserrat = Montserrat({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-heading",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-mono",
+  subsets:  ["latin"],
+  weight:   ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-montserrat",
 });
 
 export const metadata: Metadata = {
-  title: "RetailMind AI",
-  description: "AI-powered retail management dashboard built with Next.js, Convex, and Clerk.",
+  title:       "RetailMind AI",
+  description: "Smart Inventory & Demand Forecasting",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <ClerkProvider>
-      <html
-        lang="en"
-        className={`${montserrat.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col">
-          <ConvexClientProvider>{children}</ConvexClientProvider>
+      <html lang="en" data-theme="dark">
+        <body className={`${poppins.variable} ${montserrat.variable}`}>
+          <ConvexClientProvider>
+              {children}
+          </ConvexClientProvider>
         </body>
       </html>
     </ClerkProvider>

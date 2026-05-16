@@ -17,9 +17,8 @@ export default async function DashboardPage() {
   }
 
   return (
-    <header className="flex justify-between p-4 bg-neutral-200">
-      <span>Welcome! This is Dashboard</span>
-      <UserButton />
-    </header>
+    <>
+    <UserButton/>
+    </>
   );
 }
