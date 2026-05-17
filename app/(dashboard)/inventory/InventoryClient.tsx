@@ -2,6 +2,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useMemo } from "react";
+import { useRouter }   from "next/navigation";
 import {
   Table,
   TableBody,
@@ -35,6 +36,9 @@ import {
   TrendingUpIcon,
   SearchIcon,
   RefreshCwIcon,
+  PlusIcon,
+  UploadIcon,
+  DownloadIcon,
 } from "lucide-react";
 
 interface Props {
@@ -49,6 +53,7 @@ const STATUS_CONFIG = {
 };
 
 export default function InventoryClient({ role }: Props) {
+  const router    = useRouter();
   const inventory = useQuery(api.inventory.getInventoryOverview);
   const stats     = useQuery(api.inventory.getInventoryStats);
 
@@ -97,6 +102,53 @@ export default function InventoryClient({ role }: Props) {
       });
   }, [inventory, search, statusFilter, categoryFilter, sortBy]);
 
+  // Export CSV function
+const handleExportCSV = () => {
+  if (!filtered.length) return;
+
+  const headers = [
+    "SKU", "Product Name", "Category", "Location",
+    "On Hand", "Available", "Reserved",
+    "Reorder Point", "Safety Stock", "Status",
+    ...(canViewFinancials ? ["Stock Value (LKR)"] : []),
+  ];
+
+  const rows = filtered.map(item => [
+    item!.sku,
+    item!.name,
+    item!.category,
+    item!.location,
+    item!.onHand,
+    item!.available,
+    item!.reserved,
+    item!.reorderPoint,
+    item!.safetyStock,
+    item!.status,
+    ...(canViewFinancials ? [item!.stockValue.toFixed(2)] : []),
+  ]);
+
+  const csv = [headers, ...rows]
+    .map(row => row.join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `inventory-${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// CSV Upload handler (basic — full import later)
+const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  // TODO: Phase 2 — full CSV import with validation
+  alert(`File selected: ${file.name}\nFull CSV import coming in Phase 2!`);
+  e.target.value = ""; // Reset
+};
+
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -124,9 +176,9 @@ export default function InventoryClient({ role }: Props) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6 @container/main">
-
       {/* ── KPI Cards ─────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4
+      <div
+        className="grid grid-cols-1 gap-4
         *:data-[slot=card]:bg-gradient-to-t
         *:data-[slot=card]:from-primary/5
         *:data-[slot=card]:to-card
@@ -135,7 +187,6 @@ export default function InventoryClient({ role }: Props) {
         @5xl/main:grid-cols-4
         dark:*:data-[slot=card]:bg-card"
       >
-
         {/* Total SKUs */}
         <Card className="@container/card">
           <CardHeader>
@@ -176,7 +227,10 @@ export default function InventoryClient({ role }: Props) {
               {stats.lowCount}
             </CardTitle>
             <CardAction>
-              <Badge variant="outline" className="text-yellow-500 border-yellow-200">
+              <Badge
+                variant="outline"
+                className="text-yellow-500 border-yellow-200"
+              >
                 <TrendingDownIcon className="size-3" />
                 Warning
               </Badge>
@@ -208,7 +262,10 @@ export default function InventoryClient({ role }: Props) {
                 {stats.healthyCount}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline" className="text-green-500 border-green-200">
+                <Badge
+                  variant="outline"
+                  className="text-green-500 border-green-200"
+                >
                   <TrendingUpIcon className="size-3" />
                   Good
                 </Badge>
@@ -221,14 +278,60 @@ export default function InventoryClient({ role }: Props) {
       {/* ── Inventory Table Card ───────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle>Inventory Overview</CardTitle>
-          <CardDescription>
-            {filtered.length} products found
-          </CardDescription>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <CardTitle>Inventory Overview</CardTitle>
+              <CardDescription>
+                {filtered.length} products found
+              </CardDescription>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Export CSV — Admin + Manager */}
+              {canViewFinancials && (
+                <Button variant="outline" size="lg" onClick={handleExportCSV}>
+                  <DownloadIcon className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+              )}
+
+              {/* Import CSV — Admin + Manager */}
+              {canViewFinancials && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() =>
+                      document.getElementById("csv-upload")?.click()
+                    }
+                  >
+                    <UploadIcon className="h-4 w-4 mr-2" />
+                    Import CSV
+                  </Button>
+                  {/* Hidden file input */}
+                  <input
+                    id="csv-upload"
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleCSVUpload}
+                  />
+                </>
+              )}
+
+              {/* Add Product — Admin + Manager */}
+              {canViewFinancials && (
+                <Button size="lg" onClick={() => router.push("/inventory/add")}>
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Add Product
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent className="flex flex-col gap-4">
-
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -236,12 +339,21 @@ export default function InventoryClient({ role }: Props) {
               <Input
                 placeholder="Search by name or SKU..."
                 value={search}
-                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
                 className="pl-9"
               />
             </div>
 
-            <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => {
+                setStatusFilter(v);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-36">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -254,14 +366,22 @@ export default function InventoryClient({ role }: Props) {
               </SelectContent>
             </Select>
 
-            <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v); setPage(1); }}>
+            <Select
+              value={categoryFilter}
+              onValueChange={(v) => {
+                setCategoryFilter(v);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-44">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -289,13 +409,26 @@ export default function InventoryClient({ role }: Props) {
                 <TableRow>
                   <TableHead>SKU</TableHead>
                   <TableHead>Product Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
-                  <TableHead className="hidden lg:table-cell">Location</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Category
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    Location
+                  </TableHead>
                   <TableHead className="text-right">On Hand</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">Available</TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">Reorder Pt.</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">
+                    Available
+                  </TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">
+                    Reorder Pt.
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell">
+                    Stock Level
+                  </TableHead>
                   {canViewFinancials && (
-                    <TableHead className="text-right hidden xl:table-cell">Stock Value</TableHead>
+                    <TableHead className="text-right hidden xl:table-cell">
+                      Stock Value
+                    </TableHead>
                   )}
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -310,15 +443,20 @@ export default function InventoryClient({ role }: Props) {
                       <div className="flex flex-col items-center gap-2">
                         <PackageIcon className="h-8 w-8 text-muted-foreground/50" />
                         <p>No products found</p>
-                        <p className="text-xs">Try adjusting your search or filters</p>
+                        <p className="text-xs">
+                          Try adjusting your search or filters
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginated.map(item => (
+                  paginated.map((item) => (
                     <TableRow
                       key={item!.inventoryId}
                       className="cursor-pointer hover:bg-muted/50"
+                      onClick={() =>
+                        router.push(`/inventory/${item!.productId}`)
+                      }
                     >
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {item!.sku}
@@ -341,6 +479,32 @@ export default function InventoryClient({ role }: Props) {
                       <TableCell className="text-right text-muted-foreground hidden lg:table-cell">
                         {item!.reorderPoint}
                       </TableCell>
+
+                      {/* Stock Bar — add this new column */}
+                      <TableCell className="hidden xl:table-cell w-28">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${item!.stockPct}%`,
+                                background:
+                                  item!.status === "critical"
+                                    ? "#ef4444"
+                                    : item!.status === "low"
+                                      ? "#f59e0b"
+                                      : item!.status === "overstock"
+                                        ? "#8b5cf6"
+                                        : "#22c55e",
+                              }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground w-8 text-right">
+                            {item!.stockPct}%
+                          </span>
+                        </div>
+                      </TableCell>
+
                       {canViewFinancials && (
                         <TableCell className="text-right font-medium hidden xl:table-cell">
                           {formatCurrency(item!.stockValue)}
@@ -362,14 +526,13 @@ export default function InventoryClient({ role }: Props) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Page {page} of {totalPages} —{" "}
-                {filtered.length} total products
+                Page {page} of {totalPages} — {filtered.length} total products
               </p>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
                   Previous
@@ -377,7 +540,7 @@ export default function InventoryClient({ role }: Props) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                 >
                   Next
@@ -385,7 +548,6 @@ export default function InventoryClient({ role }: Props) {
               </div>
             </div>
           )}
-
         </CardContent>
       </Card>
     </div>
