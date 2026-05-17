@@ -14,6 +14,10 @@ pnpm dev
 bun dev
 ```
 
+### Authentication Flow
+<img width="1440" height="1840" alt="image" src="https://github.com/user-attachments/assets/57a40b80-196a-4da1-bd0f-566c762c4c69" />
+
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
