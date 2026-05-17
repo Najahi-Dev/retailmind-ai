@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ConvexClientProvider from "@/lib/convex-client";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/lib/theme-provider";
 
 const poppins = Poppins({
   subsets:  ["latin"],
@@ -33,7 +34,9 @@ export default function RootLayout({
       <html lang="en" data-theme="dark">
         <body className={`${poppins.variable} ${montserrat.variable}`}>
           <ConvexClientProvider>
-            <TooltipProvider>{children}</TooltipProvider>
+            <ThemeProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+            </ThemeProvider>
           </ConvexClientProvider>
         </body>
       </html>

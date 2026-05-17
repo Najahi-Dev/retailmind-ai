@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as alerts from "../alerts.js";
+import type * as inventory from "../inventory.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
@@ -18,6 +20,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  alerts: typeof alerts;
+  inventory: typeof inventory;
   seed: typeof seed;
   users: typeof users;
 }>;
