@@ -46,7 +46,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isLoading,
   } = useRole()
 
-  // ── Supplier nav ─────────────────────────────────
+  // ── Supplier nav ────
   const supplierMain = [
     {
       title: "Purchase Orders",
@@ -68,7 +68,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ]
 
-  // ── Staff nav ─────────────────────────────────────
+  // ── Staff nav ─────
   const staffMain = [
     {
       title: "Inventory",
@@ -331,11 +331,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {(isAdmin || isManager) && navDocuments.length > 0 && (
           <NavDocuments items={navDocuments} />
         )}
-
       </SidebarContent>
 
       {/* Footer — user info */}
       <SidebarFooter>
+        <NavSecondary items={navSecondary} />
         <NavUser />
       </SidebarFooter>
 
