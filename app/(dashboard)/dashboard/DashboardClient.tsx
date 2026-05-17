@@ -18,6 +18,7 @@ import {
   AlertTriangleIcon,
   ShoppingCartIcon,
   DollarSignIcon,
+  RefreshCwIcon,
 } from "lucide-react"
 import { ChartAreaInventory } from "./ChartAreaInventory"
 
@@ -45,8 +46,12 @@ export function DashboardClient() {
             </Card>
           ))}
         </div>
+        <div className="flex items-center justify-center h-48 text-muted-foreground gap-2">
+          <RefreshCwIcon className="animate-spin h-4 w-4" />
+          Loading status...
+        </div>
       </div>
-    )
+    );
   }
 
   return (

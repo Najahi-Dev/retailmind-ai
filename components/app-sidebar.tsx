@@ -261,8 +261,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <Link href="/dashboard" className="flex items-center gap-3 px-1">
 
                 {/* Logo icon */}
-                <div className="relative flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm font-[Montserrat] shadow-sm">
-                  R
+                <div className="relative flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-primary-foreground font-bold text-sm font-[Montserrat] shadow-sm">
+                  <img src="/logo.svg" alt="Logo" />
                   {/* Pulse dot — shows when alerts exist */}
                   {alertBadge > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-destructive ring-2 ring-sidebar" />
@@ -272,10 +272,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {/* Brand name */}
                 <div className="flex flex-col leading-tight">
                   <span className="text-sm font-bold tracking-tight text-foreground font-[Montserrat]">
-                    RetailMind AI
+                    RETAIL MIND AI
                   </span>
-                  <span className="text-[10px] text-muted-foreground tracking-wide">
-                    Smart Inventory
+                  <span className="text-[10px] text-muted-foreground tracking-wide font-mono">
+                    Smart Inventory & Forecasting
                   </span>
                 </div>
 

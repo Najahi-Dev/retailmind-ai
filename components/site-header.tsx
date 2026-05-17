@@ -54,7 +54,7 @@ export function SiteHeader() {
           {role && (
             <Badge
               variant="outline"
-              className="uppercase text-[10px] tracking-wider px-3 py-1 hidden sm:flex"
+              className="uppercase text-[10px] tracking-wider px-3 pt-2.5 pb-2 hidden sm:flex"
             >
               {role}
             </Badge>
