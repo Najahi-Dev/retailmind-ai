@@ -1,0 +1,6 @@
+id,name,address,type,isActive
+ce4770f1-4fa9-49bb-8e26-6203df2207c3,Colombo Warehouse,"779 Tiffany Brook, New Robertfurt, ME 05084",distribution_center,True
+9bb988e3-a795-4cb4-80de-bff6d68565bd,Kandy Store,"22551 Sean Forks Apt. 165, Reevesfurt, PA 73533",warehouse,True
+7ed05b9f-ec69-4c75-b951-22774cf92075,Galle Distribution Center,"99566 Butler Landing Apt. 515, Tuckerport, GA 25617",warehouse,True
+5f72d4e3-57a6-4d1b-85af-f8a7f5737b76,Negombo Store,"5185 Christopher Mountains, Dodsonburgh, OK 53681",distribution_center,True
+592dad4e-3987-4226-9574-6c349f69cdc8,Jaffna Warehouse,"201 Navarro Stravenue Apt. 987, Port Elizabethhaven, AL 50590",store,True

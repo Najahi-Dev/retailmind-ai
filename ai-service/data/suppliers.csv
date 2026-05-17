@@ -1,0 +1,31 @@
+id,name,email,phone,address,paymentTerms,leadTimeDays,status,reliabilityScore,isActive
+2acef521-354e-4045-969e-ee78252f15d5,Reyes-Miller,kristin22@rocha.com,001-497-869-6572x24600,"9626 Mejia Green, Robertfort, MN 12406",Net 15,10,active,64.0,True
+593c2d1f-2330-4826-aee4-98a6fb8a2c10,Stephens-Turner,towens@craig.biz,918.347.1466x662,"73339 David Shore, Danielsbury, GU 26941",Net 30,20,active,61.24,True
+7ef5dfa9-febc-4db0-8e88-87d235c829aa,"Williams, Cox and Cochran",john75@dawson.org,974-810-4033,"0674 David Springs Apt. 532, Ashleystad, MI 78338",Net 15,5,active,83.48,True
+0c872ca3-7a2b-4878-9970-d9be03f78bed,Hall Inc,smithmargaret@turner-baker.net,620.846.7695,"55559 Elizabeth Route, East Vanessamouth, DC 73146",Net 15,20,active,87.35,True
+bfd5f1a9-7421-40fc-9547-5ff3d9ead976,"Mcdonald, Gill and Armstrong",austintina@allen-morris.info,(987)978-5185x37161,"47106 Powell Greens Suite 231, Bennettbury, ID 75067",Net 15,16,active,70.85,True
+8937dad3-ce5a-4772-86c5-4f0d749d2e92,Dennis Inc,ronaldgardner@douglas.com,001-687-298-9631,"0148 Katherine Prairie Apt. 494, Ashleyfort, TX 21494",Net 15,3,active,73.27,True
+80555a6f-a2e4-49ad-bccc-1d09dfd10f2a,"Edwards, Sexton and Hobbs",jimmyhart@jones.info,4094663320,"6354 Richard Track Suite 123, South Katelynbury, MP 56719",Net 15,7,on_hold,73.13,True
+756e8818-7c2d-4a9f-b0ca-52a6c7310061,Meyers-Diaz,foleyshannon@jordan-donovan.com,(904)263-1601,"1851 Nicole Vista, New Laura, WA 76859",Net 60,5,active,93.05,True
+fed38bc5-30b9-40a6-93b1-2bdd7c8dd40e,Sullivan-Morrow,corey68@blair.com,959.627.4785x73373,"24130 Kathleen Prairie, Lawrencehaven, MT 69329",Net 30,11,active,80.91,True
+a511a233-e4a1-4330-9d21-63a6b2bf421a,"Thompson, Sellers and Rose",sheilablack@rogers.info,001-828-334-8155,"0490 Cheryl Prairie Suite 240, Joeborough, ID 39828",Net 30,15,active,92.35,True
+35c081e1-a97c-45f6-81bf-e5c7d6d1ab8d,Knight Group,awilliams@hunt.com,+1-444-722-5347x17295,"0059 Dana Station Apt. 983, North Darren, CA 54110",Prepaid,14,active,62.71,True
+bb2fc387-a32c-4cee-8a01-08aa93518692,"Jackson, Matthews and Padilla",arthur75@murray-meza.net,334.840.5293x8502,"PSC 0472, Box 5920, APO AA 15306",COD,10,on_hold,93.36,True
+024ecae5-9f32-4df5-8b88-d29e6ed7f1d6,Atkins LLC,cwebb@jenkins.com,001-953-454-1790x0053,"254 Veronica Mills Suite 398, Martinezhaven, FL 11097",Net 60,6,active,84.79,True
+61257aea-1434-4c4b-b561-1fac9b7d2fea,Burns-Medina,susan31@castro.org,6916604566,"060 Price Spring, North Joshua, SD 51552",Net 15,14,active,68.17,True
+ccbb1810-673c-436e-9633-dd0b452e2787,"Pena, Mitchell and Nguyen",thomas61@oconnor.net,+1-731-968-2637,"5206 Patterson Street Apt. 278, North Carrie, VI 69460",Net 30,11,active,66.67,True
+698bbfe0-acf4-4a4b-b990-8cac727ffff8,Martinez-Henry,jenniferhughes@rose-johnson.com,914-709-6034,"94323 Zachary Bridge Suite 811, New Davidbury, AR 92824",Net 15,10,active,70.53,True
+ce3368d2-3169-4ded-b6c2-c04bb15eb7b5,"Oliver, Branch and Gibson",toddperkins@johnson.org,496-662-0355x169,"1199 Edward Lodge Apt. 006, Port Kaitlynchester, FL 58754",Net 15,20,active,92.87,True
+81da1668-8fb4-490e-8c65-7cb517a6cc2b,Molina-Boyd,briancasey@thompson-murray.org,+1-430-498-3535x092,"1056 Williams Pine Suite 697, Lake Rachel, AZ 83192",Net 15,4,active,91.4,True
+5c80b89a-939b-4071-9a83-d147fd043aae,Price LLC,juliestone@lucas.com,6792768058,"0820 George Extensions, West Melissa, SD 35573",COD,15,active,95.61,True
+46f6e43f-cb40-4f5e-b958-8861bfc5ca51,Cameron-Reed,christina70@patel-ayers.com,701-379-3245,"096 Amanda Neck Apt. 543, North Elizabethbury, NE 22275",COD,21,active,79.47,True
+9c1e6483-06a5-4e93-aaa1-a4a4a5e99235,Ramirez Group,simmonsrebecca@king.org,+1-468-494-0746,"Unit 9238 Box 4283, DPO AP 33873",Net 15,17,active,69.62,True
+21457508-4e55-4b48-8cab-6100a0ebfd1a,Mckee-Malone,castillobrandon@flores.com,271-366-0698,"3447 Sanchez Oval, Danielshire, NV 04123",Prepaid,20,active,82.8,True
+44aa9f8d-b87d-453b-b35a-a88a7f02062e,"Scott, Farmer and Burch",qwatson@adams.com,425.626.6609,"098 Shannon Ville, South Michelle, VI 62570",Net 60,21,active,98.9,True
+df798f2e-8df3-4bd2-aa81-bd58a530885b,Wilson-Gonzalez,perezphilip@fitzpatrick.info,788-845-1883,"4724 Brown Camp Apt. 596, Holmesburgh, NY 46017",Prepaid,7,active,89.48,True
+ed48353e-f90e-4d3c-bc9a-e9fb18243e82,"Gutierrez, Dennis and Ward",keithreyes@ramirez.org,(211)742-9253x3988,"2919 Davis Lock Suite 100, West Timothy, DE 32591",Net 15,6,active,90.89,True
+967651ae-39a5-4bf7-af1b-5446760bc87b,Chan Group,tayloredwards@perry.com,(357)876-8712,"881 Ortiz Common, Normanview, CT 42161",Prepaid,16,active,74.88,True
+0dd7e98c-9d01-42eb-884f-d43242547757,"Sullivan, Oneal and Cruz",deborahdean@gaines-davidson.biz,(482)589-0151x529,"398 Amber Mill, Rossport, NH 28426",Prepaid,17,active,81.58,True
+cb36a24b-e383-4ee4-8ffc-7bbe49035bc4,"Taylor, Taylor and Foster",reynoldstamara@brown-bell.com,001-323-764-8726x77734,"055 Alan Hills, Angelatown, AK 45028",Net 30,3,active,80.94,True
+8c852905-18a5-43c9-a39f-f6528fd0a0f0,"Walls, Newton and Singh",cookkatherine@mitchell.biz,(544)355-1566,"73824 Jonathan Underpass Apt. 912, Ferrellberg, MI 14926",COD,11,active,76.96,True
+8d3d602e-6e9f-4eea-a80c-604f0b131c64,Mcdaniel-Rocha,callen@turner-calderon.com,+1-938-569-6500x20690,"7626 Jill Forest, Coxfurt, AR 59004",Net 30,17,on_hold,94.16,True

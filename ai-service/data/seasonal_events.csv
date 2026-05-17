@@ -1,0 +1,15 @@
+name,month,day,demandMultiplier
+New Year Sale,1,1,2.5
+Thai Pongal,1,14,1.8
+Valentine's Day,2,14,1.6
+Sinhala New Year,4,13,2.8
+Sinhala New Year Day 2,4,14,2.5
+Vesak,5,15,1.9
+Mid-Year Sale,6,15,1.7
+Back to School,8,20,2.0
+Deepavali,10,20,2.2
+Black Friday,11,25,3.0
+Christmas Eve,12,24,2.8
+Christmas Day,12,25,3.2
+Boxing Day Sale,12,26,2.6
+New Year Eve,12,31,2.4
