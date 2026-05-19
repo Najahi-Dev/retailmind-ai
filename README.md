@@ -14,9 +14,15 @@ pnpm dev
 bun dev
 ```
 
-### Authentication Flow
-<img width="1440" height="1840" alt="image" src="https://github.com/user-attachments/assets/57a40b80-196a-4da1-bd0f-566c762c4c69" />
+To run Convex locally on Windows, use the repo-safe wrapper instead of calling `npx convex dev` directly:
 
+```bash
+npm run dev:convex
+```
+
+### Authentication Flow
+
+<img width="1440" height="1840" alt="image" src="https://github.com/user-attachments/assets/57a40b80-196a-4da1-bd0f-566c762c4c69" />
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 

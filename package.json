@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:convex": "node -e \"const fs = require('node:fs'); const { spawn } = require('node:child_process'); const path = require('node:path'); const tmpDir = path.resolve('.convex_tmp'); fs.mkdirSync(tmpDir, { recursive: true }); process.env.CONVEX_TMPDIR = tmpDir; const child = spawn('npx convex dev', { stdio: 'inherit', shell: true, env: process.env }); child.on('exit', (code) => process.exit(code ?? 0));\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

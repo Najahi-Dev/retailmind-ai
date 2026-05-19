@@ -823,7 +823,6 @@ export const recordStockOut = mutation({
 
     if (!inv) throw new Error("Inventory record not found.");
 
-    // Sufficient stock check
     if (inv.available < args.quantity) {
       throw new Error(
         `Insufficient stock. Available: ${inv.available} units.`
@@ -859,24 +858,70 @@ export const recordStockOut = mutation({
       createdAt:  Date.now(),
     });
 
-    // Auto alert if below reorder point
+    // ── AUTO REORDER CHECK ──────────────────────
     const product = await ctx.db.get(args.productId);
-    if (product && newOnHand <= product.reorderPoint) {
-      const priority = newOnHand <= product.safetyStock
-        ? "critical"
-        : "high";
 
-      await ctx.db.insert("alerts", {
-        productId:   args.productId,
-        type:        newOnHand <= product.safetyStock
-          ? "critical_stock"
-          : "low_stock",
-        priority,
-        message:     `${product.name} stock is ${priority === "critical" ? "critically" : ""} low. Only ${newOnHand} units remaining.`,
-        isRead:      false,
-        isDismissed: false,
-        createdAt:   Date.now(),
-      });
+    if (product && newOnHand < product.reorderPoint) {
+
+      // Already pending suggestion irukka check
+      const existing = await ctx.db
+        .query("reorderSuggestions")
+        .withIndex("by_product", q =>
+          q.eq("productId", args.productId)
+        )
+        .filter(q => q.eq(q.field("status"), "pending"))
+        .first();
+
+      // Illana — new suggestion create pannu
+      if (!existing) {
+        let urgency: "critical" | "high" | "medium" | "low";
+        let rationale = "";
+
+        if (newOnHand <= product.safetyStock) {
+          urgency   = "critical";
+          rationale = `Stock (${newOnHand} units) dropped below safety stock (${product.safetyStock} units). Immediate reorder required.`;
+        } else if (newOnHand <= product.reorderPoint * 0.5) {
+          urgency   = "high";
+          rationale = `Stock (${newOnHand} units) is below 50% of reorder point (${product.reorderPoint} units). Reorder urgently.`;
+        } else {
+          urgency   = "medium";
+          rationale = `Stock (${newOnHand} units) fell below reorder point (${product.reorderPoint} units). Schedule a reorder.`;
+        }
+
+        const suggestedQty  = Math.max(
+          product.reorderPoint * 3 - newOnHand,
+          product.reorderPoint
+        );
+
+        const orderByDate = Date.now() + (
+          urgency === "critical" ? 1 :
+          urgency === "high"     ? 3 : 7
+        ) * 24 * 60 * 60 * 1000;
+
+        await ctx.db.insert("reorderSuggestions", {
+          productId:           args.productId,
+          preferredSupplierId: product.primarySupplierId,
+          urgency,
+          suggestedQuantity:   suggestedQty,
+          estimatedCost:       suggestedQty * product.costPrice,
+          orderByDate,
+          rationale,
+          status:              "pending",
+          aiGenerated:         false,
+          createdAt:           Date.now(),
+        });
+
+        // Alert also create pannu
+        await ctx.db.insert("alerts", {
+          productId:   args.productId,
+          type:        urgency === "critical" ? "critical_stock" : "low_stock",
+          priority:    urgency,
+          message:     `${product.name} — ${rationale}`,
+          isRead:      false,
+          isDismissed: false,
+          createdAt:   Date.now(),
+        });
+      }
     }
 
     return { success: true, newOnHand };

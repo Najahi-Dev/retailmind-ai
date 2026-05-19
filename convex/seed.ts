@@ -431,3 +431,18 @@ export const clearDatabase = mutation({
     return { message: "✓ Database cleared!" };
   },
 });
+
+export const clearSuggestions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const records = await ctx.db
+      .query("reorderSuggestions")
+      .collect();
+
+    for (const record of records) {
+      await ctx.db.delete(record._id);
+    }
+
+    return { message: `Cleared ${records.length} suggestions` };
+  },
+});

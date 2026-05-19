@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# convex temp files
+/.convex_tmp/
+
 # production
 /build
 

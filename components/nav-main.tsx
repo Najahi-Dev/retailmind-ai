@@ -30,9 +30,18 @@ export function NavMain({
       <SidebarGroupContent className="flex flex-col gap-1">
         <SidebarMenu>
           {items.map((item) => {
-            const isActive =
-              pathname === item.url ||
-              pathname.startsWith(item.url + "/")
+            // components/nav-main.tsx — isActive logic fix pannu
+
+const isActive =
+  item.url === "/reorders/purchase-orders"
+    ? pathname === "/reorders/purchase-orders" ||
+      pathname.startsWith("/reorders/purchase-orders/")
+    : item.url === "/reorders"
+    ? pathname === "/reorders" ||
+      (pathname.startsWith("/reorders/") &&
+       !pathname.startsWith("/reorders/purchase-orders"))
+    : pathname === item.url ||
+      pathname.startsWith(item.url + "/");
 
             return (
               <SidebarMenuItem key={item.title}>
