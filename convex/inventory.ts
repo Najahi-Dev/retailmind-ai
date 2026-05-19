@@ -84,11 +84,126 @@ export const getInventoryOverview = query({
   },
 });
 
+export const getStockInFormData = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const [products, categories, inventories, locations] = await Promise.all([
+      ctx.db.query("products").collect(),
+      ctx.db.query("categories").collect(),
+      ctx.db.query("inventory").collect(),
+      ctx.db.query("locations").collect(),
+    ]);
+
+    const categoryMap = new Map(categories.map((category) => [category._id, category]));
+    const totalsByProduct = new Map<
+      string,
+      { onHand: number; reserved: number; available: number }
+    >();
+
+    for (const inventory of inventories) {
+      const current = totalsByProduct.get(inventory.productId) ?? {
+        onHand: 0,
+        reserved: 0,
+        available: 0,
+      };
+
+      current.onHand += inventory.onHand;
+      current.reserved += inventory.reserved;
+      current.available += inventory.available;
+      totalsByProduct.set(inventory.productId, current);
+    }
+
+    return {
+      products: products
+        .filter((product) => product.isActive)
+        .map((product) => {
+          const totals = totalsByProduct.get(product._id) ?? {
+            onHand: 0,
+            reserved: 0,
+            available: 0,
+          };
+          const status = calcStatus(
+            totals.onHand,
+            product.reorderPoint,
+            product.safetyStock,
+          );
+
+          return {
+            _id: product._id,
+            sku: product.sku,
+            name: product.name,
+            unit: product.unit,
+            categoryName: product.categoryId
+              ? categoryMap.get(product.categoryId)?.name ?? "Uncategorized"
+              : "Uncategorized",
+            reorderPoint: product.reorderPoint,
+            safetyStock: product.safetyStock,
+            trackBatches: product.trackBatches,
+            onHand: totals.onHand,
+            available: totals.available,
+            status,
+            stockPct: calcStockPct(totals.onHand, product.reorderPoint),
+          };
+        })
+        .sort((left, right) => left.name.localeCompare(right.name)),
+      locations: locations
+        .filter((location) => location.isActive)
+        .map((location) => ({
+          _id: location._id,
+          name: location.name,
+          type: location.type,
+          address: location.address,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    };
+  },
+});
+
+export const getCategories = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    return await ctx.db
+      .query("categories")
+      .collect()
+      .then((categories) =>
+        categories
+          .map((category) => ({
+            _id: category._id,
+            name: category.name,
+          }))
+          .sort((left, right) => left.name.localeCompare(right.name)),
+      );
+  },
+});
+
+// Return next SKU based on existing products with format PREFIX-NUM (e.g. SKU-1500)
+export const getNextSku = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+    let max = 0;
+    for (const p of products) {
+      if (!p.sku) continue;
+      const m = p.sku.match(/(\d+)$/);
+      if (!m) continue;
+      const n = Number(m[1]);
+      if (!Number.isNaN(n) && n > max) max = n;
+    }
+    const next = max + 1;
+    return `SKU-${next}`;
+  },
+});
+
 // getInventoryStats — same fix
 export const getInventoryStats = query({
   args: {},
   handler: async (ctx) => {
-    // ✅ Fix — null return pannu
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;  // ← throw illai, null return
 
@@ -291,6 +406,90 @@ export const updateProduct = mutation({
   },
 });
 
+// Full product update for the edit page (admin/manager)
+export const editProduct = mutation({
+  args: {
+    productId: v.id("products"),
+    sku: v.optional(v.string()),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    unit: v.optional(v.string()),
+    costPrice: v.optional(v.number()),
+    sellingPrice: v.optional(v.number()),
+    reorderPoint: v.optional(v.number()),
+    safetyStock: v.optional(v.number()),
+    categoryId: v.optional(v.id("categories")),
+    primarySupplierId: v.optional(v.id("suppliers")),
+    trackBatches: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      throw new Error("Access denied");
+    }
+
+    const { productId, ...updates } = args;
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, v]) => v !== undefined)
+    );
+
+    await ctx.db.patch(productId, cleanUpdates);
+
+    return { success: true };
+  },
+});
+
+// Delete product and related inventory/movements (admin/manager)
+export const deleteProduct = mutation({
+  args: { productId: v.id("products") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      throw new Error("Access denied");
+    }
+
+    // Remove inventory records
+    const inventories = await ctx.db
+      .query("inventory")
+      .withIndex("by_product", q => q.eq("productId", args.productId))
+      .collect();
+
+    for (const inv of inventories) {
+      await ctx.db.delete(inv._id);
+    }
+
+    // Remove stock movements
+    const movements = await ctx.db
+      .query("stockMovements")
+      .withIndex("by_product_date", q => q.eq("productId", args.productId))
+      .collect();
+
+    for (const m of movements) {
+      await ctx.db.delete(m._id);
+    }
+
+    // Finally remove product
+    await ctx.db.delete(args.productId);
+
+    return { success: true };
+  },
+});
+
 // ── Single Product Inventory ──────────────────────
 export const getProductInventory = query({
   args: { productId: v.id("products") },
@@ -380,24 +579,33 @@ export const recordStockIn = mutation({
       throw new Error("Quantity must be greater than zero.");
     }
 
-    // Get current inventory
     const inv = await ctx.db
       .query("inventory")
-      .withIndex("by_product", q =>
-        q.eq("productId", args.productId)
+      .withIndex("by_product_location", (q) =>
+        q
+          .eq("productId", args.productId)
+          .eq("locationId", args.locationId),
       )
       .first();
 
-    if (!inv) throw new Error("Inventory record not found.");
+    const newOnHand = (inv?.onHand ?? 0) + args.quantity;
 
-    const newOnHand = inv.onHand + args.quantity;
-
-    // Update inventory
-    await ctx.db.patch(inv._id, {
-      onHand:      newOnHand,
-      available:   newOnHand - inv.reserved,
-      lastUpdated: Date.now(),
-    });
+    if (inv) {
+      await ctx.db.patch(inv._id, {
+        onHand: newOnHand,
+        available: newOnHand - inv.reserved,
+        lastUpdated: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("inventory", {
+        productId: args.productId,
+        locationId: args.locationId,
+        onHand: newOnHand,
+        reserved: 0,
+        available: newOnHand,
+        lastUpdated: Date.now(),
+      });
+    }
 
     // Get user from Convex
     const user = await ctx.db
@@ -411,7 +619,7 @@ export const recordStockIn = mutation({
     await ctx.db.insert("stockMovements", {
       productId:  args.productId,
       locationId: args.locationId,
-      userId:     user!._id,
+      userId:     user?._id,
       type:       "stock_in",
       reason:     args.reason ?? "Restock",
       quantity:   args.quantity,
@@ -422,6 +630,102 @@ export const recordStockIn = mutation({
     });
 
     return { success: true, newOnHand };
+  },
+});
+
+// ── Create Product (admin/manager) ─────────────────────────
+export const createProduct = mutation({
+  args: {
+    sku: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    unit: v.union(v.literal("pcs"), v.literal("kg"), v.literal("litre"), v.literal("box"), v.literal("ml")),
+    costPrice: v.number(),
+    sellingPrice: v.number(),
+    reorderPoint: v.number(),
+    safetyStock: v.number(),
+    categoryId: v.optional(v.id("categories")),
+    primarySupplierId: v.optional(v.id("suppliers")),
+    trackBatches: v.optional(v.boolean()),
+    initialLocationId: v.optional(v.id("locations")),
+    initialQuantity: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      throw new Error("Access denied");
+    }
+
+    const product = {
+      categoryId: args.categoryId,
+      primarySupplierId: args.primarySupplierId,
+      sku: args.sku,
+      name: args.name,
+      description: args.description,
+      unit: args.unit,
+      costPrice: args.costPrice,
+      sellingPrice: args.sellingPrice,
+      reorderPoint: args.reorderPoint,
+      safetyStock: args.safetyStock,
+      trackBatches: args.trackBatches ?? false,
+      isActive: true,
+      createdAt: Date.now(),
+    };
+
+    const id = await ctx.db.insert("products", product);
+
+    // Optionally create initial inventory record (inline logic copied from recordStockIn)
+    if (args.initialLocationId && args.initialQuantity && args.initialQuantity > 0) {
+      const inv = await ctx.db
+        .query("inventory")
+        .withIndex("by_product_location", (q) =>
+          q.eq("productId", id).eq("locationId", args.initialLocationId!),
+        )
+        .first();
+
+      const newOnHand = (inv?.onHand ?? 0) + args.initialQuantity;
+
+      if (inv) {
+        await ctx.db.patch(inv._id, {
+          onHand: newOnHand,
+          available: newOnHand - inv.reserved,
+          lastUpdated: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("inventory", {
+          productId: id,
+          locationId: args.initialLocationId!,
+          onHand: newOnHand,
+          reserved: 0,
+          available: newOnHand,
+          lastUpdated: Date.now(),
+        });
+      }
+
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
+        .first();
+
+      await ctx.db.insert("stockMovements", {
+        productId: id,
+        locationId: args.initialLocationId!,
+        userId: user?._id,
+        type: "stock_in",
+        reason: "Initial stock",
+        quantity: args.initialQuantity,
+        createdAt: Date.now(),
+      });
+    }
+
+    return id;
   },
 });
 

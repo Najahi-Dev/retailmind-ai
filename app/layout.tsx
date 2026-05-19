@@ -6,6 +6,7 @@ import "./globals.css";
 import ConvexClientProvider from "@/lib/convex-client";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 const poppins = Poppins({
   subsets:  ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
           <ConvexClientProvider>
             <ThemeProvider>
               <TooltipProvider>{children}</TooltipProvider>
+              <Toaster />
             </ThemeProvider>
           </ConvexClientProvider>
         </body>

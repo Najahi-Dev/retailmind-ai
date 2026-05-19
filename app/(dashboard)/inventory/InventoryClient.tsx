@@ -177,16 +177,7 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6 @container/main">
       {/* ── KPI Cards ─────────────────────────── */}
-      <div
-        className="grid grid-cols-1 gap-4
-        *:data-[slot=card]:bg-gradient-to-t
-        *:data-[slot=card]:from-primary/5
-        *:data-[slot=card]:to-card
-        *:data-[slot=card]:shadow-xs
-        @xl/main:grid-cols-2
-        @5xl/main:grid-cols-4
-        dark:*:data-[slot=card]:bg-card"
-      >
+      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
         {/* Total SKUs */}
         <Card className="@container/card">
           <CardHeader>
@@ -322,10 +313,16 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 
               {/* Add Product — Admin + Manager */}
               {canViewFinancials && (
-                <Button size="lg" onClick={() => router.push("/inventory/add")}>
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Add Product
-                </Button>
+                <>
+                  <Button size="lg" onClick={() => router.push("/inventory/add") }>
+                    <PackageIcon className="h-4 w-4 mr-2" />
+                    Record Stock In
+                  </Button>
+                  <Button size="lg" onClick={() => router.push("/inventory/add-product") }>
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Add Product
+                  </Button>
+                </>
               )}
             </div>
           </div>

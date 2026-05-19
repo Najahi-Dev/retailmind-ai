@@ -21,6 +21,16 @@ import {
 import { Badge }  from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ChevronLeftIcon,
   PackageIcon,
   RefreshCwIcon,
@@ -73,6 +83,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
   const [sellingPrice, setSellingPrice] = useState(0);
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(false);
+  const [saveOpen,     setSaveOpen]     = useState(false);
 
   const canViewFinancials = ["admin", "manager"].includes(role);
   const canEdit           = ["admin", "manager"].includes(role);
@@ -829,7 +840,8 @@ export default function ProductDetailClient({ productId, role }: Props) {
               <div className="@xl/main:col-span-2">
                 <Button
                   className="w-full"
-                  onClick={handleSave}
+                  type="button"
+                  onClick={() => setSaveOpen(true)}
                   disabled={saving || saved}
                 >
                   {saving
@@ -849,6 +861,23 @@ export default function ProductDetailClient({ productId, role }: Props) {
           </TabsContent>
         )}
       </Tabs>
+
+      <AlertDialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save product settings?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This updates reorder, stock, and pricing settings for this product.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSave} disabled={saving || saved}>
+              {saving ? "Saving..." : "Save Changes"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
