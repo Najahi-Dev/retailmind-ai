@@ -31,7 +31,7 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en" data-theme="dark">
+      <html lang="en" suppressHydrationWarning>
         <body className={`${poppins.variable} ${montserrat.variable}`}>
           <ConvexClientProvider>
             <ThemeProvider>

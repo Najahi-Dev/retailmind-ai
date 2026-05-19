@@ -261,7 +261,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <Link href="/dashboard" className="flex items-center gap-3 px-1">
 
                 {/* Logo icon */}
-                <div className="relative flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-primary-foreground font-bold text-sm font-[Montserrat] shadow-sm">
+                <div className="relative flex size-8 shrink-0 items-center justify-center rounded-sm bg-white text-black font-bold text-sm font-[Montserrat] shadow-sm">
                   <img src="/logo.svg" alt="Logo" />
                   {/* Pulse dot — shows when alerts exist */}
                   {alertBadge > 0 && (

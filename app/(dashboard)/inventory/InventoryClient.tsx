@@ -454,9 +454,7 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     <TableRow
                       key={item!.inventoryId}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() =>
-                        router.push(`/inventory/${item!.productId}`)
-                      }
+                      onClick={() => router.push(`/inventory/${item!.productId}`)}
                     >
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {item!.sku}
