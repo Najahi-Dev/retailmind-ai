@@ -9,7 +9,9 @@
  */
 
 import type * as alerts from "../alerts.js";
+import type * as crons from "../crons.js";
 import type * as inventory from "../inventory.js";
+import type * as reorder from "../reorder.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
@@ -21,7 +23,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   alerts: typeof alerts;
+  crons: typeof crons;
   inventory: typeof inventory;
+  reorder: typeof reorder;
   seed: typeof seed;
   users: typeof users;
 }>;
