@@ -318,6 +318,12 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     <PackageIcon className="h-4 w-4 mr-2" />
                     Record Stock In
                   </Button>
+                  <Button variant="outline" size="lg" onClick={() => router.push("/inventory/adjust") }>
+                    Stock Adjustment
+                  </Button>
+                  <Button variant="outline" size="lg" onClick={() => router.push("/inventory/transfer") }>
+                    Transfer Stock
+                  </Button>
                   <Button size="lg" onClick={() => router.push("/inventory/add-product") }>
                     <PlusIcon className="h-4 w-4 mr-2" />
                     Add Product

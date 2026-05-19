@@ -27,6 +27,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
   const router = useRouter();
   const detail = useQuery(api.inventory.getProductDetail, { productId: productId as Id<"products"> });
   const categoriesQ = useQuery(api.inventory.getCategories);
+  const suppliersQ = useQuery(api.inventory.getSuppliers);
   const edit = useMutation(api.inventory.editProduct);
   const del = useMutation(api.inventory.deleteProduct);
 
@@ -35,6 +36,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
   const [description, setDescription] = useState("");
   const [unit, setUnit] = useState("");
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+  const [primarySupplierId, setPrimarySupplierId] = useState<string | undefined>(undefined);
   const [costPrice, setCostPrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
   const [reorderPoint, setReorderPoint] = useState(0);
@@ -50,6 +52,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
     setDescription(detail.product.description || "");
     setUnit(detail.product.unit || "");
     setCategoryId(detail.product.categoryId || undefined);
+    setPrimarySupplierId(detail.product.primarySupplierId || undefined);
     setCostPrice(detail.product.costPrice || 0);
     setSellingPrice(detail.product.sellingPrice || 0);
     setReorderPoint(detail.product.reorderPoint || 0);
@@ -66,6 +69,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
         description,
         unit,
         categoryId: categoryId ? (categoryId as any) : undefined,
+        primarySupplierId: primarySupplierId ? (primarySupplierId as any) : undefined,
         costPrice: Number(costPrice),
         sellingPrice: Number(sellingPrice),
         reorderPoint: Number(reorderPoint),
@@ -95,6 +99,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
 
   const canEdit = ["admin", "manager"].includes(role);
   const categories = categoriesQ ?? [];
+  const suppliers = suppliersQ ?? [];
 
   return (
     <div className="p-4 lg:p-6">
@@ -114,12 +119,24 @@ export default function EditProductClient({ productId, role }: { productId: stri
             </div>
             <div className="space-y-1.5">
               <Label>Category</Label>
-              <Select value={categoryId} onValueChange={(v) => setCategoryId(v === "__none__" ? undefined : v)}>
+              <Select value={categoryId ?? "__none__"} onValueChange={(v) => setCategoryId(v === "__none__" ? undefined : v)}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Choose category" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">No category</SelectItem>
                   {categories.map((category: any) => (
                     <SelectItem key={category._id} value={category._id}>{category.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Supplier</Label>
+              <Select value={primarySupplierId ?? "__none__"} onValueChange={(v) => setPrimarySupplierId(v === "__none__" ? undefined : v)}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Choose supplier" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No supplier</SelectItem>
+                  {suppliers.map((supplier: any) => (
+                    <SelectItem key={supplier._id} value={supplier._id}>{supplier.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

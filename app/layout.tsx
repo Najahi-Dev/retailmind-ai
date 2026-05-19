@@ -21,7 +21,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title:       "RetailMind AI",
+  title:       "RETAILMIND AI",
   description: "Smart Inventory & Demand Forecasting",
 };
 

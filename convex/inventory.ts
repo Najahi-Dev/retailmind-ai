@@ -182,6 +182,73 @@ export const getCategories = query({
   },
 });
 
+export const getSuppliers = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    return await ctx.db
+      .query("suppliers")
+      .collect()
+      .then((suppliers) =>
+        suppliers
+          .filter((supplier) => supplier.isActive)
+          .map((supplier) => ({
+            _id: supplier._id,
+            name: supplier.name,
+          }))
+          .sort((left, right) => left.name.localeCompare(right.name)),
+      );
+  },
+});
+
+export const getStockControlFormData = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const [products, locations, inventory] = await Promise.all([
+      ctx.db.query("products").collect(),
+      ctx.db.query("locations").collect(),
+      ctx.db.query("inventory").collect(),
+    ]);
+
+    return {
+      products: products
+        .filter((product) => product.isActive)
+        .map((product) => ({
+          _id: product._id,
+          sku: product.sku,
+          name: product.name,
+          unit: product.unit,
+          reorderPoint: product.reorderPoint,
+          safetyStock: product.safetyStock,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+      locations: locations
+        .filter((location) => location.isActive)
+        .map((location) => ({
+          _id: location._id,
+          name: location.name,
+          type: location.type,
+          address: location.address,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+      inventory: inventory.map((entry) => ({
+        _id: entry._id,
+        productId: entry.productId,
+        locationId: entry.locationId,
+        onHand: entry.onHand,
+        reserved: entry.reserved,
+        available: entry.available,
+        lastUpdated: entry.lastUpdated,
+      })),
+    };
+  },
+});
+
 // Return next SKU based on existing products with format PREFIX-NUM (e.g. SKU-1500)
 export const getNextSku = query({
   args: {},
@@ -813,5 +880,197 @@ export const recordStockOut = mutation({
     }
 
     return { success: true, newOnHand };
+  },
+});
+
+export const recordStockAdjustment = mutation({
+  args: {
+    productId: v.id("products"),
+    locationId: v.id("locations"),
+    adjustedOnHand: v.number(),
+    reason: v.optional(v.string()),
+    reference: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    if (args.adjustedOnHand < 0) {
+      throw new Error("Adjusted stock cannot be negative.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      throw new Error("Access denied");
+    }
+
+    const inv = await ctx.db
+      .query("inventory")
+      .withIndex("by_product_location", (q) =>
+        q.eq("productId", args.productId).eq("locationId", args.locationId),
+      )
+      .first();
+
+    const currentOnHand = inv?.onHand ?? 0;
+    const delta = args.adjustedOnHand - currentOnHand;
+    if (delta === 0) {
+      throw new Error("No adjustment detected. Current and adjusted stock are the same.");
+    }
+
+    if (inv) {
+      await ctx.db.patch(inv._id, {
+        onHand: args.adjustedOnHand,
+        available: args.adjustedOnHand - inv.reserved,
+        lastUpdated: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("inventory", {
+        productId: args.productId,
+        locationId: args.locationId,
+        onHand: args.adjustedOnHand,
+        reserved: 0,
+        available: args.adjustedOnHand,
+        lastUpdated: Date.now(),
+      });
+    }
+
+    await ctx.db.insert("stockMovements", {
+      productId: args.productId,
+      locationId: args.locationId,
+      userId: user._id,
+      type: "adjustment",
+      reason: args.reason ?? "Manual stock adjustment",
+      quantity: delta,
+      reference: args.reference,
+      notes: args.notes,
+      createdAt: Date.now(),
+    });
+
+    return {
+      success: true,
+      previousOnHand: currentOnHand,
+      adjustedOnHand: args.adjustedOnHand,
+      delta,
+    };
+  },
+});
+
+export const transferStockBetweenLocations = mutation({
+  args: {
+    productId: v.id("products"),
+    fromLocationId: v.id("locations"),
+    toLocationId: v.id("locations"),
+    quantity: v.number(),
+    reason: v.optional(v.string()),
+    reference: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    if (args.fromLocationId === args.toLocationId) {
+      throw new Error("Source and destination locations must be different.");
+    }
+
+    if (args.quantity <= 0) {
+      throw new Error("Transfer quantity must be greater than zero.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      throw new Error("Access denied");
+    }
+
+    const sourceInventory = await ctx.db
+      .query("inventory")
+      .withIndex("by_product_location", (q) =>
+        q.eq("productId", args.productId).eq("locationId", args.fromLocationId),
+      )
+      .first();
+
+    if (!sourceInventory) {
+      throw new Error("Source inventory record not found.");
+    }
+
+    if (sourceInventory.available < args.quantity) {
+      throw new Error(
+        `Insufficient stock at source. Available: ${sourceInventory.available} units.`,
+      );
+    }
+
+    const destinationInventory = await ctx.db
+      .query("inventory")
+      .withIndex("by_product_location", (q) =>
+        q.eq("productId", args.productId).eq("locationId", args.toLocationId),
+      )
+      .first();
+
+    const sourceNewOnHand = sourceInventory.onHand - args.quantity;
+    await ctx.db.patch(sourceInventory._id, {
+      onHand: sourceNewOnHand,
+      available: sourceNewOnHand - sourceInventory.reserved,
+      lastUpdated: Date.now(),
+    });
+
+    let destinationNewOnHand = args.quantity;
+    if (destinationInventory) {
+      destinationNewOnHand = destinationInventory.onHand + args.quantity;
+      await ctx.db.patch(destinationInventory._id, {
+        onHand: destinationNewOnHand,
+        available: destinationNewOnHand - destinationInventory.reserved,
+        lastUpdated: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("inventory", {
+        productId: args.productId,
+        locationId: args.toLocationId,
+        onHand: destinationNewOnHand,
+        reserved: 0,
+        available: destinationNewOnHand,
+        lastUpdated: Date.now(),
+      });
+    }
+
+    const reason = args.reason ?? "Stock transfer";
+
+    await ctx.db.insert("stockMovements", {
+      productId: args.productId,
+      locationId: args.fromLocationId,
+      userId: user._id,
+      type: "transfer_out",
+      reason,
+      quantity: -args.quantity,
+      reference: args.reference,
+      notes: args.notes,
+      createdAt: Date.now(),
+    });
+
+    await ctx.db.insert("stockMovements", {
+      productId: args.productId,
+      locationId: args.toLocationId,
+      userId: user._id,
+      type: "transfer_in",
+      reason,
+      quantity: args.quantity,
+      reference: args.reference,
+      notes: args.notes,
+      createdAt: Date.now(),
+    });
+
+    return {
+      success: true,
+      sourceNewOnHand,
+      destinationNewOnHand,
+    };
   },
 });

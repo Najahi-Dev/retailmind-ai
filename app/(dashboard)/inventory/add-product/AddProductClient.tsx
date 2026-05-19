@@ -27,6 +27,7 @@ export default function AddProductClient() {
   const createProduct = useMutation(api.inventory.createProduct);
   const locationsQ = useQuery(api.inventory.getStockInFormData);
   const categoriesQ = useQuery(api.inventory.getCategories);
+  const suppliersQ = useQuery(api.inventory.getSuppliers);
   const nextSku = useQuery(api.inventory.getNextSku);
 
   const [sku, setSku] = useState("");
@@ -47,6 +48,7 @@ export default function AddProductClient() {
 
   const locations = locationsQ?.locations ?? [];
   const categories = categoriesQ ?? [];
+  const suppliers = suppliersQ ?? [];
 
   useEffect(() => {
     if (!sku && nextSku) setSku(nextSku);
@@ -119,12 +121,24 @@ export default function AddProductClient() {
               </div>
               <div className="space-y-1.5">
                 <Label>Category</Label>
-                <Select value={categoryId} onValueChange={(v) => setCategoryId(v === "__none__" ? undefined : v)}>
+                <Select value={categoryId ?? "__none__"} onValueChange={(v) => setCategoryId(v === "__none__" ? undefined : v)}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Choose category" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">No category</SelectItem>
                     {categories.map((category: any) => (
                       <SelectItem key={category._id} value={category._id}>{category.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Supplier</Label>
+                <Select value={primarySupplierId ?? "__none__"} onValueChange={(v) => setPrimarySupplierId(v === "__none__" ? undefined : v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Choose supplier" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No supplier</SelectItem>
+                    {suppliers.map((supplier: any) => (
+                      <SelectItem key={supplier._id} value={supplier._id}>{supplier.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
