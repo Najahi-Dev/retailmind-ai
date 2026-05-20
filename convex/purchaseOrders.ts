@@ -63,16 +63,15 @@ export const updatePOStatus = mutation({
   args: {
     poId: v.id("purchaseOrders"),
     status: v.union(
+      v.literal("draft"),
       v.literal("sent"),
       v.literal("confirmed"),
       v.literal("shipped"),
       v.literal("delivered"),
       v.literal("cancelled"),
     ),
-    trackingNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // ── Auth check ──────────────────────────
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -81,54 +80,77 @@ export const updatePOStatus = mutation({
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!user) throw new Error("User not found");
-
-    // ── Get PO ──────────────────────────────
-    const po = await ctx.db.get(args.poId);
-    if (!po) throw new Error("Purchase order not found");
-
-    // ── Valid state machine transitions ──────
-    const validTransitions: Record<string, string[]> = {
-      draft: ["sent", "cancelled"],
-      sent: ["confirmed", "cancelled"],
-      confirmed: ["shipped", "cancelled"],
-      shipped: ["delivered"],
-      delivered: [],
-      cancelled: [],
-    };
-
-    const allowed = validTransitions[po.status] ?? [];
-    if (!allowed.includes(args.status)) {
-      throw new Error(`Invalid transition: ${po.status} → ${args.status}`);
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      throw new Error("Access denied");
     }
 
-    // ── Patch DB ────────────────────────────
+    const po = await ctx.db.get(args.poId);
+    if (!po) throw new Error("PO not found");
+
+    // ── When status changes TO delivered ────────
+    // Update inventory onHand for each line item
+    if (args.status === "delivered" && po.status !== "delivered") {
+      for (const line of po.lineItems) {
+        // Find inventory record for this product
+        const inv = await ctx.db
+          .query("inventory")
+          .withIndex("by_product", (q) => q.eq("productId", line.productId))
+          .first();
+
+        if (inv) {
+          const newOnHand = inv.onHand + line.quantityOrdered;
+          const newAvailable = newOnHand - inv.reserved;
+
+          await ctx.db.patch(inv._id, {
+            onHand: newOnHand,
+            available: newAvailable,
+            lastUpdated: Date.now(),
+          });
+
+          // Also create a stock_in movement record
+          await ctx.db.insert("stockMovements", {
+            productId: line.productId,
+            locationId: inv.locationId,
+            userId: user._id,
+            type: "stock_in",
+            reason: "Purchase Order Delivery",
+            quantity: line.quantityOrdered,
+            reference: po.poNumber,
+            notes: `Received via ${po.poNumber}`,
+            createdAt: Date.now(),
+          });
+        }
+      }
+    }
+
+    // ── When cancelled — reverse if was delivered ─
+    // (optional safety check)
+    if (args.status === "cancelled" && po.status === "delivered") {
+      throw new Error("Cannot cancel a delivered PO");
+    }
+
+    // ── Update PO status ─────────────────────────
     await ctx.db.patch(args.poId, {
       status: args.status,
       updatedAt: Date.now(),
-      ...(args.trackingNumber && {
-        trackingNumber: args.trackingNumber,
-      }),
     });
 
-    return {
-      success: true,
-      poId: args.poId,
-      newStatus: args.status,
-    };
+    return { success: true };
   },
 });
 
 export const createPurchaseOrder = mutation({
   args: {
-    supplierId:        v.id("suppliers"),
-    lineItems:         v.array(v.object({
-      productId:       v.id("products"),
-      quantityOrdered: v.number(),
-      unitCost:        v.number(),
-    })),
+    supplierId: v.id("suppliers"),
+    lineItems: v.array(
+      v.object({
+        productId: v.id("products"),
+        quantityOrdered: v.number(),
+        unitCost: v.number(),
+      }),
+    ),
     requestedDelivery: v.optional(v.number()),
-    notes:             v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // ── Auth check ──────────────────────────
@@ -173,6 +195,34 @@ export const createPurchaseOrder = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-      return { poId, poNumber, totalValue };
-    },
-  });
+    return { poId, poNumber, totalValue };
+  },
+});
+
+export const getPODetail = query({
+  args: { poId: v.id("purchaseOrders") },
+  handler: async (ctx, args) => {
+    const po = await ctx.db.get(args.poId);
+    if (!po) return null;
+
+    const supplier = await ctx.db.get(po.supplierId);
+
+    // Attach product name + sku to each line item
+    const lineItems = await Promise.all(
+      po.lineItems.map(async (line) => {
+        const product = await ctx.db.get(line.productId);
+        return {
+          ...line,
+          productName: product?.name ?? "Unknown",
+          productSku: product?.sku ?? "",
+        };
+      }),
+    );
+
+    return {
+      ...po,
+      supplierName: supplier?.name ?? "Unknown",
+      lineItems,
+    };
+  },
+});
