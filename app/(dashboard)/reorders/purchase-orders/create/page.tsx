@@ -1,6 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect }    from "next/navigation";
-import CreatePOClient  from "./CreatePOClient";
+import CreatePOClient from "./CreatePOClient";
 
 export default async function CreatePOPage() {
   const user = await currentUser();

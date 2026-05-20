@@ -14,6 +14,7 @@ import type * as inventory from "../inventory.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as reorder from "../reorder.js";
 import type * as seed from "../seed.js";
+import type * as suppliers from "../suppliers.js";
 import type * as users from "../users.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   purchaseOrders: typeof purchaseOrders;
   reorder: typeof reorder;
   seed: typeof seed;
+  suppliers: typeof suppliers;
   users: typeof users;
 }>;
 

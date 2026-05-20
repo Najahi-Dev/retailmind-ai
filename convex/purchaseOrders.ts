@@ -105,6 +105,7 @@ export const updatePOStatus = mutation({
     // ── Patch DB ────────────────────────────
     await ctx.db.patch(args.poId, {
       status: args.status,
+      updatedAt: Date.now(),
       ...(args.trackingNumber && {
         trackingNumber: args.trackingNumber,
       }),
@@ -136,9 +137,7 @@ export const createPurchaseOrder = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", identity.subject)
-      )
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .first();
 
     if (!user) throw new Error("User not found");
@@ -147,30 +146,33 @@ export const createPurchaseOrder = mutation({
     }
 
     // ── Generate PO number ───────────────────
-    const count    = await ctx.db
-      .query("purchaseOrders")
-      .collect();
+    const count = await ctx.db.query("purchaseOrders").collect();
     const poNumber = `PO-${Date.now()}-${count.length + 1}`;
 
     // ── Calculate total ──────────────────────
     const totalValue = args.lineItems.reduce(
       (sum, item) => sum + item.quantityOrdered * item.unitCost,
-      0
+      0,
     );
-
     // ── Insert PO ───────────────────────────
     const poId = await ctx.db.insert("purchaseOrders", {
-      supplierId:        args.supplierId,
-      createdBy:         user._id,
+      supplierId: args.supplierId,
+      createdBy: user._id,
       poNumber,
-      status:            "draft",
-      lineItems:         args.lineItems,
-      totalValue:        Math.round(totalValue * 100) / 100,
+      status: "draft",
+      lineItems: args.lineItems.map((item) => ({
+        productId: item.productId,
+        quantityOrdered: item.quantityOrdered,
+        quantityReceived: 0, // ← add default
+        unitCost: item.unitCost,
+        lineTotal: item.quantityOrdered * item.unitCost, // ← add calculated
+      })),
+      totalValue: Math.round(totalValue * 100) / 100,
       requestedDelivery: args.requestedDelivery,
-      notes:             args.notes,
-      createdAt:         Date.now(),
+      notes: args.notes,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
-
-    return { poId, poNumber, totalValue };
-  },
-});
+      return { poId, poNumber, totalValue };
+    },
+  });

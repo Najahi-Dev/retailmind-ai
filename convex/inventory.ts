@@ -932,18 +932,14 @@ export const recordStockOut = mutation({
 export const getStockOutFormData = query({
   args: {},
   handler: async (ctx) => {
-    // Get ALL inventory records first
     const allInventory = await ctx.db
       .query("inventory")
       .collect();
 
-    // Get ALL active locations
     const locations = await ctx.db
       .query("locations")
       .collect();
 
-    // Build product list from inventory (not products table)
-    // This ensures only products WITH inventory records show
     const productsWithStock = await Promise.all(
       allInventory.map(async (inv) => {
         const product = await ctx.db.get(inv.productId);
@@ -957,16 +953,16 @@ export const getStockOutFormData = query({
           onHand:     inv.onHand,
           reserved:   inv.reserved,
           available:  inv.available,
-          locationId: inv.locationId,
+          locationId: inv.locationId as string,
         };
       })
     );
 
-    // Filter nulls + zero available
+    // Filter nulls with type guard
     const filtered = productsWithStock
-      .filter(Boolean)
-      .filter(p => p!.onHand > 0)  // only show products with stock
-      .sort((a, b) => a!.name.localeCompare(b!.name));
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .filter(p => p.onHand > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return {
       products:  filtered,
