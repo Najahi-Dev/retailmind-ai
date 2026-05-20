@@ -928,6 +928,53 @@ export const recordStockOut = mutation({
   },
 });
 
+
+export const getStockOutFormData = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get ALL inventory records first
+    const allInventory = await ctx.db
+      .query("inventory")
+      .collect();
+
+    // Get ALL active locations
+    const locations = await ctx.db
+      .query("locations")
+      .collect();
+
+    // Build product list from inventory (not products table)
+    // This ensures only products WITH inventory records show
+    const productsWithStock = await Promise.all(
+      allInventory.map(async (inv) => {
+        const product = await ctx.db.get(inv.productId);
+        if (!product || !product.isActive) return null;
+
+        return {
+          _id:        product._id,
+          sku:        product.sku,
+          name:       product.name,
+          unit:       product.unit,
+          onHand:     inv.onHand,
+          reserved:   inv.reserved,
+          available:  inv.available,
+          locationId: inv.locationId,
+        };
+      })
+    );
+
+    // Filter nulls + zero available
+    const filtered = productsWithStock
+      .filter(Boolean)
+      .filter(p => p!.onHand > 0)  // only show products with stock
+      .sort((a, b) => a!.name.localeCompare(b!.name));
+
+    return {
+      products:  filtered,
+      locations: locations.filter(l => l.isActive),
+    };
+  },
+});
+
 export const recordStockAdjustment = mutation({
   args: {
     productId: v.id("products"),

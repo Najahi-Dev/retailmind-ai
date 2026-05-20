@@ -30,18 +30,33 @@ export function NavMain({
       <SidebarGroupContent className="flex flex-col gap-1">
         <SidebarMenu>
           {items.map((item) => {
-            // components/nav-main.tsx — isActive logic fix pannu
+            // components/nav-main.tsx — isActive line replace pannu
 
-const isActive =
-  item.url === "/reorders/purchase-orders"
-    ? pathname === "/reorders/purchase-orders" ||
-      pathname.startsWith("/reorders/purchase-orders/")
-    : item.url === "/reorders"
-    ? pathname === "/reorders" ||
-      (pathname.startsWith("/reorders/") &&
-       !pathname.startsWith("/reorders/purchase-orders"))
-    : pathname === item.url ||
-      pathname.startsWith(item.url + "/");
+            const isActive =
+              // Exact match routes — only highlight when exactly on that page
+              item.url === "/inventory/stock-out" ||
+              item.url === "/inventory/stock-in" ||
+              item.url === "/inventory/adjustment"
+                ? pathname === item.url
+                : // Reorders sub-routes
+                  item.url === "/reorders/purchase-orders"
+                  ? pathname === "/reorders/purchase-orders" ||
+                    pathname.startsWith("/reorders/purchase-orders/")
+                  : item.url === "/reorders"
+                    ? pathname === "/reorders" ||
+                      (pathname.startsWith("/reorders/") &&
+                        !pathname.startsWith("/reorders/purchase-orders"))
+                    : // Inventory — only active when exactly /inventory or /inventory/[productId]
+                      // NOT when on stock-in, stock-out, adjustment
+                      item.url === "/inventory"
+                      ? pathname === "/inventory" ||
+                        (pathname.startsWith("/inventory/") &&
+                          !pathname.startsWith("/inventory/stock-out") &&
+                          !pathname.startsWith("/inventory/stock-in") &&
+                          !pathname.startsWith("/inventory/adjustment"))
+                      : // Default — exact match or sub-routes
+                        pathname === item.url ||
+                        pathname.startsWith(item.url + "/");
 
             return (
               <SidebarMenuItem key={item.title}>
@@ -53,7 +68,7 @@ const isActive =
                     "relative flex items-center gap-2 rounded-sm px-3 py-5 text-sm transition-all duration-150",
                     isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                   )}
                 >
                   <Link
@@ -61,19 +76,19 @@ const isActive =
                     className="flex items-center gap-2 w-full"
                   >
                     {/* Icon */}
-                    <span className={cn(
-                      "size-4 shrink-0 transition-colors",
-                      isActive
-                        ? "text-sidebar-accent-foreground"
-                        : "text-muted-foreground"
-                    )}>
+                    <span
+                      className={cn(
+                        "size-4 shrink-0 transition-colors",
+                        isActive
+                          ? "text-sidebar-accent-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
                       {item.icon}
                     </span>
 
                     {/* Label */}
-                    <span className="flex-1 truncate">
-                      {item.title}
-                    </span>
+                    <span className="flex-1 truncate">{item.title}</span>
 
                     {/* Notification badge */}
                     {item.badge && item.badge > 0 && (
@@ -92,8 +107,9 @@ const isActive =
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            )
-          })}
+            );
+          }
+        )}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

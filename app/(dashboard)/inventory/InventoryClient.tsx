@@ -186,7 +186,7 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
               {stats.totalProducts.toLocaleString()}
             </CardTitle>
             <CardAction>
-              <Badge variant="outline">
+              <Badge variant="outline" className="p-3">
                 <PackageIcon className="size-3" />
                 All Products
               </Badge>
@@ -202,7 +202,7 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
               {stats.criticalCount}
             </CardTitle>
             <CardAction>
-              <Badge variant="destructive">
+              <Badge variant="destructive" className="p-3">
                 <AlertTriangleIcon className="size-3" />
                 Urgent
               </Badge>
@@ -220,7 +220,7 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             <CardAction>
               <Badge
                 variant="outline"
-                className="text-yellow-500 border-yellow-200"
+                className="text-yellow-500 p-3"
               >
                 <TrendingDownIcon className="size-3" />
                 Warning
@@ -255,7 +255,7 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
               <CardAction>
                 <Badge
                   variant="outline"
-                  className="text-green-500 border-green-200"
+                  className="text-green-500 p-3"
                 >
                   <TrendingUpIcon className="size-3" />
                   Good
@@ -314,19 +314,41 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
               {/* Add Product — Admin + Manager */}
               {canViewFinancials && (
                 <>
-                  <Button size="lg" onClick={() => router.push("/inventory/add") }>
+                  <Button
+                    size="lg"
+                    onClick={() => router.push("/inventory/add")}
+                  >
                     <PackageIcon className="h-4 w-4 mr-2" />
                     Record Stock In
                   </Button>
-                  <Button variant="outline" size="lg" onClick={() => router.push("/inventory/adjust") }>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => router.push("/inventory/adjust")}
+                  >
                     Stock Adjustment
                   </Button>
-                  <Button variant="outline" size="lg" onClick={() => router.push("/inventory/transfer") }>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => router.push("/inventory/transfer")}
+                  >
                     Transfer Stock
                   </Button>
-                  <Button size="lg" onClick={() => router.push("/inventory/add-product") }>
+                  <Button
+                    size="lg"
+                    onClick={() => router.push("/inventory/add-product")}
+                  >
                     <PlusIcon className="h-4 w-4 mr-2" />
                     Add Product
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push("/inventory/stock-out")}
+                  >
+                    <TrendingDownIcon className="size-4 mr-2" />
+                    Stock-Out
                   </Button>
                 </>
               )}
@@ -457,7 +479,9 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     <TableRow
                       key={item!.inventoryId}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/inventory/${item!.productId}`)}
+                      onClick={() =>
+                        router.push(`/inventory/${item!.productId}`)
+                      }
                     >
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {item!.sku}

@@ -31,6 +31,8 @@ import {
   RotateCcwIcon,
   ShoppingCartIcon,
   SparklesIcon,
+  TrendingDown,
+  TrendingDownIcon,
 } from "lucide-react"
 import { useRole } from "@/hooks/useRole"
 import { useQuery } from "convex/react"
@@ -70,6 +72,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Inventory",
       url:   "/inventory",
       icon:  <PackageIcon className="size-4" />,
+    },
+    {
+      title: "Stock-Out",
+      url:   "/inventory/stock-out",
+      icon:  <TrendingDownIcon className="size-4" />,
     },
     {
       title: "Alerts",

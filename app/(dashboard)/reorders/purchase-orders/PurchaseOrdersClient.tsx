@@ -19,6 +19,7 @@ import {
   ClockIcon, RefreshCwIcon, PlusIcon,
   ChevronRightIcon, FileTextIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props { role: string }
 
@@ -75,11 +76,27 @@ export default function PurchaseOrdersClient({ role }: Props) {
 
   const handleStatusUpdate = async (
     poId: Id<"purchaseOrders">,
-    status: string
+    status: string,
   ) => {
+    console.log("Updating PO:", poId, "→", status);
     setUpdating(poId);
     try {
-      await updateStatus({ poId, status: status as any });
+      await  updateStatus({
+        poId,
+        status: status as
+          | "sent"
+          | "confirmed"
+          | "shipped"
+          | "delivered"
+          | "cancelled",
+      });
+      console.log("Success:", updateStatus);
+      toast.success(`Order status updated to ${status}`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update status";
+      toast.error(message);
+      console.error("PO update error:", err);
     } finally {
       setUpdating(null);
     }
@@ -278,52 +295,55 @@ export default function PurchaseOrdersClient({ role }: Props) {
                             </span>
                           </div>
                         </td>
-
                         {/* Supplier */}
                         <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                           {po.supplierName}
                         </td>
-
                         {/* Status */}
                         <td className="px-4 py-3">
-                          <span className={`
+                          <span
+                            className={`
                             inline-flex items-center gap-1.5 px-2.5 py-0.5
                             rounded-full text-xs font-medium
                             ${statusCfg.bg} ${statusCfg.color}
-                          `}>
-                            {po.status === "shipped"   && <TruckIcon        className="size-3" />}
-                            {po.status === "delivered" && <CheckCircleIcon  className="size-3" />}
-                            {po.status === "sent"      && <ClockIcon        className="size-3" />}
+                          `}
+                          >
+                            {po.status === "shipped" && (
+                              <TruckIcon className="size-3" />
+                            )}
+                            {po.status === "delivered" && (
+                              <CheckCircleIcon className="size-3" />
+                            )}
+                            {po.status === "sent" && (
+                              <ClockIcon className="size-3" />
+                            )}
                             {statusCfg.label}
                           </span>
                         </td>
-
                         {/* Items */}
                         <td className="px-4 py-3 text-right text-muted-foreground hidden md:table-cell">
                           {po.itemCount} item{po.itemCount !== 1 ? "s" : ""}
                         </td>
-
                         {/* Total value */}
                         {canViewFinancials && (
                           <td className="px-4 py-3 text-right font-medium hidden lg:table-cell">
                             {formatCurrency(po.totalValue)}
                           </td>
                         )}
-
                         {/* Date */}
                         <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell">
                           {formatDate(po.createdAt)}
                         </td>
-
                         {/* Action */}
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {/* Status update button */}
+                            {/* Status update button — fixed width */}
                             {nextAction && !isSupplier && (
                               <Button
                                 size="sm"
                                 variant={nextAction.variant}
                                 disabled={isUpdating}
+                                className="w-36 justify-center" // ← fixed width
                                 onClick={() =>
                                   handleStatusUpdate(po._id, nextAction.status)
                                 }
@@ -336,11 +356,12 @@ export default function PurchaseOrdersClient({ role }: Props) {
                               </Button>
                             )}
 
-                            {/* Supplier confirm button */}
+                            {/* Supplier confirm button — same width */}
                             {isSupplier && po.status === "sent" && (
                               <Button
                                 size="sm"
                                 disabled={isUpdating}
+                                className="w-36 justify-center" // ← fixed width
                                 onClick={() =>
                                   handleStatusUpdate(po._id, "confirmed")
                                 }
@@ -353,13 +374,14 @@ export default function PurchaseOrdersClient({ role }: Props) {
                               </Button>
                             )}
 
-                            {/* View detail */}
+                            {/* View detail button */}
                             <Button
                               size="sm"
                               variant="ghost"
+                              className="w-9 px-0 justify-center" // ← fixed width
                               onClick={() =>
                                 router.push(
-                                  `/reorders/purchase-orders/${po._id}`
+                                  `/reorders/purchase-orders/${po._id}`,
                                 )
                               }
                             >
