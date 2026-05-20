@@ -131,7 +131,7 @@ export default function PurchaseOrdersClient({ role }: Props) {
                 {stats.total}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline">
+                <Badge variant="outline" className="p-3">
                   <FileTextIcon className="size-3" /> All
                 </Badge>
               </CardAction>
@@ -145,7 +145,7 @@ export default function PurchaseOrdersClient({ role }: Props) {
                 {stats.sent + stats.confirmed + stats.shipped}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline" className="text-blue-500 border-blue-200">
+                <Badge variant="outline" className="text-blue-500 p-3">
                   <TruckIcon className="size-3" /> Active
                 </Badge>
               </CardAction>
@@ -159,7 +159,7 @@ export default function PurchaseOrdersClient({ role }: Props) {
                 {stats.delivered}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline" className="text-green-500 border-green-200">
+                <Badge variant="outline" className="text-green-500 p-3">
                   <CheckCircleIcon className="size-3" /> Done
                 </Badge>
               </CardAction>
@@ -174,7 +174,9 @@ export default function PurchaseOrdersClient({ role }: Props) {
                   {formatCurrency(stats.totalValue)}
                 </CardTitle>
                 <CardAction>
-                  <Badge variant="outline">LKR</Badge>
+                  <Badge variant="outline" className="p-3">
+                    LKR
+                  </Badge>
                 </CardAction>
               </CardHeader>
             </Card>
