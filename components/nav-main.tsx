@@ -1,4 +1,3 @@
-// components/nav-main.tsx
 "use client"
 
 import {
@@ -8,19 +7,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Badge } from "@/components/ui/badge"
+import { Badge }       from "@/components/ui/badge"
 import { usePathname } from "next/navigation"
-import Link from "next/link"
-import { cn } from "@/lib/utils"
+import Link            from "next/link"
+import { cn }          from "@/lib/utils"
 
 export function NavMain({
   items,
 }: {
   items: {
-    title: string
-    url: string
-    icon?: React.ReactNode
-    badge?: number        // ← notification count
+    title:  string
+    url:    string
+    icon?:  React.ReactNode
+    badge?: number
   }[]
 }) {
   const pathname = usePathname()
@@ -30,33 +29,54 @@ export function NavMain({
       <SidebarGroupContent className="flex flex-col gap-1">
         <SidebarMenu>
           {items.map((item) => {
-            // components/nav-main.tsx — isActive line replace pannu
 
-            const isActive =
-              // Exact match routes — only highlight when exactly on that page
-              item.url === "/inventory/stock-out" ||
-              item.url === "/inventory/stock-in" ||
-              item.url === "/inventory/adjustment"
-                ? pathname === item.url
-                : // Reorders sub-routes
-                  item.url === "/reorders/purchase-orders"
-                  ? pathname === "/reorders/purchase-orders" ||
-                    pathname.startsWith("/reorders/purchase-orders/")
-                  : item.url === "/reorders"
-                    ? pathname === "/reorders" ||
-                      (pathname.startsWith("/reorders/") &&
-                        !pathname.startsWith("/reorders/purchase-orders"))
-                    : // Inventory — only active when exactly /inventory or /inventory/[productId]
-                      // NOT when on stock-in, stock-out, adjustment
-                      item.url === "/inventory"
-                      ? pathname === "/inventory" ||
-                        (pathname.startsWith("/inventory/") &&
-                          !pathname.startsWith("/inventory/stock-out") &&
-                          !pathname.startsWith("/inventory/stock-in") &&
-                          !pathname.startsWith("/inventory/adjustment"))
-                      : // Default — exact match or sub-routes
-                        pathname === item.url ||
-                        pathname.startsWith(item.url + "/");
+            const isActive = (() => {
+              // ── Exact match only routes ──────────────
+              const exactOnly = [
+                "/inventory/stock-out",
+                "/inventory/stock-in",
+                "/inventory/adjustment",
+                "/forecasting/pricing",  
+                "/forecasting",
+              ];
+              if (exactOnly.includes(item.url)) {
+                return pathname === item.url;
+              }
+
+              // ── Reorders purchase-orders ─────────────
+              if (item.url === "/reorders/purchase-orders") {
+                return (
+                  pathname === "/reorders/purchase-orders" ||
+                  pathname.startsWith("/reorders/purchase-orders/")
+                );
+              }
+
+              // ── Reorders (exclude purchase-orders) ───
+              if (item.url === "/reorders") {
+                return (
+                  pathname === "/reorders" ||
+                  (pathname.startsWith("/reorders/") &&
+                    !pathname.startsWith("/reorders/purchase-orders"))
+                );
+              }
+
+              // ── Inventory (exclude sub-pages) ────────
+              if (item.url === "/inventory") {
+                return (
+                  pathname === "/inventory" ||
+                  (pathname.startsWith("/inventory/") &&
+                    !pathname.startsWith("/inventory/stock-out") &&
+                    !pathname.startsWith("/inventory/stock-in") &&
+                    !pathname.startsWith("/inventory/adjustment"))
+                );
+              }
+
+              // ── Default ──────────────────────────────
+              return (
+                pathname === item.url ||
+                pathname.startsWith(item.url + "/")
+              );
+            })();
 
             return (
               <SidebarMenuItem key={item.title}>
@@ -75,22 +95,17 @@ export function NavMain({
                     href={item.url}
                     className="flex items-center gap-2 w-full"
                   >
-                    {/* Icon */}
-                    <span
-                      className={cn(
-                        "size-4 shrink-0 transition-colors",
-                        isActive
-                          ? "text-sidebar-accent-foreground"
-                          : "text-muted-foreground",
-                      )}
-                    >
+                    <span className={cn(
+                      "size-4 shrink-0 transition-colors",
+                      isActive
+                        ? "text-sidebar-accent-foreground"
+                        : "text-muted-foreground",
+                    )}>
                       {item.icon}
                     </span>
 
-                    {/* Label */}
                     <span className="flex-1 truncate">{item.title}</span>
 
-                    {/* Notification badge */}
                     {item.badge && item.badge > 0 && (
                       <Badge
                         variant="destructive"
@@ -100,7 +115,6 @@ export function NavMain({
                       </Badge>
                     )}
 
-                    {/* Active indicator bar */}
                     {isActive && (
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 bg-primary rounded-r-full" />
                     )}
@@ -108,8 +122,7 @@ export function NavMain({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );
-          }
-        )}
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

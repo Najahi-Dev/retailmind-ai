@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV '/media/najahi/Local Disk/Final Project/retailmind-ai/ai-service/venv'
+set -gx VIRTUAL_ENV /home/najahi/Downloads/retailmind-ai/ai-service/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

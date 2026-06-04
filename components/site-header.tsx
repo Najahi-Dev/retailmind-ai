@@ -20,6 +20,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/settings":                 "Settings",
   "/settings/profile":         "My Profile",
   "/data":                     "Data Library",
+  "/forecasting/pricing": "AI Dynamic Pricing",
 }
 
 export function SiteHeader() {

@@ -12,4 +12,10 @@ crons.daily(
   {},
 );
 
+crons.daily(
+  "generate-price-suggestions",
+  { hourUTC: 21, minuteUTC: 0 },   // 2:30 AM Sri Lanka
+  internal.pricing.generatePriceSuggestions
+);
+
 export default crons;

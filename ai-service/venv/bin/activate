@@ -39,10 +39,10 @@ deactivate nondestructive
 if [ "${OSTYPE:-}" = "cygwin" ] || [ "${OSTYPE:-}" = "msys" ] ; then
     # transform D:\path\to\venv to /d/path/to/venv on MSYS
     # and to /cygdrive/d/path/to/venv on Cygwin
-    export VIRTUAL_ENV=$(cygpath '/media/najahi/Local Disk/Final Project/retailmind-ai/ai-service/venv')
+    export VIRTUAL_ENV=$(cygpath /home/najahi/Downloads/retailmind-ai/ai-service/venv)
 else
     # use the path as-is
-    export VIRTUAL_ENV='/media/najahi/Local Disk/Final Project/retailmind-ai/ai-service/venv'
+    export VIRTUAL_ENV=/home/najahi/Downloads/retailmind-ai/ai-service/venv
 fi
 
 _OLD_VIRTUAL_PATH="$PATH"

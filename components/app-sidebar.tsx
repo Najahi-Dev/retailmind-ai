@@ -33,6 +33,7 @@ import {
   SparklesIcon,
   TrendingDown,
   TrendingDownIcon,
+  ChartCandlestick,
 } from "lucide-react"
 import { useRole } from "@/hooks/useRole"
 import { useQuery } from "convex/react"
@@ -96,41 +97,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const managerMain = [
     {
       title: "Dashboard",
-      url:   "/dashboard",
-      icon:  <LayoutDashboardIcon className="size-4" />,
+      url: "/dashboard",
+      icon: <LayoutDashboardIcon className="size-4" />,
     },
     {
       title: "AI Forecasting",
-      url:   "/forecasting",
-      icon:  <SparklesIcon className="size-4" />,
+      url: "/forecasting",
+      icon: <SparklesIcon className="size-4" />,
+    },
+    {
+      title: "Dynamic Pricing",
+      url: "/forecasting/pricing",
+      icon: <ChartCandlestick className="size-4" />,
     },
     {
       title: "Inventory",
-      url:   "/inventory",
-      icon:  <PackageIcon className="size-4" />,
+      url: "/inventory",
+      icon: <PackageIcon className="size-4" />,
     },
     {
       title: "Reorder Suggestions",
-      url:   "/reorders",
-      icon:  <RotateCcwIcon className="size-4" />,
+      url: "/reorders",
+      icon: <RotateCcwIcon className="size-4" />,
     },
     {
       title: "Purchase Orders",
-      url:   "/reorders/purchase-orders",
-      icon:  <ShoppingCartIcon className="size-4" />,
+      url: "/reorders/purchase-orders",
+      icon: <ShoppingCartIcon className="size-4" />,
     },
     {
       title: "Suppliers",
-      url:   "/suppliers",
-      icon:  <TruckIcon className="size-4" />,
+      url: "/suppliers",
+      icon: <TruckIcon className="size-4" />,
     },
     {
       title: "Alerts",
-      url:   "/alerts",
-      icon:  <BellIcon className="size-4" />,
+      url: "/alerts",
+      icon: <BellIcon className="size-4" />,
       badge: alertBadge,
     },
-  ]
+  ];
 
   const managerDocuments = [
     { name: "Reports",      url: "/reports", icon: <FileChartColumnIcon className="size-4" /> },
@@ -147,46 +153,51 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const adminMain = [
     {
       title: "Dashboard",
-      url:   "/dashboard",
-      icon:  <LayoutDashboardIcon className="size-4" />,
+      url: "/dashboard",
+      icon: <LayoutDashboardIcon className="size-4" />,
     },
     {
       title: "AI Forecasting",
-      url:   "/forecasting",
-      icon:  <SparklesIcon className="size-4" />,
+      url: "/forecasting",
+      icon: <SparklesIcon className="size-4" />,
+    },
+    {
+      title: "Dynamic Pricing",
+      url: "/forecasting/pricing",
+      icon: <ChartCandlestick className="size-4" />,
     },
     {
       title: "Inventory",
-      url:   "/inventory",
-      icon:  <PackageIcon className="size-4" />,
+      url: "/inventory",
+      icon: <PackageIcon className="size-4" />,
     },
     {
       title: "Reorder Suggestions",
-      url:   "/reorders",
-      icon:  <RotateCcwIcon className="size-4" />,
+      url: "/reorders",
+      icon: <RotateCcwIcon className="size-4" />,
     },
     {
       title: "Purchase Orders",
-      url:   "/reorders/purchase-orders",
-      icon:  <ShoppingCartIcon className="size-4" />,
+      url: "/reorders/purchase-orders",
+      icon: <ShoppingCartIcon className="size-4" />,
     },
     {
       title: "Suppliers",
-      url:   "/suppliers",
-      icon:  <TruckIcon className="size-4" />,
+      url: "/suppliers",
+      icon: <TruckIcon className="size-4" />,
     },
     {
       title: "Alerts",
-      url:   "/alerts",
-      icon:  <BellIcon className="size-4" />,
+      url: "/alerts",
+      icon: <BellIcon className="size-4" />,
       badge: alertBadge,
     },
     {
       title: "User Management",
-      url:   "/users",
-      icon:  <UsersIcon className="size-4" />,
+      url: "/users",
+      icon: <UsersIcon className="size-4" />,
     },
-  ]
+  ];
 
   const adminDocuments = [
     { name: "Reports",      url: "/reports",   icon: <FileChartColumnIcon className="size-4" /> },

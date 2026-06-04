@@ -192,6 +192,37 @@ export default defineSchema({
     .index("by_product", ["productId"])
     .index("by_product_date", ["productId", "forecastDate"]),
 
+  // priceSuggestions table
+
+  priceSuggestions: defineTable({
+    productId: v.id("products"),
+    currentPrice: v.number(),
+    suggestedPrice: v.number(),
+    priceChange: v.number(), // percentage change
+    changeDirection: v.union(
+      v.literal("increase"),
+      v.literal("decrease"),
+      v.literal("maintain"),
+    ),
+    reason: v.string(), // plain English explanation
+    confidence: v.number(), // 0.0 to 1.0
+    factors: v.object({
+      stockLevel: v.string(), // "critical" | "low" | "healthy" | "overstock"
+      demandTrend: v.string(), // "rising" | "falling" | "stable"
+      seasonality: v.string(), // "peak" | "off-peak" | "normal"
+      daysOfStock: v.number(), // estimated days until stockout
+    }),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    appliedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_product", ["productId"])
+    .index("by_status", ["status"]),
+
   // ── Alerts ─────────────────────────────────────
   alerts: defineTable({
     productId: v.optional(v.id("products")),
