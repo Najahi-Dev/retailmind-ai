@@ -118,16 +118,20 @@ export const getPriceSuggestions = query({
           .order("desc")
           .collect();
 
-    return await Promise.all(
+    if (suggestions.length === 0) return [];
+
+    const result = await Promise.all(
       suggestions.map(async s => {
         const product = await ctx.db.get(s.productId);
         return {
           ...s,
-          productName: product?.name ?? "Unknown",
-          productSku:  product?.sku  ?? "",
+          productName: product?.name ?? "Unknown Product",
+          productSku:  product?.sku  ?? "N/A",
         };
       })
     );
+
+    return result;
   },
 });
 
@@ -184,12 +188,27 @@ export const rejectPriceSuggestion = mutation({
 export const getPricingStats = query({
   args: {},
   handler: async (ctx) => {
+    // Check table exists and has data
     const all = await ctx.db
       .query("priceSuggestions")
       .collect();
 
+    // If empty return zeros cleanly
+    if (all.length === 0) {
+      return {
+        pending:   0,
+        increases: 0,
+        decreases: 0,
+        approved:  0,
+        total:     0,
+      };
+    }
+
     return {
-      pending:   all.filter(s => s.status === "pending").length,
+      total:     all.length,
+      pending:   all.filter(s =>
+        s.status === "pending"
+      ).length,
       increases: all.filter(s =>
         s.status === "pending" &&
         s.changeDirection === "increase"
@@ -198,7 +217,9 @@ export const getPricingStats = query({
         s.status === "pending" &&
         s.changeDirection === "decrease"
       ).length,
-      approved:  all.filter(s => s.status === "approved").length,
+      approved:  all.filter(s =>
+        s.status === "approved"
+      ).length,
     };
   },
 });

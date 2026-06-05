@@ -446,3 +446,90 @@ export const clearSuggestions = mutation({
     return { message: `Cleared ${records.length} suggestions` };
   },
 });
+
+
+export const seedPriceSuggestions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const inventory = await ctx.db.query("inventory").collect();
+    const now       = Date.now();
+    let   created   = 0;
+
+    const directions = ["increase", "decrease", "maintain"] as const;
+    const stocks     = ["critical", "low", "healthy", "overstock"] as const;
+    const demands    = ["rising", "falling", "stable"] as const;
+    const seasons    = ["peak", "off-peak", "normal"] as const;
+
+    for (const inv of inventory.slice(0, 80)) {
+      const product = await ctx.db.get(inv.productId);
+      if (!product) continue;
+
+      // Determine direction based on stock level
+      let direction: "increase" | "decrease" | "maintain";
+      let stockLevel: string;
+      let priceChange: number;
+      let confidence: number;
+      let reason: string;
+
+      if (inv.onHand <= product.safetyStock) {
+        direction   = "increase";
+        stockLevel  = "critical";
+        priceChange = Math.round(Math.random() * 15 + 5);   // 5-20%
+        confidence  = 0.90;
+        reason      = `Stock (${inv.onHand} units) is below safety stock (${product.safetyStock} units). High demand signal — price increase recommended.`;
+      } else if (inv.onHand <= product.reorderPoint) {
+        direction   = "increase";
+        stockLevel  = "low";
+        priceChange = Math.round(Math.random() * 8 + 3);    // 3-11%
+        confidence  = 0.82;
+        reason      = `Stock (${inv.onHand} units) is below reorder point (${product.reorderPoint} units). Moderate demand — slight price increase suggested.`;
+      } else if (inv.onHand >= product.reorderPoint * 4) {
+        direction   = "decrease";
+        stockLevel  = "overstock";
+        priceChange = -(Math.round(Math.random() * 10 + 5)); // -5 to -15%
+        confidence  = 0.78;
+        reason      = `Excess inventory (${inv.onHand} units). Demand is lower than expected — price reduction to stimulate sales.`;
+      } else {
+        direction   = "maintain";
+        stockLevel  = "healthy";
+        priceChange = 0;
+        confidence  = 0.75;
+        reason      = `Stock level is healthy (${inv.onHand} units). All market signals stable — current price is optimal.`;
+      }
+
+      const suggestedPrice = direction === "maintain"
+        ? product.sellingPrice
+        : Math.round(
+            product.sellingPrice * (1 + priceChange / 100) * 100
+          ) / 100;
+
+      // Only insert non-maintain suggestions + some maintain
+      if (direction !== "maintain" || Math.random() > 0.7) {
+        await ctx.db.insert("priceSuggestions", {
+          productId:       inv.productId,
+          currentPrice:    product.sellingPrice,
+          suggestedPrice,
+          priceChange,
+          changeDirection: direction,
+          reason,
+          confidence,
+          factors: {
+            stockLevel,
+            demandTrend: direction === "increase" ? "rising"
+                       : direction === "decrease" ? "falling"
+                       : "stable",
+            seasonality: Math.random() > 0.7 ? "peak" : "off-peak",
+            daysOfStock: Math.round(
+              inv.onHand / (Math.random() * 5 + 1)
+            ),
+          },
+          status:    "pending",
+          createdAt: now - Math.floor(Math.random() * 3) * 24 * 60 * 60 * 1000,
+        });
+        created++;
+      }
+    }
+
+    return { message: `Created ${created} price suggestions!` };
+  },
+});
