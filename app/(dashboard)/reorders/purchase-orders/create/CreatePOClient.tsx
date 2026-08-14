@@ -11,11 +11,18 @@ import {
 } from "@/components/ui/card";
 import { Button }  from "@/components/ui/button";
 import { Input }   from "@/components/ui/input";
+import { Label }   from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge }   from "@/components/ui/badge";
 import { toast }   from "sonner";
 import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   ChevronLeftIcon, PlusIcon, Trash2Icon,
-  RefreshCwIcon, ShoppingCartIcon,
+  RefreshCwIcon, ShoppingCartIcon, Building2Icon,
+  SparklesIcon, PackageIcon, AlertCircleIcon
 } from "lucide-react";
 
 interface LineItem {
@@ -54,14 +61,6 @@ export default function CreatePOClient() {
     new Intl.NumberFormat("en-LK", {
       style: "currency", currency: "LKR", maximumFractionDigits: 0,
     }).format(val);
-
-  const selectClass = `
-    flex h-10 w-full rounded-md border border-input
-    bg-background px-3 py-2 text-sm text-foreground
-    shadow-sm transition-colors cursor-pointer
-    focus-visible:outline-none focus-visible:ring-1
-    focus-visible:ring-ring appearance-none
-  `;
 
   // ── Add line item ─────────────────────────
   const handleAddLine = () => {
@@ -121,13 +120,13 @@ export default function CreatePOClient() {
         notes: notes || undefined,
       });
 
-      toast.success(`PO ${result.poNumber} created successfully!`);
+      toast.success(`Purchase Order ${result.poNumber} created successfully!`);
       router.push("/reorders/purchase-orders");
 
     } catch (err) {
       const message = err instanceof Error
         ? err.message
-        : "Failed to create PO";
+        : "Failed to create Purchase Order";
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -136,102 +135,143 @@ export default function CreatePOClient() {
 
   if (!suppliers || !products) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-6 text-muted-foreground">
-        <RefreshCwIcon className="animate-spin size-4" />
-        Loading...
+      <div className="flex flex-1 items-center justify-center gap-2 p-12 text-slate-500 font-semibold text-xs">
+        <RefreshCwIcon className="animate-spin size-4 text-indigo-500" />
+        Loading procurement form options...
       </div>
     );
   }
 
+  const selectedSupplier = suppliers.find((s) => s._id === supplierId);
+
+  const uniqueProducts = Array.from(
+    new Map(
+      (products.products ?? [])
+        .filter((p): p is NonNullable<typeof p> => p !== null)
+        .map((p) => [p._id, p])
+    ).values()
+  );
+
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6 @container/main">
-      {/* ── Header ────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="icon" onClick={() => router.back()}>
-          <ChevronLeftIcon className="size-4" />
-        </Button>
-        <div>
-          <h2 className="text-xl font-bold font-[Montserrat] tracking-tight">
-            Create Purchase Order
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Manually create a new purchase order
-          </p>
+    <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
+      {/* ── 1. HERO HEADER BANNER ── */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+        {/* Glow Ambient Effect */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-3.5">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => router.back()}
+              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
+            </Button>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Create Manual Purchase Order
+                </h1>
+                <Badge className="text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2.5 py-0.5">
+                  Draft Mode
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-300 font-medium mt-0.5">
+                Manually draft custom purchase order lines and assign primary vendor.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => router.back()}
+              className="h-9 rounded-xl text-xs font-semibold text-indigo-200 bg-white/10 hover:bg-white/20 border-white/20 px-4"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!supplierId || lineItems.length === 0 || submitting}
+              className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-5 shadow-md border-0"
+            >
+              {submitting ? "Creating PO..." : "Issue Purchase Order"}
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-6 @xl/main:grid-cols-3">
-        {/* ── Left — Form ───────────────── */}
-        <div className="@xl/main:col-span-2 flex flex-col gap-4">
-          {/* Supplier */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Supplier</CardTitle>
-              <CardDescription>
-                Select the supplier for this order
+      {/* ── 2. TWO COLUMN FORM GRID ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left Column — Form Fields */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Card 1: Supplier Selector */}
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                Primary Vendor / Supplier
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Select the target vendor supplier to issue this purchase order to
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="relative">
-                <select
-                  value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="" disabled>
-                    Select supplier...
-                  </option>
+            <CardContent className="pt-4">
+              <Select value={supplierId} onValueChange={setSupplierId}>
+                <SelectTrigger className="w-full h-10 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800">
+                  <SelectValue placeholder="Select supplier..." />
+                </SelectTrigger>
+                <SelectContent>
                   {(suppliers ?? []).map((s) => (
-                    <option key={s._id} value={s._id}>
-                      {s.name} — {s.leadTimeDays}d lead time
-                    </option>
+                    <SelectItem key={s._id} value={s._id}>
+                      <div className="flex items-center justify-between gap-3 w-full">
+                        <span className="font-bold text-xs">{s.name}</span>
+                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                          {s.leadTimeDays}d lead time
+                        </span>
+                      </div>
+                    </SelectItem>
                   ))}
-                </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <ChevronLeftIcon className="size-3.5 -rotate-90" />
-                </div>
-              </div>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
 
-          {/* Line Items */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Line Items</CardTitle>
-              <CardDescription>
-                Add products to this purchase order
+          {/* Card 2: Line Items Builder */}
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <PackageIcon className="w-4 h-4 text-emerald-500" />
+                Order Line Items
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Add SKU products, quantities, and cost basis to this order
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Add product row */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-                <div className="sm:col-span-2 relative">
-                  <select
+            <CardContent className="pt-4 space-y-4">
+              {/* Product Add Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="sm:col-span-2">
+                  <Select
                     value={addProductId}
-                    onChange={(e) => {
-                      setAddProductId(e.target.value);
-                      // Auto fill cost price
-                      const prod = products.products.find(
-                        (p) => p._id === e.target.value,
-                      );
-                      if (prod) setAddCost(String(0)); // will be set by user
+                    onValueChange={(val) => {
+                      setAddProductId(val);
                     }}
-                    className={selectClass}
                   >
-                    <option value="" disabled>
-                      Select product...
-                    </option>
-                    {products.products
-                      .filter((p): p is NonNullable<typeof p> => p !== null)
-                      .map((p) => (
-                        <option key={p._id} value={p._id}>
-                          {p.sku} — {p.name}
-                        </option>
+                    <SelectTrigger className="w-full h-9 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800">
+                      <SelectValue placeholder="Select product..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueProducts.map((p) => (
+                        <SelectItem key={p._id} value={p._id}>
+                          <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 mr-2">[{p.sku}]</span>
+                          <span>{p.name}</span>
+                        </SelectItem>
                       ))}
-                  </select>
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    <ChevronLeftIcon className="size-3.5 -rotate-90" />
-                  </div>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Input
@@ -240,6 +280,7 @@ export default function CreatePOClient() {
                   min={1}
                   value={addQty}
                   onChange={(e) => setAddQty(e.target.value)}
+                  className="h-9 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800"
                 />
 
                 <Input
@@ -248,68 +289,55 @@ export default function CreatePOClient() {
                   min={0}
                   value={addCost}
                   onChange={(e) => setAddCost(e.target.value)}
+                  className="h-9 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800"
                 />
               </div>
 
               <Button
-                variant="outline"
-                size="sm"
+                type="button"
                 onClick={handleAddLine}
                 disabled={!addProductId || !addQty || !addCost}
-                className="w-full"
+                className="w-full h-9 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-0 transition-colors"
               >
-                <PlusIcon className="size-4 mr-2" />
-                Add Product
+                <PlusIcon className="w-4 h-4 mr-1.5" /> Add Product to Order
               </Button>
 
-              {/* Line items list */}
-              {lineItems.length > 0 && (
-                <div className="rounded-md border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted">
+              {/* Line Items Table */}
+              {lineItems.length > 0 ? (
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                       <tr>
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
-                          Product
-                        </th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">
-                          Qty
-                        </th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">
-                          Unit Cost
-                        </th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">
-                          Total
-                        </th>
-                        <th className="px-4 py-2.5" />
+                        <th className="px-4 py-3 font-bold">Product SKU</th>
+                        <th className="px-4 py-3 font-bold text-right">Qty</th>
+                        <th className="px-4 py-3 font-bold text-right hidden sm:table-cell">Unit Cost</th>
+                        <th className="px-4 py-3 font-bold text-right">Line Total</th>
+                        <th className="px-3 py-3 w-10 text-center" />
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                       {lineItems.map((item) => (
-                        <tr key={item.productId} className="border-t">
+                        <tr key={item.productId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
                           <td className="px-4 py-3">
-                            <p className="font-medium text-sm">
-                              {item.productName}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              {item.productSku}
+                            <p className="font-bold text-slate-900 dark:text-white">{item.productName}</p>
+                            <p className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
+                              SKU: {item.productSku}
                             </p>
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900 dark:text-white">
                             {item.quantityOrdered} {item.unit}
                           </td>
-                          <td className="px-4 py-3 text-right text-muted-foreground hidden sm:table-cell">
+                          <td className="px-4 py-3 text-right text-slate-500 font-medium hidden sm:table-cell tabular-nums">
                             {formatCurrency(item.unitCost)}
                           </td>
-                          <td className="px-4 py-3 text-right font-medium">
-                            {formatCurrency(
-                              item.quantityOrdered * item.unitCost,
-                            )}
+                          <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-white tabular-nums">
+                            {formatCurrency(item.quantityOrdered * item.unitCost)}
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-3 py-3 text-center">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="size-7 text-destructive hover:text-destructive"
+                              className="size-7 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-500/10"
                               onClick={() => handleRemoveLine(item.productId)}
                             >
                               <Trash2Icon className="size-3.5" />
@@ -320,112 +348,103 @@ export default function CreatePOClient() {
                     </tbody>
                   </table>
                 </div>
-              )}
-
-              {/* Empty state */}
-              {lineItems.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground border rounded-md border-dashed">
-                  <ShoppingCartIcon className="size-8 opacity-40" />
-                  <p className="text-sm">No products added yet</p>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 gap-2.5 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                  <ShoppingCartIcon className="size-8 text-indigo-500/40" />
+                  <p className="text-xs font-semibold text-slate-500">No products added yet to this order</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Notes */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Notes</CardTitle>
-              <CardDescription>Optional notes for this order</CardDescription>
+          {/* Card 3: Notes */}
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Fulfillment Notes</CardTitle>
+              <CardDescription className="text-xs text-slate-500">Optional instructions or delivery notes for the vendor</CardDescription>
             </CardHeader>
-            <CardContent>
-              <textarea
+            <CardContent className="pt-4">
+              <Textarea
                 rows={3}
-                placeholder="Any additional notes..."
+                placeholder="Any additional instructions or delivery notes for supplier..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm resize-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="min-h-20 text-xs rounded-xl border-slate-200 dark:border-slate-800"
               />
             </CardContent>
           </Card>
         </div>
 
-        {/* ── Right — Summary ───────────── */}
-        <div className="flex flex-col gap-4">
-          <Card className="sticky top-20">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                <ShoppingCartIcon className="size-4 text-muted-foreground" />
-                Order Summary
+        {/* Right Column — Summary Box */}
+        <div className="space-y-5">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm sticky top-20">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <ShoppingCartIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                Purchase Order Summary
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Summary rows */}
-              <div className="space-y-2">
-                {[
-                  {
-                    label: "Supplier",
-                    value:
-                      suppliers.find((s) => s._id === supplierId)?.name ?? "—",
-                  },
-                  {
-                    label: "Items",
-                    value: `${lineItems.length} product${lineItems.length !== 1 ? "s" : ""}`,
-                  },
-                  {
-                    label: "Total Qty",
-                    value: lineItems
-                      .reduce((s, i) => s + i.quantityOrdered, 0)
-                      .toString(),
-                  },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    className="flex items-center justify-between text-sm py-1 border-b border-border/50 last:border-0"
-                  >
-                    <span className="text-muted-foreground">{row.label}</span>
-                    <span className="font-medium">{row.value}</span>
-                  </div>
-                ))}
+            <CardContent className="pt-4 space-y-4">
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="text-slate-500 font-medium">Target Supplier</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedSupplier?.name ?? "—"}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="text-slate-500 font-medium">Product Lines</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{lineItems.length} products</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="text-slate-500 font-medium">Total Quantity</span>
+                  <span className="font-bold text-slate-900 dark:text-white tabular-nums">
+                    {lineItems.reduce((s, i) => s + i.quantityOrdered, 0)}
+                  </span>
+                </div>
               </div>
 
-              {/* Total value */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                <span className="text-sm font-semibold">Total Value</span>
-                <span className="text-lg font-bold">
+              {/* Total Value Box */}
+              <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">Total Value</span>
+                <span className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400 tabular-nums">
                   {formatCurrency(totalValue)}
                 </span>
               </div>
 
-              {/* Status badge */}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant="outline">Draft</Badge>
+              {/* Status */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Initial Status</span>
+                <Badge variant="outline" className="font-bold border-slate-300 dark:border-slate-700">
+                  Draft
+                </Badge>
               </div>
 
               {/* Validation warnings */}
-              {!supplierId && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  ⚠ Select a supplier
-                </p>
-              )}
-              {lineItems.length === 0 && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  ⚠ Add at least one product
-                </p>
+              {(!supplierId || lineItems.length === 0) && (
+                <div className="space-y-1 pt-1">
+                  {!supplierId && (
+                    <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                      <AlertCircleIcon className="w-3 h-3" /> Select a supplier vendor
+                    </p>
+                  )}
+                  {lineItems.length === 0 && (
+                    <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                      <AlertCircleIcon className="w-3 h-3" /> Add at least one line item product
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* Actions */}
               <div className="flex flex-col gap-2 pt-2">
                 <Button
-                  className="w-full"
+                  className="w-full h-10 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 border-0 shadow-md transition-all"
                   onClick={handleSubmit}
                   disabled={!supplierId || lineItems.length === 0 || submitting}
                 >
                   {submitting ? (
                     <>
                       <RefreshCwIcon className="animate-spin size-4 mr-2" />
-                      Creating...
+                      Creating Purchase Order...
                     </>
                   ) : (
                     <>
@@ -436,7 +455,7 @@ export default function CreatePOClient() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full h-9 rounded-xl text-xs font-semibold border-slate-300 dark:border-slate-700"
                   onClick={() => router.back()}
                   disabled={submitting}
                 >

@@ -6,10 +6,11 @@ import { useState }  from "react";
 import { useRouter } from "next/navigation";
 import {
   Card, CardContent, CardDescription,
-  CardHeader, CardTitle, CardAction,
+  CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Badge }   from "@/components/ui/badge";
 import { Button }  from "@/components/ui/button";
+import { Input }   from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -17,7 +18,8 @@ import {
 import {
   ShoppingCartIcon, TruckIcon, CheckCircleIcon,
   ClockIcon, RefreshCwIcon, PlusIcon,
-  ChevronRightIcon, FileTextIcon,
+  ChevronRightIcon, FileTextIcon, SearchIcon, SparklesIcon,
+  Building2Icon, CalendarIcon, SendIcon, CheckSquareIcon, PackageCheckIcon, XCircleIcon
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,41 +29,44 @@ const STATUS_CONFIG: Record<string, {
   label:   string;
   color:   string;
   bg:      string;
+  border:  string;
+  icon:    any;
 }> = {
-  draft:     { label: "Draft",     color: "text-muted-foreground", bg: "bg-muted"           },
-  sent:      { label: "Sent",      color: "text-blue-500",         bg: "bg-blue-500/10"     },
-  confirmed: { label: "Confirmed", color: "text-yellow-500",       bg: "bg-yellow-500/10"   },
-  shipped:   { label: "Shipped",   color: "text-purple-500",       bg: "bg-purple-500/10"   },
-  delivered: { label: "Delivered", color: "text-green-500",        bg: "bg-green-500/10"    },
-  cancelled: { label: "Cancelled", color: "text-destructive",      bg: "bg-destructive/10"  },
+  draft:     { label: "Draft",     color: "text-slate-600 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-800", border: "border-slate-300 dark:border-slate-700", icon: FileTextIcon },
+  sent:      { label: "Sent",      color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-500/10", border: "border-blue-500/20", icon: ClockIcon },
+  confirmed: { label: "Confirmed", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", icon: CheckSquareIcon },
+  shipped:   { label: "Shipped",   color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", icon: TruckIcon },
+  delivered: { label: "Delivered", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: PackageCheckIcon },
+  cancelled: { label: "Cancelled", color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10", border: "border-red-500/20", icon: XCircleIcon },
 };
 
 // What action is available for each status
 const NEXT_ACTION: Record<string, {
   label:  string;
   status: string;
-  variant: "default" | "outline";
+  className: string;
 } | null> = {
-  draft:     { label: "Send to Supplier",   status: "sent",      variant: "default"  },
-  sent:      { label: "Mark Confirmed",     status: "confirmed", variant: "default"  },
-  confirmed: { label: "Mark Shipped",       status: "shipped",   variant: "default"  },
-  shipped:   { label: "Mark Delivered",     status: "delivered", variant: "default"  },
+  draft:     { label: "Send to Supplier", status: "sent", className: "bg-indigo-600 hover:bg-indigo-700 text-white font-bold border-0 shadow-xs" },
+  sent:      { label: "Mark Confirmed", status: "confirmed", className: "bg-amber-600 hover:bg-amber-700 text-white font-bold border-0 shadow-xs" },
+  confirmed: { label: "Mark Shipped", status: "shipped", className: "bg-purple-600 hover:bg-purple-700 text-white font-bold border-0 shadow-xs" },
+  shipped:   { label: "Mark Delivered", status: "delivered", className: "bg-emerald-600 hover:bg-emerald-700 text-white font-bold border-0 shadow-xs" },
   delivered: null,
   cancelled: null,
 };
 
 export default function PurchaseOrdersClient({ role }: Props) {
-  const router       = useRouter();
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [updating,     setUpdating]     = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [updating, setUpdating] = useState<string | null>(null);
 
-  const orders     = useQuery(api.purchaseOrders.getPurchaseOrders, {
+  const orders = useQuery(api.purchaseOrders.getPurchaseOrders, {
     status: statusFilter === "all" ? undefined : statusFilter as any,
   });
-  const stats      = useQuery(api.purchaseOrders.getPOStats);
+  const stats = useQuery(api.purchaseOrders.getPOStats);
   const updateStatus = useMutation(api.purchaseOrders.updatePOStatus);
 
-  const isSupplier        = role === "supplier";
+  const isSupplier = role === "supplier";
   const canViewFinancials = ["admin", "manager"].includes(role);
 
   const formatCurrency = (val: number) =>
@@ -78,10 +83,9 @@ export default function PurchaseOrdersClient({ role }: Props) {
     poId: Id<"purchaseOrders">,
     status: string,
   ) => {
-    console.log("Updating PO:", poId, "→", status);
     setUpdating(poId);
     try {
-      await  updateStatus({
+      await updateStatus({
         poId,
         status: status as
           | "sent"
@@ -90,13 +94,11 @@ export default function PurchaseOrdersClient({ role }: Props) {
           | "delivered"
           | "cancelled",
       });
-      console.log("Success:", updateStatus);
-      toast.success(`Order status updated to ${status}`);
+      toast.success(`Purchase Order status updated to ${status}`);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to update status";
       toast.error(message);
-      console.error("PO update error:", err);
     } finally {
       setUpdating(null);
     }
@@ -104,103 +106,153 @@ export default function PurchaseOrdersClient({ role }: Props) {
 
   if (!orders || !stats) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-6 text-muted-foreground">
-        <RefreshCwIcon className="animate-spin size-4" />
-        Loading purchase orders...
+      <div className="flex flex-1 items-center justify-center gap-2 p-12 text-slate-500 font-semibold text-xs">
+        <RefreshCwIcon className="animate-spin size-4 text-indigo-500" />
+        Loading vendor purchase orders...
       </div>
     );
   }
 
+  const filteredOrders = orders.filter((po) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return po.poNumber.toLowerCase().includes(q) || (po.supplierName && po.supplierName.toLowerCase().includes(q));
+  });
+
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6 @container/main">
+    <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
+      {/* ── 1. HERO HEADER BANNER ── */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+        {/* Glow Ambient Effect */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* ── KPI Cards ─────────────────────────── */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+          <div className="flex items-start gap-4">
+            <div className="size-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+              <ShoppingCartIcon className="w-6 h-6 text-indigo-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Vendor Purchase Orders & Procurement Control
+                </h1>
+                <Badge className="text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2.5 py-0.5">
+                  Fulfillment Sync Active
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-300 font-medium mt-1 max-w-2xl leading-relaxed">
+                Manage active vendor purchase orders, delivery status tracking, and inventory replenishment fulfillment.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/reorders")}
+              className="h-9 rounded-xl text-xs font-semibold text-indigo-200 bg-white/10 hover:bg-white/20 border-white/20 px-4"
+            >
+              <SparklesIcon className="w-3.5 h-3.5 mr-1.5 text-indigo-400" /> Reorder Suggestions
+            </Button>
+            {!isSupplier && (
+              <Button
+                onClick={() => router.push("/reorders/purchase-orders/create")}
+                className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
+              >
+                <PlusIcon className="w-4 h-4 mr-1.5" /> New PO
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. TOP KPI METRICS ── */}
       {!isSupplier && (
-        <div className="grid grid-cols-2 gap-4
-          *:data-[slot=card]:bg-gradient-to-t
-          *:data-[slot=card]:from-primary/5
-          *:data-[slot=card]:to-card
-          *:data-[slot=card]:shadow-xs
-          @5xl/main:grid-cols-4
-          dark:*:data-[slot=card]:bg-card"
-        >
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription>Total Orders</CardDescription>
-              <CardTitle className="text-2xl font-bold tabular-nums">
-                {stats.total}
-              </CardTitle>
-              <CardAction>
-                <Badge variant="outline" className="p-3">
-                  <FileTextIcon className="size-3" /> All
-                </Badge>
-              </CardAction>
-            </CardHeader>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Orders</p>
+              <Badge variant="outline" className="text-[10px] font-bold border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5">
+                <FileTextIcon className="w-3 h-3 mr-1" /> All
+              </Badge>
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums mt-2">
+              {stats.total}
+            </p>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">Total Generated PO Records</p>
           </Card>
 
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription>In Progress</CardDescription>
-              <CardTitle className="text-2xl font-bold tabular-nums text-blue-500">
-                {stats.sent + stats.confirmed + stats.shipped}
-              </CardTitle>
-              <CardAction>
-                <Badge variant="outline" className="text-blue-500 p-3">
-                  <TruckIcon className="size-3" /> Active
-                </Badge>
-              </CardAction>
-            </CardHeader>
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">In Progress</p>
+              <Badge className="text-[10px] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20 px-2 py-0.5">
+                <TruckIcon className="w-3 h-3 mr-1" /> Active
+              </Badge>
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 tabular-nums mt-2">
+              {stats.sent + stats.confirmed + stats.shipped}
+            </p>
+            <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium mt-1">Pending Delivery / Shipped</p>
           </Card>
 
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription>Delivered</CardDescription>
-              <CardTitle className="text-2xl font-bold tabular-nums text-green-500">
-                {stats.delivered}
-              </CardTitle>
-              <CardAction>
-                <Badge variant="outline" className="text-green-500 p-3">
-                  <CheckCircleIcon className="size-3" /> Done
-                </Badge>
-              </CardAction>
-            </CardHeader>
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Delivered</p>
+              <Badge className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5">
+                <CheckCircleIcon className="w-3 h-3 mr-1" /> Done
+              </Badge>
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums mt-2">
+              {stats.delivered}
+            </p>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">Successfully Fulfilled</p>
           </Card>
 
           {canViewFinancials && (
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription>Total Value</CardDescription>
-                <CardTitle className="text-lg font-bold tabular-nums">
-                  {formatCurrency(stats.totalValue)}
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline" className="p-3">
-                    LKR
-                  </Badge>
-                </CardAction>
-              </CardHeader>
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Valuation</p>
+                <Badge variant="outline" className="text-[10px] font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5 px-2 py-0.5">
+                  LKR
+                </Badge>
+              </div>
+              <p className="text-lg sm:text-xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums mt-2 truncate">
+                {formatCurrency(stats.totalValue)}
+              </p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Cumulative Procurement Spend</p>
             </Card>
           )}
         </div>
       )}
 
-      {/* ── Orders List ───────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+      {/* ── 3. PURCHASE ORDERS MASTER TABLE CARD ── */}
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-base">Purchase Orders</CardTitle>
-              <CardDescription>
-                {orders.length} orders
+              <CardTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileTextIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                Purchase Orders Master Log
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Displaying {filteredOrders.length} purchase order records
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Status filter */}
-              <Select
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-              >
-                <SelectTrigger className="w-36">
+
+            {/* Filter & Search Bar */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="relative min-w-[220px]">
+                <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Search PO # or supplier..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-36 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,29 +265,18 @@ export default function PurchaseOrdersClient({ role }: Props) {
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
-
-              {/* Create PO — admin/manager only */}
-              {!isSupplier && (
-                <Button
-                  size="sm"
-                  onClick={() => router.push("/reorders/purchase-orders/create")}
-                >
-                  <PlusIcon className="size-4 mr-1" />
-                  New PO
-                </Button>
-              )}
             </div>
           </div>
         </CardHeader>
 
-        <CardContent>
-          {orders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-              <ShoppingCartIcon className="size-10 opacity-40" />
-              <p className="font-medium">No purchase orders found</p>
-              <p className="text-sm">
+        <CardContent className="pt-0 p-0">
+          {filteredOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-500 text-center">
+              <ShoppingCartIcon className="w-10 h-10 text-indigo-500/40" />
+              <p className="font-bold text-slate-900 dark:text-white">No Purchase Orders Found</p>
+              <p className="text-xs text-slate-500 max-w-sm">
                 {statusFilter !== "all"
-                  ? `No ${statusFilter} orders`
+                  ? `No ${statusFilter} orders matching query`
                   : "Create your first PO from a reorder suggestion"}
               </p>
               {!isSupplier && statusFilter === "all" && (
@@ -243,151 +284,127 @@ export default function PurchaseOrdersClient({ role }: Props) {
                   variant="outline"
                   size="sm"
                   onClick={() => router.push("/reorders")}
+                  className="rounded-xl text-xs font-semibold"
                 >
                   View Reorder Suggestions
                 </Button>
               )}
             </div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      PO Number
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">
-                      Supplier
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">
-                      Items
-                    </th>
+                    <th className="px-5 py-3.5 font-bold">PO Number</th>
+                    <th className="px-5 py-3.5 font-bold hidden sm:table-cell">Supplier</th>
+                    <th className="px-5 py-3.5 font-bold">Status</th>
+                    <th className="px-5 py-3.5 font-bold text-right hidden md:table-cell">Items</th>
                     {canViewFinancials && (
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">
-                        Total Value
-                      </th>
+                      <th className="px-5 py-3.5 font-bold text-right hidden lg:table-cell">Total Value</th>
                     )}
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">
-                      Date
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">
-                      Action
-                    </th>
+                    <th className="px-5 py-3.5 font-bold hidden lg:table-cell">Date</th>
+                    <th className="px-5 py-3.5 font-bold text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {orders.map((po) => {
-                    const statusCfg = STATUS_CONFIG[po.status];
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  {filteredOrders.map((po) => {
+                    const statusCfg = STATUS_CONFIG[po.status] ?? STATUS_CONFIG.draft;
                     const nextAction = NEXT_ACTION[po.status];
                     const isUpdating = updating === po._id;
+                    const StatusIcon = statusCfg.icon;
 
                     return (
                       <tr
                         key={po._id}
-                        className="border-t hover:bg-muted/30 transition-colors"
+                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
                       >
                         {/* PO Number */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-semibold">
-                              {po.poNumber}
-                            </span>
-                          </div>
-                        </td>
-                        {/* Supplier */}
-                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
-                          {po.supplierName}
-                        </td>
-                        {/* Status */}
-                        <td className="px-4 py-3">
-                          <span
-                            className={`
-                            inline-flex items-center gap-1.5 px-2.5 py-0.5
-                            rounded-full text-xs font-medium
-                            ${statusCfg.bg} ${statusCfg.color}
-                          `}
-                          >
-                            {po.status === "shipped" && (
-                              <TruckIcon className="size-3" />
-                            )}
-                            {po.status === "delivered" && (
-                              <CheckCircleIcon className="size-3" />
-                            )}
-                            {po.status === "sent" && (
-                              <ClockIcon className="size-3" />
-                            )}
-                            {statusCfg.label}
+                        <td className="px-5 py-3.5">
+                          <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                            {po.poNumber}
                           </span>
                         </td>
-                        {/* Items */}
-                        <td className="px-4 py-3 text-right text-muted-foreground hidden md:table-cell">
+
+                        {/* Supplier */}
+                        <td className="px-5 py-3.5 hidden sm:table-cell">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                            {po.supplierName}
+                          </span>
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="px-5 py-3.5">
+                          <Badge className={`text-xs font-bold px-2.5 py-0.5 inline-flex items-center gap-1 border ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>
+                            {StatusIcon && <StatusIcon className="w-3 h-3" />}
+                            <span>{statusCfg.label}</span>
+                          </Badge>
+                        </td>
+
+                        {/* Item Count */}
+                        <td className="px-5 py-3.5 text-right hidden md:table-cell text-sm text-slate-600 dark:text-slate-400 font-medium">
                           {po.itemCount} item{po.itemCount !== 1 ? "s" : ""}
                         </td>
-                        {/* Total value */}
+
+                        {/* Total Value */}
                         {canViewFinancials && (
-                          <td className="px-4 py-3 text-right font-medium hidden lg:table-cell">
+                          <td className="px-5 py-3.5 text-right font-bold text-slate-900 dark:text-white tabular-nums hidden lg:table-cell text-sm">
                             {formatCurrency(po.totalValue)}
                           </td>
                         )}
+
                         {/* Date */}
-                        <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell">
+                        <td className="px-5 py-3.5 text-xs text-slate-500 font-medium hidden lg:table-cell">
                           {formatDate(po.createdAt)}
                         </td>
-                        {/* Action */}
-                        <td className="px-4 py-3 text-right">
+
+                        {/* Action Buttons */}
+                        <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {/* Status update button — fixed width */}
                             {nextAction && !isSupplier && (
                               <Button
                                 size="sm"
-                                variant={nextAction.variant}
                                 disabled={isUpdating}
-                                className="w-36 justify-center" // ← fixed width
+                                className={`h-8 text-xs px-3.5 rounded-xl ${nextAction.className}`}
                                 onClick={() =>
                                   handleStatusUpdate(po._id, nextAction.status)
                                 }
                               >
                                 {isUpdating ? (
-                                  <RefreshCwIcon className="animate-spin size-3" />
+                                  <RefreshCwIcon className="animate-spin size-3.5" />
                                 ) : (
                                   nextAction.label
                                 )}
                               </Button>
                             )}
 
-                            {/* Supplier confirm button — same width */}
                             {isSupplier && po.status === "sent" && (
                               <Button
                                 size="sm"
                                 disabled={isUpdating}
-                                className="w-36 justify-center" // ← fixed width
+                                className="h-8 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl px-3.5 border-0 shadow-xs"
                                 onClick={() =>
                                   handleStatusUpdate(po._id, "confirmed")
                                 }
                               >
                                 {isUpdating ? (
-                                  <RefreshCwIcon className="animate-spin size-3" />
+                                  <RefreshCwIcon className="animate-spin size-3.5" />
                                 ) : (
                                   "Confirm Order"
                                 )}
                               </Button>
                             )}
 
-                            {/* View detail button */}
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="w-9 px-0 justify-center" // ← fixed width
+                              variant="outline"
                               onClick={() =>
                                 router.push(
                                   `/reorders/purchase-orders/${po._id}`,
                                 )
                               }
+                              className="size-8 p-0 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
                             >
-                              <ChevronRightIcon className="size-4" />
+                              <ChevronRightIcon className="w-4 h-4" />
                             </Button>
                           </div>
                         </td>

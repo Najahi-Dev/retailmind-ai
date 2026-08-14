@@ -17,7 +17,7 @@ import {
   AlertTriangleIcon, TrendingDownIcon, CheckCircleIcon,
   XCircleIcon, RefreshCwIcon, RotateCcwIcon, SearchIcon,
   ShoppingCartIcon, SparklesIcon, ArrowRightIcon,
-  BoxesIcon, Building2Icon, CalendarIcon
+  BoxesIcon, Building2Icon, CalendarIcon, PlusIcon
 } from "lucide-react";
 
 const URGENCY_CONFIG = {
@@ -126,7 +126,7 @@ export default function ReordersClient() {
               onClick={() => router.push("/reorders/purchase-orders/create")}
               className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
             >
-              + Create Manual PO
+              <PlusIcon className="w-4 h-4 mr-1.5" /> Create Manual PO
             </Button>
           </div>
         </div>

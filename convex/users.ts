@@ -65,6 +65,128 @@ export const getCurrentUser = query({
   },
 });
 
+// Get all users for admin management
+export const getUsers = query({
+  args: {
+    role: v.optional(v.string()),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let users = await ctx.db.query("users").collect();
+
+    if (args.role && args.role !== "all") {
+      users = users.filter(u => u.role === args.role);
+    }
+
+    if (args.status && args.status !== "all") {
+      const isActive = args.status === "active";
+      users = users.filter(u => u.isActive === isActive);
+    }
+
+    return users.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+// Get User Analytics & Role Stats
+export const getUserStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const total = users.length;
+    const adminCount = users.filter(u => u.role === "admin").length;
+    const managerCount = users.filter(u => u.role === "manager").length;
+    const staffCount = users.filter(u => u.role === "staff").length;
+    const supplierCount = users.filter(u => u.role === "supplier").length;
+    const activeCount = users.filter(u => u.isActive).length;
+    const inactiveCount = total - activeCount;
+
+    return {
+      total,
+      adminCount,
+      managerCount,
+      staffCount,
+      supplierCount,
+      activeCount,
+      inactiveCount,
+    };
+  },
+});
+
+// Update User Role
+export const updateUserRole = mutation({
+  args: {
+    userId: v.id("users"),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("manager"),
+      v.literal("staff"),
+      v.literal("supplier")
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { role: args.role });
+  },
+});
+
+// Toggle User Active Status
+export const toggleUserStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { isActive: args.isActive });
+  },
+});
+
+// Update Subscription Plan
+export const updateUserPlan = mutation({
+  args: {
+    userId: v.id("users"),
+    plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { plan: args.plan });
+  },
+});
+
+// Create Manual User Record
+export const createUser = mutation({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("manager"),
+      v.literal("staff"),
+      v.literal("supplier")
+    ),
+    plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("users")
+      .filter(q => q.eq(q.field("email"), args.email))
+      .first();
+
+    if (existing) {
+      throw new Error(`User with email ${args.email} already exists`);
+    }
+
+    const userId = await ctx.db.insert("users", {
+      clerkId: `manual_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      email: args.email,
+      name: args.name,
+      role: args.role,
+      isActive: true,
+      plan: args.plan ?? "starter",
+      createdAt: Date.now(),
+    });
+
+    return userId;
+  },
+});
+
 // Deactivate user (soft delete)
 export const deactivateByClerkId = mutation({
   args: { clerkId: v.string() },

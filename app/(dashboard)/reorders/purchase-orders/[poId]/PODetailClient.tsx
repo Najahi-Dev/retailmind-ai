@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -33,18 +34,21 @@ import {
   TruckIcon,
   PackageIcon,
   XCircleIcon,
+  Building2Icon,
+  CalendarIcon,
+  SendIcon,
+  CheckSquareIcon,
+  PackageCheckIcon,
+  ClockIcon,
 } from "lucide-react";
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Draft", color: "bg-muted text-muted-foreground" },
-  sent: { label: "Sent", color: "bg-blue-500/10 text-blue-500" },
-  confirmed: { label: "Confirmed", color: "bg-yellow-500/10 text-yellow-500" },
-  shipped: { label: "Shipped", color: "bg-purple-500/10 text-purple-500" },
-  delivered: { label: "Delivered", color: "bg-green-500/10 text-green-500" },
-  cancelled: {
-    label: "Cancelled",
-    color: "bg-destructive/10 text-destructive",
-  },
+const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  draft: { label: "Draft", bg: "bg-slate-100 dark:bg-slate-800", color: "text-slate-600 dark:text-slate-300", border: "border-slate-300 dark:border-slate-700" },
+  sent: { label: "Sent", bg: "bg-blue-500/10", color: "text-blue-600 dark:text-blue-400", border: "border-blue-500/20" },
+  confirmed: { label: "Confirmed", bg: "bg-amber-500/10", color: "text-amber-600 dark:text-amber-400", border: "border-amber-500/20" },
+  shipped: { label: "Shipped", bg: "bg-purple-500/10", color: "text-purple-600 dark:text-purple-400", border: "border-purple-500/20" },
+  delivered: { label: "Delivered", bg: "bg-emerald-500/10", color: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/20" },
+  cancelled: { label: "Cancelled", bg: "bg-red-500/10", color: "text-red-600 dark:text-red-400", border: "border-red-500/20" },
 };
 
 const NEXT_STATUS: Record<string, string | null> = {
@@ -101,7 +105,7 @@ export default function PODetailClient({
         poId: poId as Id<"purchaseOrders">,
         status: nextStatus as any,
       });
-      toast.success(`Status updated to ${nextStatus}`);
+      toast.success(`Purchase order status updated to ${nextStatus}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Update failed");
     } finally {
@@ -126,158 +130,152 @@ export default function PODetailClient({
 
   if (po === undefined) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-6 text-muted-foreground">
-        <RefreshCwIcon className="animate-spin size-4" />
-        Loading...
+      <div className="flex flex-1 items-center justify-center gap-2 p-12 text-slate-500 font-semibold text-xs">
+        <RefreshCwIcon className="animate-spin size-4 text-indigo-500" />
+        Loading purchase order specifications...
       </div>
     );
   }
 
   if (po === null) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
-        <ShoppingCartIcon className="size-12 text-muted-foreground/40" />
-        <p className="font-medium">Purchase order not found</p>
-        <Button variant="outline" onClick={() => router.back()}>
-          Go Back
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-12 text-slate-500">
+        <ShoppingCartIcon className="size-10 text-indigo-500/40" />
+        <p className="font-bold text-slate-900 dark:text-white">Purchase Order Not Found</p>
+        <Button variant="outline" onClick={() => router.back()} className="rounded-xl text-xs font-semibold">
+          Return to Purchase Orders
         </Button>
       </div>
     );
   }
 
   const nextStatus = NEXT_STATUS[po.status];
-  const statusCfg = STATUS_CONFIG[po.status];
+  const statusCfg = STATUS_CONFIG[po.status] ?? STATUS_CONFIG.draft;
   const steps = ["draft", "sent", "confirmed", "shipped", "delivered"];
   const currentIdx = steps.indexOf(po.status);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6 @container/main">
-      {/* ── Header ────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={() => router.back()}>
-            <ChevronLeftIcon className="size-4" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-bold font-[Montserrat] tracking-tight">
-                {po.poNumber}
-              </h2>
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusCfg.color}`}
-              >
-                {po.status === "delivered" && (
-                  <CheckCircleIcon className="size-3" />
-                )}
-                {po.status === "shipped" && <TruckIcon className="size-3" />}
-                {po.status === "cancelled" && (
-                  <XCircleIcon className="size-3" />
-                )}
-                {statusCfg.label}
-              </span>
+    <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
+      {/* ── 1. HERO HEADER BANNER ── */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+        {/* Glow Ambient Effect */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-3.5">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => router.back()}
+              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
+            </Button>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-mono font-bold text-white tracking-tight">
+                  {po.poNumber}
+                </h1>
+                <Badge className={`text-xs font-bold px-2.5 py-0.5 border ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>
+                  {po.status === "delivered" && <PackageCheckIcon className="w-3.5 h-3.5 mr-1" />}
+                  {po.status === "shipped" && <TruckIcon className="w-3.5 h-3.5 mr-1" />}
+                  {po.status === "confirmed" && <CheckSquareIcon className="w-3.5 h-3.5 mr-1" />}
+                  {po.status === "sent" && <ClockIcon className="w-3.5 h-3.5 mr-1" />}
+                  {po.status === "cancelled" && <XCircleIcon className="w-3.5 h-3.5 mr-1" />}
+                  {statusCfg.label}
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-300 font-medium mt-0.5">
+                Supplier: <strong className="text-white">{po.supplierName}</strong> • Created {formatDate(po.createdAt)}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {po.supplierName} · Created {formatDate(po.createdAt)}
-            </p>
           </div>
-        </div>
 
-        {/* Action buttons */}
-        {canEdit && po.status !== "delivered" && po.status !== "cancelled" && (
-          <div className="flex gap-2 flex-wrap">
-            {/* Next status button */}
-            {nextStatus && (
-              <Button
-                size="sm"
-                onClick={() => handleStatusUpdate(nextStatus)}
-                disabled={updating}
-              >
-                {updating ? (
-                  <RefreshCwIcon className="animate-spin size-4 mr-2" />
-                ) : (
-                  <CheckCircleIcon className="size-4 mr-2" />
-                )}
-                {NEXT_LABEL[po.status]}
-              </Button>
-            )}
-
-            {/* Cancel — AlertDialog */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+          {/* Action buttons */}
+          {canEdit && po.status !== "delivered" && po.status !== "cancelled" && (
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {nextStatus && (
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => handleStatusUpdate(nextStatus)}
                   disabled={updating}
+                  className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
                 >
-                  <XCircleIcon className="size-4 mr-1.5" />
-                  Cancel PO
+                  {updating ? (
+                    <RefreshCwIcon className="animate-spin size-4 mr-1.5" />
+                  ) : (
+                    <CheckCircleIcon className="size-4 mr-1.5" />
+                  )}
+                  {NEXT_LABEL[po.status]}
                 </Button>
-              </AlertDialogTrigger>
+              )}
 
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <XCircleIcon className="size-5 text-destructive" />
-                    Cancel Purchase Order
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <span className="block">
-                      Are you sure you want to cancel{" "}
-                      <span className="font-semibold text-foreground">
-                        {po.poNumber}
-                      </span>
-                      ?
-                    </span>
-                    <span className="block text-sm">
-                      This order from{" "}
-                      <span className="font-medium text-foreground">
-                        {po.supplierName}
-                      </span>{" "}
-                      has{" "}
-                      <span className="font-medium text-foreground">
-                        {po.lineItems.length} item
-                        {po.lineItems.length !== 1 ? "s" : ""}
-                      </span>{" "}
-                      worth{" "}
-                      <span className="font-medium text-foreground">
-                        {formatCurrency(po.totalValue)}
-                      </span>
-                      . This action cannot be undone.
-                    </span>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={updating}>
-                    Keep Order
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancel}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 rounded-xl text-xs font-bold text-red-300 bg-red-500/10 hover:bg-red-500/20 border-red-500/30 px-3"
                     disabled={updating}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    {updating ? (
-                      <RefreshCwIcon className="animate-spin size-4 mr-2" />
-                    ) : (
-                      <XCircleIcon className="size-4 mr-2" />
-                    )}
-                    Yes, Cancel Order
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
+                    <XCircleIcon className="size-4 mr-1.5" />
+                    Cancel PO
+                  </Button>
+                </AlertDialogTrigger>
+
+                <AlertDialogContent className="rounded-3xl border-slate-200 dark:border-slate-800">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-lg font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                      <XCircleIcon className="size-5" />
+                      Cancel Purchase Order?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-xs text-slate-500 space-y-2">
+                      <span className="block">
+                        Are you sure you want to cancel{" "}
+                        <strong className="text-slate-900 dark:text-white font-mono">
+                          {po.poNumber}
+                        </strong>
+                        ?
+                      </span>
+                      <span className="block">
+                        This order from <strong>{po.supplierName}</strong> contains{" "}
+                        <strong>{po.lineItems.length} item(s)</strong> valued at{" "}
+                        <strong className="text-indigo-600 dark:text-indigo-400">{formatCurrency(po.totalValue)}</strong>. This action cannot be undone.
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={updating} className="rounded-xl text-xs font-semibold">
+                      Keep Order Active
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCancel}
+                      disabled={updating}
+                      className="rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 border-0"
+                    >
+                      {updating ? (
+                        <RefreshCwIcon className="animate-spin size-4 mr-1.5" />
+                      ) : (
+                        <XCircleIcon className="size-4 mr-1.5" />
+                      )}
+                      Yes, Cancel Purchase Order
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── Status Timeline ───────────────────── */}
+      {/* ── 2. ORDER LIFECYCLE TIMELINE ── */}
       {po.status !== "cancelled" && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between relative">
-              <div className="absolute left-0 right-0 top-4 h-0.5 bg-muted mx-8" />
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+          <CardContent className="pt-2 pb-2">
+            <div className="flex items-center justify-between relative max-w-4xl mx-auto py-2">
+              <div className="absolute left-6 right-6 top-6 h-1 bg-slate-100 dark:bg-slate-800" />
               <div
-                className="absolute left-0 top-4 h-0.5 bg-primary transition-all mx-8"
+                className="absolute left-6 top-6 h-1 bg-indigo-600 transition-all duration-300"
                 style={{
                   width: `${Math.max(0, (currentIdx / (steps.length - 1)) * 100)}%`,
                 }}
@@ -291,21 +289,23 @@ export default function PODetailClient({
                     className="flex flex-col items-center gap-2 z-10"
                   >
                     <div
-                      className={`size-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                      className={`size-9 rounded-2xl flex items-center justify-center text-xs font-bold border-2 transition-all shadow-xs ${
                         done
-                          ? "bg-primary border-primary text-primary-foreground"
+                          ? "bg-indigo-600 border-indigo-600 text-white"
                           : current
-                            ? "bg-background border-primary text-primary"
-                            : "bg-background border-muted text-muted-foreground"
+                            ? "bg-white dark:bg-slate-900 border-indigo-600 text-indigo-600 dark:text-indigo-400 size-10"
+                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400"
                       }`}
                     >
-                      {done ? <CheckCircleIcon className="size-4" /> : idx + 1}
+                      {done ? <CheckCircleIcon className="size-4 text-white" /> : idx + 1}
                     </div>
                     <span
-                      className={`text-xs capitalize hidden sm:block ${
+                      className={`text-xs capitalize font-bold ${
                         current
-                          ? "font-semibold text-foreground"
-                          : "text-muted-foreground"
+                          ? "text-indigo-600 dark:text-indigo-400 font-extrabold"
+                          : done
+                            ? "text-slate-900 dark:text-white"
+                            : "text-slate-400"
                       }`}
                     >
                       {step}
@@ -318,84 +318,73 @@ export default function PODetailClient({
         </Card>
       )}
 
-      {/* ── Cancelled banner ─────────────────── */}
+      {/* Cancelled Banner */}
       {po.status === "cancelled" && (
-        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-          <XCircleIcon className="size-5 text-destructive shrink-0" />
+        <div className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-xs font-medium">
+          <XCircleIcon className="size-5 text-red-600 dark:text-red-400 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-destructive">
-              This purchase order has been cancelled
+            <p className="font-bold text-red-600 dark:text-red-400">
+              This Purchase Order Has Been Cancelled
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              No further actions can be taken on this order
+            <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+              No further inventory status actions can be performed on this order record.
             </p>
           </div>
         </div>
       )}
 
-      <div className="grid gap-4 @xl/main:grid-cols-3">
-        {/* ── Line Items ────────────────────── */}
-        <div className="@xl/main:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <PackageIcon className="size-4 text-muted-foreground" />
+      {/* ── 3. TWO COLUMN PO DETAILS GRID ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left Column — Line Items */}
+        <div className="lg:col-span-2">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <PackageIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 Line Items
               </CardTitle>
-              <CardDescription>
-                {po.lineItems.length} product
-                {po.lineItems.length !== 1 ? "s" : ""} in this order
+              <CardDescription className="text-xs text-slate-500">
+                {po.lineItems.length} product item(s) included in this purchase order
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200">
                     <tr>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
-                        Product
-                      </th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">
-                        Qty
-                      </th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">
-                        Unit Cost
-                      </th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">
-                        Total
-                      </th>
+                      <th className="px-5 py-3 font-bold">Product</th>
+                      <th className="px-5 py-3 font-bold text-center">Qty</th>
+                      <th className="px-5 py-3 font-bold text-right hidden sm:table-cell">Unit Cost</th>
+                      <th className="px-5 py-3 font-bold text-right">Total</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                     {po.lineItems.map((line, i) => (
-                      <tr key={i} className="border-t hover:bg-muted/30">
-                        <td className="px-4 py-3">
-                          <p className="font-medium">{line.productName}</p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {line.productSku}
+                      <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-5 py-3.5">
+                          <p className="font-bold text-slate-900 dark:text-white">{line.productName}</p>
+                          <p className="text-xs text-indigo-600 dark:text-indigo-400 font-mono font-bold">
+                            SKU: {line.productSku}
                           </p>
                         </td>
-                        <td className="px-4 py-3 text-right font-medium">
+                        <td className="px-5 py-3.5 text-center font-bold text-slate-900 dark:text-white tabular-nums">
                           {line.quantityOrdered}
                         </td>
-                        <td className="px-4 py-3 text-right text-muted-foreground hidden sm:table-cell">
+                        <td className="px-5 py-3.5 text-right text-slate-500 font-medium hidden sm:table-cell tabular-nums">
                           {formatCurrency(line.unitCost)}
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold">
+                        <td className="px-5 py-3.5 text-right font-bold text-slate-900 dark:text-white tabular-nums">
                           {formatCurrency(line.quantityOrdered * line.unitCost)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-muted/50 border-t">
+                  <tfoot className="bg-slate-50/80 dark:bg-slate-800/80 border-t border-slate-200/80 dark:border-slate-800">
                     <tr>
-                      <td
-                        colSpan={3}
-                        className="px-4 py-3 text-right font-semibold"
-                      >
+                      <td colSpan={3} className="px-5 py-3.5 text-right font-bold text-slate-700 dark:text-slate-300">
                         Total Value
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-base">
+                      <td className="px-5 py-3.5 text-right font-extrabold text-base text-indigo-600 dark:text-indigo-400 tabular-nums">
                         {formatCurrency(po.totalValue)}
                       </td>
                     </tr>
@@ -406,44 +395,53 @@ export default function PODetailClient({
           </Card>
         </div>
 
-        {/* ── Order Details ─────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Order Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              { label: "PO Number", value: po.poNumber },
-              { label: "Supplier", value: po.supplierName },
-              { label: "Status", value: statusCfg.label },
-              { label: "Created", value: formatDate(po.createdAt) },
-              {
-                label: "Delivery",
-                value: po.requestedDelivery
-                  ? formatDate(po.requestedDelivery)
-                  : "Not set",
-              },
-              { label: "Total", value: formatCurrency(po.totalValue) },
-            ].map((row) => (
-              <div
-                key={row.label}
-                className="flex items-start justify-between gap-3 py-1.5 border-b border-border/50 last:border-0 text-sm"
-              >
-                <span className="text-muted-foreground shrink-0">
-                  {row.label}
-                </span>
-                <span className="font-medium text-right">{row.value}</span>
-              </div>
-            ))}
+        {/* Right Column — Order Details Card */}
+        <div>
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Order Details</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              {[
+                { label: "PO Number", value: po.poNumber, isMono: true },
+                { label: "Supplier", value: po.supplierName, isMono: false },
+                { label: "Status", value: statusCfg.label, isMono: false },
+                { label: "Created", value: formatDate(po.createdAt), isMono: false },
+                {
+                  label: "Delivery",
+                  value: po.requestedDelivery ? formatDate(po.requestedDelivery) : "Not set",
+                  isMono: false,
+                },
+                { label: "Total", value: formatCurrency(po.totalValue), isBold: true },
+              ].map((row) => (
+                <div
+                  key={row.label}
+                  className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100 dark:border-slate-800/60 last:border-0 text-xs"
+                >
+                  <span className="text-slate-500 font-medium">{row.label}</span>
+                  <span
+                    className={`text-right ${
+                      row.isBold
+                        ? "font-extrabold text-indigo-600 dark:text-indigo-400"
+                        : "font-bold text-slate-900 dark:text-white"
+                    } ${row.isMono ? "font-mono" : ""}`}
+                  >
+                    {row.value}
+                  </span>
+                </div>
+              ))}
 
-            {po.notes && (
-              <div className="pt-2">
-                <p className="text-xs text-muted-foreground mb-1">Notes</p>
-                <p className="text-sm bg-muted/50 rounded-md p-2">{po.notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              {po.notes && (
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fulfillment Notes</p>
+                  <p className="text-xs bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-slate-700 dark:text-slate-300 font-medium border border-slate-200/60 dark:border-slate-800">
+                    {po.notes}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
