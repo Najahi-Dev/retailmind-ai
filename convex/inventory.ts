@@ -10,13 +10,14 @@ function calcStatus(
 ): "critical" | "low" | "healthy" | "overstock" {
   if (onHand <= safetyStock)        return "critical";
   if (onHand <= reorderPoint)       return "low";
-  if (onHand >= reorderPoint * 5)   return "overstock";
+  if (onHand >= reorderPoint * 3)   return "overstock";
   return "healthy";
 }
 
 function calcStockPct(onHand: number, reorderPoint: number): number {
-  if (reorderPoint === 0) return 100;
-  return Math.min(100, Math.round((onHand / (reorderPoint * 5)) * 100));
+  if (reorderPoint <= 0) return onHand > 0 ? 100 : 0;
+  const targetOptimalStock = reorderPoint * 2;
+  return Math.min(100, Math.max(0, Math.round((onHand / targetOptimalStock) * 100)));
 }
 
 // ── Inventory Overview ────────────────────────────

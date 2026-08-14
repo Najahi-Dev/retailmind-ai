@@ -39,6 +39,7 @@ import { useRole } from "@/hooks/useRole"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const {
@@ -266,39 +267,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="offcanvas" className="border-none shadow-[4px_0_24px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.35)]" {...props}>
 
       {/* ── Logo ──────────────────────────────── */}
-      <SidebarHeader className="border-b pb-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="h-12 hover:bg-transparent active:bg-transparent"
-            >
-              <Link href="/dashboard" className="flex items-center gap-3 px-1">
-
-                {/* Logo icon */}
-                <div className="relative flex size-8 shrink-0 items-center justify-center rounded-sm bg-white text-black font-bold text-sm font-[Montserrat] shadow-sm">
-                  <img src="/logo.svg" alt="Logo" />
-                  {/* Pulse dot — shows when alerts exist */}
-                  {alertBadge > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-destructive ring-2 ring-sidebar" />
-                  )}
-                </div>
-
-                {/* Brand name */}
-                <div className="flex flex-col leading-tight">
-                  <span className="text-sm font-bold tracking-tight text-foreground font-[Montserrat]">
-                    RETAIL MIND AI
-                  </span>
-                  <span className="text-[10px] text-muted-foreground tracking-wide font-mono">
-                    Smart Inventory & Forecasting
-                  </span>
-                </div>
-
-              </Link>
-            </SidebarMenuButton>
+      <SidebarHeader className="h-16 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 p-0 px-4">
+        <SidebarMenu className="w-full">
+          <SidebarMenuItem className="flex justify-center">
+            <div className="relative flex items-center justify-center w-full">
+              <Logo size="sm" href="/dashboard" />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -310,7 +287,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {(isAdmin || isManager) && navDocuments.length > 0 && (
           <>
-            <SidebarSeparator className="mx-3 my-1" />
+            <SidebarSeparator className="mx-3 my-1 opacity-50" />
             <NavDocuments items={navDocuments} />
           </>
         )}
@@ -318,9 +295,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       {/* ── Footer ────────────────────────────── */}
-      <SidebarFooter className="border-t pt-2">
+      <SidebarFooter className="border-t-0 pt-2">
         <NavSecondary items={navSecondary} />
-        <SidebarSeparator className="mx-3 my-1" />
+        <SidebarSeparator className="mx-3 my-1 opacity-50" />
         <NavUser />
       </SidebarFooter>
 

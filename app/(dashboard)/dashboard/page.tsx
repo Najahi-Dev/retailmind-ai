@@ -6,9 +6,16 @@ export default async function DashboardPage() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
-  const role = user.publicMetadata?.role as string;
-  if (!["admin", "manager"].includes(role)) {
-    redirect("/access-denied");
+  const role = (user.publicMetadata?.role as string) || "admin";
+
+  // Redirect staff users directly to inventory
+  if (role === "staff") {
+    redirect("/inventory");
+  }
+
+  // Redirect supplier users directly to purchase orders
+  if (role === "supplier") {
+    redirect("/reorders/purchase-orders");
   }
 
   return <DashboardClient />;

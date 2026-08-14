@@ -1,11 +1,14 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ShieldAlert, ArrowLeft, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 const ROLE_HOME: Record<string, string> = {
-  admin:    "/dashboard",
-  manager:  "/dashboard",
-  staff:    "/inventory",
+  admin: "/dashboard",
+  manager: "/dashboard",
+  staff: "/inventory",
   supplier: "/reorders/purchase-orders",
 };
 
@@ -17,98 +20,49 @@ export default async function AccessDeniedPage() {
   }
 
   const role = (user.publicMetadata?.role as string) ?? "staff";
-  const homeUrl = ROLE_HOME[role] ?? "/sign-in";
+  const homeUrl = ROLE_HOME[role] ?? "/inventory";
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#000000",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "'Poppins', sans-serif",
-    }}>
-      {/* Lock icon */}
-      <div style={{
-        width: 80,
-        height: 80,
-        border: "2px solid #ffffff",
-        borderRadius: "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 32,
-      }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
-          stroke="#ffffff" strokeWidth="2" strokeLinecap="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
+    <div className="flex flex-1 flex-col items-center justify-center min-h-[80vh] p-6 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <div className="max-w-md w-full text-center space-y-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 sm:p-12 rounded-3xl shadow-xl relative overflow-hidden">
+        {/* Ambient Glow */}
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        {/* Shield Icon */}
+        <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 dark:text-red-400 mx-auto animate-pulse">
+          <ShieldAlert className="w-10 h-10" />
+        </div>
+
+        {/* 403 Code */}
+        <div className="space-y-1">
+          <span className="font-heading text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            403
+          </span>
+          <h1 className="font-heading text-xl font-bold text-slate-900 dark:text-white">
+            Access Restricted
+          </h1>
+        </div>
+
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+          Your current account role does not have permission to access this module. Contact your supermarket administrator if access is required.
+        </p>
+
+        {/* Current Role Badge */}
+        <div className="pt-1">
+          <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 px-4 py-1 text-xs">
+            Current Role: <span className="font-bold capitalize ml-1">{role}</span>
+          </Badge>
+        </div>
+
+        {/* Primary CTA */}
+        <div className="pt-4">
+          <Button asChild size="lg" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-600/30 rounded-xl">
+            <Link href={homeUrl} className="flex items-center justify-center gap-2">
+              <Home className="w-4 h-4" /> Go to My Module ({role === "staff" ? "Inventory" : "Dashboard"})
+            </Link>
+          </Button>
+        </div>
       </div>
-
-      {/* 403 */}
-      <div style={{
-        fontSize: 96,
-        fontWeight: 800,
-        color: "#ffffff",
-        lineHeight: 1,
-        marginBottom: 16,
-        fontFamily: "'Montserrat', sans-serif",
-        letterSpacing: "-4px",
-      }}>
-        403
-      </div>
-
-      <h1 style={{
-        fontSize: 24,
-        fontWeight: 600,
-        color: "#ffffff",
-        marginBottom: 12,
-        fontFamily: "'Montserrat', sans-serif",
-      }}>
-        Access Denied
-      </h1>
-
-      <p style={{
-        color: "#888888",
-        fontSize: 14,
-        textAlign: "center",
-        maxWidth: 360,
-        lineHeight: 1.7,
-        marginBottom: 40,
-      }}>
-        Your current role does not have permission
-        to view this page. Contact your administrator
-        if access is required.
-      </p>
-
-      {/* Role badge */}
-      <div style={{
-        padding: "6px 16px",
-        border: "1px solid #333333",
-        borderRadius: 100,
-        fontSize: 12,
-        color: "#888888",
-        marginBottom: 40,
-        letterSpacing: "0.5px",
-      }}>
-        Current role: {role}
-      </div>
-
-      {/* Button */}
-      <Link href={homeUrl} style={{
-        padding: "12px 32px",
-        background: "#ffffff",
-        borderRadius: 8,
-        color: "#000000",
-        fontSize: 14,
-        fontWeight: 600,
-        textDecoration: "none",
-        fontFamily: "'Poppins', sans-serif",
-      }}>
-        Go to My Home Page
-      </Link>
     </div>
   );
 }

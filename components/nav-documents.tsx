@@ -25,10 +25,10 @@ export function NavDocuments({
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 px-3">
+      <SidebarGroupLabel className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3.5 pt-3 pb-1">
         Documents
       </SidebarGroupLabel>
-      <SidebarMenu>
+      <SidebarMenu className="flex flex-col gap-0.5">
         {items.map((item) => {
           const isActive = pathname === item.url
 
@@ -37,23 +37,29 @@ export function NavDocuments({
               <SidebarMenuButton
                 asChild
                 className={cn(
-                  "relative flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-all duration-150",
+                  "relative flex items-center gap-3 rounded-xl px-2.5 h-11 text-[15px] transition-all duration-200 border",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                    ? "bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-500/30 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs"
+                    : "border-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 font-medium"
                 )}
               >
-                <Link href={item.url} className="flex items-center gap-2 w-full">
-                  <span className={cn(
-                    "size-4 shrink-0",
-                    isActive ? "text-sidebar-accent-foreground" : "text-muted-foreground"
+                <Link href={item.url} className="flex items-center gap-3 w-full">
+                  <div className={cn(
+                    "size-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 [&_svg]:size-4.5",
+                    isActive
+                      ? "bg-indigo-600/15 dark:bg-indigo-500/25 text-indigo-600 dark:text-indigo-400"
+                      : "bg-transparent text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white"
                   )}>
                     {item.icon}
+                  </div>
+                  <span className={cn(
+                    "truncate tracking-tight transition-colors",
+                    isActive
+                      ? "text-indigo-600 dark:text-indigo-400 font-bold"
+                      : "text-slate-700 dark:text-slate-300 font-medium group-hover:text-slate-900 dark:group-hover:text-white"
+                  )}>
+                    {item.name}
                   </span>
-                  <span className="truncate">{item.name}</span>
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
-                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

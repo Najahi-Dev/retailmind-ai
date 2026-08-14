@@ -1,27 +1,40 @@
-// app/(dashboard)/inventory/stock-out/StockOutClient.tsx
 "use client";
+
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  ChevronLeftIcon,
-  RefreshCwIcon,
-  AlertTriangleIcon,
-  PackageIcon,
-  CheckCircleIcon,
-  MinusCircleIcon,
-  ChevronDownIcon,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowLeft,
+  Boxes,
+  MinusCircle,
+  RefreshCw,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2,
+  TrendingDown,
 } from "lucide-react";
 
 interface Props {
@@ -51,36 +64,19 @@ export default function StockOutClient({ role }: Props) {
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const selectedProduct = formData?.products.find((p) => p._id === productId);
   const qtyNum = Number(quantity);
-  const isOverStock = selectedProduct
-    ? qtyNum > selectedProduct.available
-    : false;
+  const isOverStock = selectedProduct ? qtyNum > selectedProduct.available : false;
   const isValidQty = qtyNum > 0 && !isOverStock;
-  const canSubmit =
-    productId && locationId && quantity && isValidQty && !submitting;
+  const canSubmit = productId && locationId && quantity && isValidQty && !submitting;
 
   const remaining = selectedProduct ? selectedProduct.available - qtyNum : 0;
-  const isLowAfter =
-    selectedProduct &&
-    isValidQty &&
-    remaining < selectedProduct.available * 0.3;
 
-  const stockColor = !selectedProduct
-    ? ""
-    : selectedProduct.available <= 0
-      ? "text-destructive"
-      : selectedProduct.available <= 20
-        ? "text-yellow-500"
-        : "text-green-500";
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
-    setError("");
     try {
       await recordStockOut({
         productId: productId as Id<"products">,
@@ -90,20 +86,10 @@ export default function StockOutClient({ role }: Props) {
         reference: reference || undefined,
         notes: notes || undefined,
       });
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        setProductId("");
-        setLocationId("");
-        setQuantity("");
-        setReason("Sale");
-        setReference("");
-        setNotes("");
-      }, 2500);
+      toast.success(`Successfully recorded Stock-Out (-${qtyNum} units)!`);
+      router.push("/inventory");
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to record stock-out.";
-      setError(message);
+      toast.error(err instanceof Error ? err.message : "Failed to record stock-out.");
     } finally {
       setSubmitting(false);
     }
@@ -111,477 +97,221 @@ export default function StockOutClient({ role }: Props) {
 
   if (!formData) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-6 text-muted-foreground">
-        <RefreshCwIcon className="animate-spin size-4" />
-        Loading form data...
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-12 text-slate-500 font-medium">
+        <RefreshCw className="animate-spin w-6 h-6 text-red-600" />
+        <span>Loading Stock-Out Engine...</span>
       </div>
     );
   }
 
-  // ── Shared styles ─────────────────────────────
-  const inputClass = `
-    flex h-10 w-full rounded-md border border-input
-    bg-background px-3 py-2 text-sm text-foreground
-    shadow-sm transition-colors
-    placeholder:text-muted-foreground
-    focus-visible:outline-none focus-visible:ring-1
-    focus-visible:ring-ring disabled:opacity-50
-  `;
-
-  const selectClass = `
-    flex h-10 w-full rounded-md border border-input
-    bg-background px-3 py-2 text-sm text-foreground
-    shadow-sm transition-colors cursor-pointer
-    focus-visible:outline-none focus-visible:ring-1
-    focus-visible:ring-ring disabled:opacity-50
-    appearance-none
-  `;
-
-  const labelClass = "block text-sm font-medium mb-2 text-foreground";
-
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6 @container/main">
-      {/* ── Header ────────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="icon" onClick={() => router.back()}>
-          <ChevronLeftIcon className="size-4" />
-        </Button>
-        <div>
-          <h2 className="text-xl font-bold font-[Montserrat] tracking-tight">
-            Record Stock-Out
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Log stock removed from inventory
+    <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full">
+
+      {/* ── HERO BANNER ── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="space-y-1.5 z-10">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/inventory")}
+              className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-xl h-8 px-3 text-xs"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Inventory
+            </Button>
+            <Badge className="bg-red-500/20 text-red-300 border border-red-400/30 text-xs px-3 py-0.5">
+              <TrendingDown className="w-3.5 h-3.5 mr-1 text-red-400" />
+              Stock Outward Log
+            </Badge>
+          </div>
+          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            Record Outward Stock Removal
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+            Log inventory reductions for POS sales, damaged goods, expired write-offs, or sample dispatches.
           </p>
         </div>
       </div>
 
-      {/* ── Success banner ────────────────────── */}
-      {success && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400">
-          <CheckCircleIcon className="size-5 shrink-0" />
-          <div>
-            <p className="font-semibold text-sm">Stock-out recorded!</p>
-            <p className="text-xs opacity-80 mt-0.5">
-              Inventory has been updated successfully.
-            </p>
-          </div>
-        </div>
-      )}
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      {/* ── Error banner ──────────────────────── */}
-      {error && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-          <AlertTriangleIcon className="size-5 shrink-0" />
-          <p className="text-sm">{error}</p>
-        </div>
-      )}
+        {/* ── LEFT & CENTER: FORM FIELDS (2 COLS) ── */}
+        <div className="lg:col-span-2 space-y-6">
 
-      {/* ── Two column layout ─────────────────── */}
-      <div className="grid gap-6 @xl/main:grid-cols-3">
-        {/* ── Left — Main form (2/3 width) ────── */}
-        <div className="@xl/main:col-span-2 flex flex-col gap-4">
-          {/* Product + Location */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Product Selection</CardTitle>
-              <CardDescription>Choose the product and location</CardDescription>
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Boxes className="w-4 h-4 text-red-600 dark:text-red-400" />
+                Product Selection & Warehouse Location
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Select the target item and origin location for stock removal.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Product */}
-              <div>
-                <label className={labelClass}>
-                  Product <span className="text-destructive">*</span>
-                </label>
-                <div className="relative">
-                  <select
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Product SKU <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
                     value={productId}
-                    onChange={(e) => {
-                      setProductId(e.target.value);
-                      setQuantity("");
-                      setError("");
-                      const prod = formData.products.find(
-                        (p) => p._id === e.target.value,
-                      );
+                    onValueChange={(val) => {
+                      setProductId(val);
+                      const prod = formData.products.find((p) => p._id === val);
                       if (prod?.locationId) setLocationId(prod.locationId);
                     }}
-                    className={selectClass}
                   >
-                    <option value="" disabled>
-                      Select a product...
-                    </option>
-                    {formData.products.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.sku} — {p.name} ({p.available} {p.unit} available)
-                      </option>
-                    ))}
-                  </select>
-                  {/* Custom chevron */}
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    <ChevronDownIcon className="size-3.5" />
-                  </div>
+                    <SelectTrigger className="w-full text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                      <SelectValue placeholder="Select Product..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formData.products.map((p) => (
+                        <SelectItem key={p._id} value={p._id}>
+                          {p.sku} — {p.name} ({p.available} {p.unit} avail)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {/* Live stock indicator */}
-                {selectedProduct && (
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    {[
-                      {
-                        label: "On Hand",
-                        value: selectedProduct.onHand,
-                        color: "",
-                      },
-                      {
-                        label: "Reserved",
-                        value: selectedProduct.reserved,
-                        color: "text-yellow-500",
-                      },
-                      {
-                        label: "Available",
-                        value: selectedProduct.available,
-                        color: stockColor,
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="flex flex-col items-center p-2.5 rounded-md bg-muted/50 border text-center"
-                      >
-                        <span className="text-xs text-muted-foreground">
-                          {item.label}
-                        </span>
-                        <span
-                          className={`text-lg font-bold mt-0.5 ${item.color}`}
-                        >
-                          {item.value}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {selectedProduct.unit}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className={labelClass}>
-                  Location <span className="text-destructive">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={locationId}
-                    onChange={(e) => setLocationId(e.target.value)}
-                    className={selectClass}
-                  >
-                    <option value="" disabled>
-                      Select location...
-                    </option>
-                    {formData.locations.map((l) => (
-                      <option key={l._id} value={l._id}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    <ChevronDownIcon className="size-3.5" />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Location <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={locationId} onValueChange={setLocationId}>
+                    <SelectTrigger className="w-full text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                      <SelectValue placeholder="Select Location..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formData.locations.map((l) => (
+                        <SelectItem key={l._id} value={l._id}>
+                          {l.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Quantity + Reason */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Stock-Out Details</CardTitle>
-              <CardDescription>Quantity and reason for removal</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Quantity */}
-              <div>
-                <label className={labelClass}>
-                  Quantity <span className="text-destructive">*</span>
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={selectedProduct?.available ?? undefined}
-                  placeholder={
-                    selectedProduct
-                      ? `Max ${selectedProduct.available} ${selectedProduct.unit}`
-                      : "Select a product first"
-                  }
-                  value={quantity}
-                  onChange={(e) => {
-                    setQuantity(e.target.value);
-                    setError("");
-                  }}
-                  disabled={!productId}
-                  className={inputClass}
-                />
-
-                {/* Over-stock error */}
-                {isOverStock && (
-                  <div className="mt-2 flex items-center gap-1.5 text-destructive text-xs">
-                    <AlertTriangleIcon className="size-3" />
-                    Not enough stock. Available: {
-                      selectedProduct?.available
-                    }{" "}
-                    {selectedProduct?.unit}
-                  </div>
-                )}
-
-                {/* After deduction preview */}
-                {selectedProduct && isValidQty && (
-                  <div className="mt-2 flex items-center justify-between p-2.5 rounded-md bg-muted/50 border">
-                    <span className="text-xs text-muted-foreground">
-                      Remaining after this:
-                    </span>
-                    <span
-                      className={`text-sm font-bold ${
-                        remaining <= 0
-                          ? "text-destructive"
-                          : remaining <= 20
-                            ? "text-yellow-500"
-                            : "text-green-500"
-                      }`}
-                    >
-                      {remaining} {selectedProduct.unit}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Reason */}
-              <div>
-                <label className={labelClass}>
-                  Reason <span className="text-destructive">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className={selectClass}
-                  >
-                    {REASONS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    <ChevronDownIcon className="size-3.5" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Reference + Notes */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">
-                Additional Information
-              </CardTitle>
-              <CardDescription>Optional reference and notes</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div>
-                <label className={labelClass}>
-                  Reference Number
-                  <span className="text-muted-foreground font-normal ml-1.5">
-                    (optional)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Invoice no, order no, etc."
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>
-                  Notes
-                  <span className="text-muted-foreground font-normal ml-1.5">
-                    (optional)
-                  </span>
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="Any additional information..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className={`
-                    flex w-full rounded-md border border-input
-                    bg-background px-3 py-2 text-sm text-foreground
-                    shadow-sm transition-colors resize-none
-                    placeholder:text-muted-foreground
-                    focus-visible:outline-none focus-visible:ring-1
-                    focus-visible:ring-ring
-                  `}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Right — Summary panel (1/3 width) ── */}
-        <div className="flex flex-col gap-4">
-          {/* Order summary */}
-          <Card className="sticky top-20">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                <MinusCircleIcon className="size-4 text-muted-foreground" />
-                Stock-Out Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Summary rows */}
-              <div className="space-y-3">
-                {[
-                  {
-                    label: "Product",
-                    value: selectedProduct?.name ?? "—",
-                    mono: false,
-                  },
-                  {
-                    label: "SKU",
-                    value: selectedProduct?.sku ?? "—",
-                    mono: true,
-                  },
-                  {
-                    label: "Quantity",
-                    value: quantity
-                      ? `${quantity} ${selectedProduct?.unit ?? ""}`
-                      : "—",
-                    mono: false,
-                  },
-                  {
-                    label: "Reason",
-                    value: reason,
-                    mono: false,
-                  },
-                  {
-                    label: "Location",
-                    value:
-                      formData.locations.find((l) => l._id === locationId)
-                        ?.name ?? "—",
-                    mono: false,
-                  },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    className="flex items-start justify-between gap-2 text-sm py-1 border-b border-border/50 last:border-0"
-                  >
-                    <span className="text-muted-foreground shrink-0">
-                      {row.label}
-                    </span>
-                    <span
-                      className={`font-medium text-right ${row.mono ? "font-mono text-xs" : ""} ${!selectedProduct && row.label === "Product" ? "text-muted-foreground" : ""}`}
-                    >
-                      {row.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Remaining after */}
-              {selectedProduct && isValidQty && (
-                <div
-                  className={`
-                  p-3 rounded-lg border text-sm
-                  ${
-                    remaining <= 0
-                      ? "bg-destructive/10 border-destructive/20 text-destructive"
-                      : isLowAfter
-                        ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400"
-                        : "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400"
-                  }
-                `}
-                >
-                  <p className="font-semibold">
-                    {remaining <= 0
-                      ? "⚠ Stock will be empty!"
-                      : isLowAfter
-                        ? "⚠ Low stock after this"
-                        : "✓ Stock level healthy"}
-                  </p>
-                  <p className="text-xs mt-0.5 opacity-80">
-                    {remaining} {selectedProduct.unit} remaining
-                  </p>
-                </div>
-              )}
-
-              {/* Low stock warning */}
-              {isLowAfter && (
-                <div className="flex items-start gap-2 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                  <AlertTriangleIcon className="size-4 text-yellow-500 mt-0.5 shrink-0" />
-                  <p className="text-xs text-muted-foreground">
-                    A reorder suggestion may be triggered automatically after
-                    this stock-out.
-                  </p>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex flex-col gap-2 pt-2">
-                <Button
-                  className="w-full"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit}
-                >
-                  {submitting ? (
-                    <>
-                      <RefreshCwIcon className="animate-spin size-4 mr-2" />
-                      Recording...
-                    </>
-                  ) : (
-                    <>
-                      <MinusCircleIcon className="size-4 mr-2" />
-                      Record Stock-Out
-                    </>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Removal Quantity <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={selectedProduct?.available ?? undefined}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    placeholder={selectedProduct ? `Max ${selectedProduct.available} ${selectedProduct.unit}` : "Enter quantity"}
+                    className="text-xs font-extrabold text-red-600 dark:text-red-400 rounded-xl border-slate-200 dark:border-slate-800"
+                    required
+                  />
+                  {isOverStock && (
+                    <p className="text-xs text-red-500 font-bold flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Insufficient stock ({selectedProduct?.available} available).
+                    </p>
                   )}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => router.back()}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Stock-Out Reason <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={reason} onValueChange={setReason}>
+                    <SelectTrigger className="w-full text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                      <SelectValue placeholder="Choose reason..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REASONS.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Invoice / Order Reference</Label>
+                  <Input
+                    placeholder="e.g. INV-90421"
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    className="text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Internal Remarks</Label>
+                  <Textarea
+                    placeholder="Additional details regarding this stock removal..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="text-xs rounded-xl border-slate-200 dark:border-slate-800 resize-none min-h-[80px]"
+                  />
+                </div>
+
               </div>
             </CardContent>
           </Card>
 
-          {/* Quick tip card */}
-          <Card className="bg-muted/30">
-            <CardContent className="pt-4 pb-4">
-              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-                Quick Tips
-              </p>
-              <ul className="text-xs text-muted-foreground space-y-1.5">
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 shrink-0">•</span>
-                  Select Write-Off for damaged or expired items
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 shrink-0">•</span>
-                  Add invoice number as reference for sales
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 shrink-0">•</span>
-                  Stock-out triggers reorder check automatically
-                </li>
-              </ul>
+        </div>
+
+        {/* ── RIGHT: SUMMARY PANEL (1 COL) ── */}
+        <div className="space-y-6">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm sticky top-24">
+            <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-red-600 dark:text-red-400" />
+                Removal Impact Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4 text-xs">
+
+              <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-red-700 dark:text-red-300 font-medium">Selected SKU</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">{selectedProduct?.sku || "—"}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-red-700 dark:text-red-300 font-medium">Current Available</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedProduct?.available ?? 0} Units</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-red-500/20">
+                  <span className="text-red-700 dark:text-red-300 font-bold">Remaining After Out</span>
+                  <Badge className={`font-extrabold text-xs ${remaining < 20 ? "bg-red-600 text-white" : "bg-emerald-600 text-white"}`}>
+                    {remaining} Units
+                  </Badge>
+                </div>
+              </div>
+
             </CardContent>
+            <CardFooter className="pt-2">
+              <Button
+                type="submit"
+                disabled={!canSubmit}
+                className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-2xl h-11 shadow-md border-0"
+              >
+                {submitting ? (
+                  <>
+                    <RefreshCw className="animate-spin w-4 h-4 mr-2" /> Processing Removal...
+                  </>
+                ) : (
+                  <>
+                    <MinusCircle className="w-4 h-4 mr-2" /> Confirm Stock-Out (-{qtyNum || 0})
+                  </>
+                )}
+              </Button>
+            </CardFooter>
           </Card>
         </div>
-      </div>
+
+      </form>
+
     </div>
   );
 }

@@ -14,6 +14,8 @@ export default defineSchema({
       v.literal("supplier"),
     ),
     isActive: v.boolean(),
+    plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
+    isVipAccess: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_clerk_id", ["clerkId"]),
 
@@ -248,4 +250,30 @@ export default defineSchema({
   })
     .index("by_active", ["isDismissed"])
     .index("by_product", ["productId"]),
+
+  // ── Subscriptions ─────────────────────────────
+  subscriptions: defineTable({
+    clerkId: v.string(),
+    stripeCustomerId: v.string(),
+    stripeSubscriptionId: v.string(),
+    plan: v.union(
+      v.literal("starter"),
+      v.literal("growth"),
+      v.literal("enterprise")
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("cancelled"),
+      v.literal("past_due"),
+      v.literal("trialing")
+    ),
+    currentPeriodStart: v.number(),
+    currentPeriodEnd: v.number(),
+    cancelAtPeriodEnd: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_stripe_subscription_id", ["stripeSubscriptionId"])
+    .index("by_stripe_customer_id", ["stripeCustomerId"]),
 });
