@@ -192,7 +192,7 @@ export default function SupplierDetailClient({
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -202,7 +202,7 @@ export default function SupplierDetailClient({
               variant="outline"
               size="icon"
               onClick={() => router.back()}
-              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+              className="shrink-0 size-10 rounded-lg bg-white/10 hover:bg-white/20 border-white/20 text-white"
             >
               <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
             </Button>
@@ -259,14 +259,14 @@ export default function SupplierDetailClient({
 
       {/* ── 2. TOP KPI METRICS GRID ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Orders</p>
           <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums mt-2">
             {stats.totalOrders}
           </p>          <p className="text-[11px] text-slate-500 font-medium mt-1">Issued Purchase Orders</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pending Orders</p>
           <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 tabular-nums mt-2">
             {stats.pendingOrders}
@@ -274,7 +274,7 @@ export default function SupplierDetailClient({
           <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium mt-1">In Fulfillment Pipeline</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Supplied Products</p>
           <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums mt-2">
             {stats.totalProducts}
@@ -282,7 +282,7 @@ export default function SupplierDetailClient({
           <p className="text-[11px] text-slate-500 font-medium mt-1">Catalog SKU Variants</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">On-Time Rate</p>
           <p className="text-2xl sm:text-3xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums mt-2">
             {stats.onTimeRate !== null ? `${stats.onTimeRate}%` : "—"}
@@ -293,7 +293,7 @@ export default function SupplierDetailClient({
 
       {/* ── 3. TABS CONTAINER ── */}
       <Tabs defaultValue="overview" className="w-full space-y-4">
-        <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl h-11 border border-slate-200/80 dark:border-slate-800">
+        <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-lg h-11 border border-slate-200/80 dark:border-slate-800">
           <TabsTrigger value="overview" className="rounded-xl text-xs font-bold px-4 py-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 shadow-xs">
             Overview Specification
           </TabsTrigger>
@@ -309,7 +309,7 @@ export default function SupplierDetailClient({
         <TabsContent value="overview" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Contact / Edit Card */}
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
               <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Building2Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -427,7 +427,7 @@ export default function SupplierDetailClient({
             </Card>
 
             {/* Performance Summary Card */}
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
               <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
@@ -500,7 +500,7 @@ export default function SupplierDetailClient({
 
         {/* ── Tab 2: Purchase Orders ── */}
         <TabsContent value="purchase-orders" className="mt-0">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <ShoppingCartIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -577,7 +577,7 @@ export default function SupplierDetailClient({
 
         {/* ── Tab 3: Products ── */}
         <TabsContent value="products" className="mt-0">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <PackageIcon className="w-4 h-4 text-emerald-500" />

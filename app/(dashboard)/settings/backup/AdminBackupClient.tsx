@@ -231,11 +231,11 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
       </div>
 
       {/* ── HERO HEADER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 text-white p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-800 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 text-white p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="flex items-start gap-4">
-            <div className="size-14 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+            <div className="size-14 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
               <Database className="w-7 h-7 text-indigo-400" />
             </div>
             <div className="space-y-1">
@@ -257,7 +257,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
 
       {/* ── REAL-TIME METRICS GRID ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Products</p>
@@ -271,7 +271,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Inventory Units</p>
@@ -285,7 +285,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Suppliers</p>
@@ -299,7 +299,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total System Records</p>
@@ -318,10 +318,10 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* 1. BACKUP EXPORT CARD */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden flex flex-col justify-between">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
           <CardHeader className="p-6 pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                 <FileJson className="w-5 h-5" />
               </div>
               <div>
@@ -336,7 +336,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
           </CardHeader>
 
           <CardContent className="p-6 pt-2 space-y-4">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
               <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
                 <span>Backup Format:</span>
                 <span className="font-bold text-slate-900 dark:text-white">JSON (.json)</span>
@@ -378,10 +378,10 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
         </Card>
 
         {/* 2. RESTORE / IMPORT BACKUP CARD */}
-        <Card className="bg-white dark:bg-slate-900 border-indigo-500/30 rounded-3xl shadow-sm overflow-hidden flex flex-col justify-between">
+        <Card className="bg-white dark:bg-slate-900 border-indigo-500/30 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
           <CardHeader className="p-6 pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                 <UploadCloud className="w-5 h-5" />
               </div>
               <div>
@@ -406,7 +406,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
 
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="p-4 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/60 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 cursor-pointer text-center transition-all space-y-2 group"
+              className="p-4 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/60 rounded-lg bg-indigo-500/5 dark:bg-indigo-500/10 cursor-pointer text-center transition-all space-y-2 group"
             >
               <Upload className="w-6 h-6 text-indigo-500 mx-auto group-hover:scale-110 transition-transform" />
               {importFile ? (
@@ -457,10 +457,10 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
         </Card>
 
         {/* 3. PERMANENT WIPE / DANGER ZONE CARD */}
-        <Card className="bg-white dark:bg-slate-900 border-red-500/20 dark:border-red-500/30 rounded-3xl shadow-sm overflow-hidden flex flex-col justify-between">
+        <Card className="bg-white dark:bg-slate-900 border-red-500/20 dark:border-red-500/30 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
           <CardHeader className="p-6 pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
@@ -475,7 +475,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
           </CardHeader>
 
           <CardContent className="p-6 pt-2 space-y-4">
-            <div className="p-4 rounded-2xl bg-red-500/5 dark:bg-red-500/10 border border-red-500/20 text-xs space-y-2 text-red-700 dark:text-red-300">
+            <div className="p-4 rounded-lg bg-red-500/5 dark:bg-red-500/10 border border-red-500/20 text-xs space-y-2 text-red-700 dark:text-red-300">
               <div className="flex items-center gap-2 font-bold text-red-600 dark:text-red-400">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>WARNING: IRREVERSIBLE</span>
@@ -492,7 +492,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
           <div className="p-6 pt-0">
             <Button
               onClick={() => setWipeModalOpen(true)}
-              className="w-full h-11 rounded-xl font-bold text-xs text-white bg-red-600 hover:bg-red-500 shadow-md transition-all gap-2"
+              className="w-full h-11 rounded-lg font-bold text-xs text-white bg-red-600 hover:bg-red-500 shadow-md transition-all gap-2"
             >
               <ShieldAlert className="w-4 h-4" /> Wipe Entire Database
             </Button>
@@ -502,9 +502,9 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
 
       {/* ── SECURITY CONFIRMATION MODAL ── */}
       <Dialog open={wipeModalOpen} onOpenChange={setWipeModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white dark:bg-slate-900 border-red-500/30">
+        <DialogContent className="sm:max-w-md rounded-xl p-6 bg-white dark:bg-slate-900 border-red-500/30">
           <DialogHeader className="space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mb-2">
+            <div className="w-12 h-12 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center mb-2">
               <ShieldAlert className="w-6 h-6" />
             </div>
             <DialogTitle className="text-xl font-bold text-red-600 dark:text-red-400">

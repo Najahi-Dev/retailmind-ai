@@ -152,13 +152,13 @@ export default function AlertsClient({ role }: Props) {
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
           <div className="flex items-start gap-4">
-            <div className="size-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+            <div className="size-12 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
               <BellIcon className="w-6 h-6 text-indigo-400 animate-pulse" />
             </div>
             <div>
@@ -198,7 +198,7 @@ export default function AlertsClient({ role }: Props) {
       {/* ── 2. TOP KPI STAT CARDS ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Unread */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Unread</p>
             <Badge className="text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 px-2 py-0.5">
@@ -212,7 +212,7 @@ export default function AlertsClient({ role }: Props) {
         </Card>
 
         {/* Card 2: Critical */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Critical Priority</p>
             <Badge className="text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20 px-2 py-0.5">
@@ -226,7 +226,7 @@ export default function AlertsClient({ role }: Props) {
         </Card>
 
         {/* Card 3: High Priority */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">High Priority</p>
             <Badge className="text-[10px] font-bold bg-orange-500/10 text-orange-600 border border-orange-500/20 px-2 py-0.5">
@@ -240,7 +240,7 @@ export default function AlertsClient({ role }: Props) {
         </Card>
 
         {/* Card 4: Snoozed */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Snoozed Alerts</p>
             <Badge className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 px-2 py-0.5">
@@ -255,11 +255,11 @@ export default function AlertsClient({ role }: Props) {
       </div>
 
       {/* ── 3. FILTER BAR CONTROL PANEL ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Tab Group */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200 dark:border-slate-800">
               {[
                 { id: "all", label: "All" },
                 { id: "unread", label: "Unread" },
@@ -328,7 +328,7 @@ export default function AlertsClient({ role }: Props) {
           Array.from({ length: 5 }).map((_, idx) => (
             <div
               key={idx}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs animate-pulse flex items-center justify-between gap-4"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs animate-pulse flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3.5 w-full">
                 <div className="size-3 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0" />
@@ -346,7 +346,7 @@ export default function AlertsClient({ role }: Props) {
           ))
         ) : alerts.length === 0 ? (
           // Empty State
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center shadow-sm">
             <div className="flex flex-col items-center justify-center gap-3">
               <CheckCircleIcon className="w-12 h-12 text-emerald-500 opacity-90" />
               <h3 className="text-base font-bold text-slate-900 dark:text-white">All clear, no alerts found</h3>
@@ -367,7 +367,7 @@ export default function AlertsClient({ role }: Props) {
             return (
               <Card
                 key={alert._id}
-                className={`bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 transition-all shadow-xs ${accentBorder} ${
+                className={`bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 transition-all shadow-xs ${accentBorder} ${
                   !isUnread ? "opacity-75 bg-slate-50/50 dark:bg-slate-900/40" : ""
                 }`}
               >
@@ -428,7 +428,7 @@ export default function AlertsClient({ role }: Props) {
                             <ClockIcon className="w-3.5 h-3.5 mr-1" /> Snooze
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-2xl text-xs font-semibold p-1">
+                        <DropdownMenuContent align="end" className="rounded-lg text-xs font-semibold p-1">
                           <DropdownMenuItem onClick={() => handleSnooze(alert._id, 1 * 3600 * 1000)}>
                             Snooze 1 hour
                           </DropdownMenuItem>

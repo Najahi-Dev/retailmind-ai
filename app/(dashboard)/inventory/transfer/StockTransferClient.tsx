@@ -153,7 +153,7 @@ export default function StockTransferClient({ role = "admin" }: Props) {
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full">
 
       {/* ── HERO BANNER ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="space-y-1.5 z-10">
@@ -185,7 +185,7 @@ export default function StockTransferClient({ role = "admin" }: Props) {
         {/* ── LEFT & CENTER: FORM FIELDS (2 COLS) ── */}
         <div className="lg:col-span-2 space-y-6">
 
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Boxes className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -304,7 +304,7 @@ export default function StockTransferClient({ role = "admin" }: Props) {
 
         {/* ── RIGHT: SUMMARY PANEL (1 COL) ── */}
         <div className="space-y-6">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm sticky top-24">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm sticky top-24">
             <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -313,7 +313,7 @@ export default function StockTransferClient({ role = "admin" }: Props) {
             </CardHeader>
             <CardContent className="pt-4 space-y-4 text-xs">
 
-              <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-2">
+              <div className="p-3.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-indigo-700 dark:text-indigo-300 font-medium">Source Available</span>
                   <Badge variant="outline" className="font-bold text-xs">{fromAvailable} Units</Badge>
@@ -335,7 +335,7 @@ export default function StockTransferClient({ role = "admin" }: Props) {
               <Button
                 type="submit"
                 disabled={submitting || !fromLocation || !toLocation || fromLocation._id === toLocation._id || quantity <= 0}
-                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold rounded-2xl h-11 shadow-md border-0"
+                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold rounded-lg h-11 shadow-md border-0"
               >
                 {submitting ? (
                   <>

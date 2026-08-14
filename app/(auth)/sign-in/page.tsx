@@ -113,7 +113,7 @@ export default function SignInPage() {
       <div className="relative z-10 flex flex-col items-center gap-6 max-w-md w-full">
         <Logo size="lg" href="/" />
 
-        <div className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
+        <div className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-2xl space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-2">
               {mode === "signin" ? "Welcome Back" : "Create Account"} <ShieldCheckIcon className="w-5 h-5 text-indigo-500" />
@@ -124,7 +124,7 @@ export default function SignInPage() {
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-2xl">
+          <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg">
             <button
               type="button"
               onClick={() => { setMode("signin"); setError(null); }}
@@ -150,14 +150,14 @@ export default function SignInPage() {
           </div>
 
           {successMessage && (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5">
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5">
               <ShieldCheckIcon className="w-4 h-4 shrink-0" />
               <span>{successMessage}</span>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-xs text-red-600 dark:text-red-400 flex items-center gap-2.5">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-xs text-red-600 dark:text-red-400 flex items-center gap-2.5">
               <AlertCircleIcon className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>

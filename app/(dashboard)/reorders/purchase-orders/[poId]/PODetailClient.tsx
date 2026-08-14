@@ -157,7 +157,7 @@ export default function PODetailClient({
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -167,7 +167,7 @@ export default function PODetailClient({
               variant="outline"
               size="icon"
               onClick={() => router.back()}
-              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+              className="shrink-0 size-10 rounded-lg bg-white/10 hover:bg-white/20 border-white/20 text-white"
             >
               <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
             </Button>
@@ -223,7 +223,7 @@ export default function PODetailClient({
                   </Button>
                 </AlertDialogTrigger>
 
-                <AlertDialogContent className="rounded-3xl border-slate-200 dark:border-slate-800">
+                <AlertDialogContent className="rounded-xl border-slate-200 dark:border-slate-800">
                   <AlertDialogHeader>
                     <AlertDialogTitle className="text-lg font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
                       <XCircleIcon className="size-5" />
@@ -270,7 +270,7 @@ export default function PODetailClient({
 
       {/* ── 2. ORDER LIFECYCLE TIMELINE ── */}
       {po.status !== "cancelled" && (
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <CardContent className="pt-2 pb-2">
             <div className="flex items-center justify-between relative max-w-4xl mx-auto py-2">
               <div className="absolute left-6 right-6 top-6 h-1 bg-slate-100 dark:bg-slate-800" />
@@ -289,7 +289,7 @@ export default function PODetailClient({
                     className="flex flex-col items-center gap-2 z-10"
                   >
                     <div
-                      className={`size-9 rounded-2xl flex items-center justify-center text-xs font-bold border-2 transition-all shadow-xs ${
+                      className={`size-9 rounded-lg flex items-center justify-center text-xs font-bold border-2 transition-all shadow-xs ${
                         done
                           ? "bg-indigo-600 border-indigo-600 text-white"
                           : current
@@ -320,7 +320,7 @@ export default function PODetailClient({
 
       {/* Cancelled Banner */}
       {po.status === "cancelled" && (
-        <div className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-xs font-medium">
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-xs font-medium">
           <XCircleIcon className="size-5 text-red-600 dark:text-red-400 shrink-0" />
           <div>
             <p className="font-bold text-red-600 dark:text-red-400">
@@ -337,7 +337,7 @@ export default function PODetailClient({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column — Line Items */}
         <div className="lg:col-span-2">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <PackageIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -397,7 +397,7 @@ export default function PODetailClient({
 
         {/* Right Column — Order Details Card */}
         <div>
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Order Details</CardTitle>
             </CardHeader>

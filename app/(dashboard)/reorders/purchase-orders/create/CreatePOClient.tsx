@@ -155,7 +155,7 @@ export default function CreatePOClient() {
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -165,7 +165,7 @@ export default function CreatePOClient() {
               variant="outline"
               size="icon"
               onClick={() => router.back()}
-              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+              className="shrink-0 size-10 rounded-lg bg-white/10 hover:bg-white/20 border-white/20 text-white"
             >
               <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
             </Button>
@@ -208,7 +208,7 @@ export default function CreatePOClient() {
         {/* Left Column — Form Fields */}
         <div className="lg:col-span-2 space-y-5">
           {/* Card 1: Supplier Selector */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Building2Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -240,7 +240,7 @@ export default function CreatePOClient() {
           </Card>
 
           {/* Card 2: Line Items Builder */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <PackageIcon className="w-4 h-4 text-emerald-500" />
@@ -304,7 +304,7 @@ export default function CreatePOClient() {
 
               {/* Line Items Table */}
               {lineItems.length > 0 ? (
-                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+                <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 overflow-hidden">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                       <tr>
@@ -349,7 +349,7 @@ export default function CreatePOClient() {
                   </table>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-10 gap-2.5 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                <div className="flex flex-col items-center justify-center py-10 gap-2.5 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
                   <ShoppingCartIcon className="size-8 text-indigo-500/40" />
                   <p className="text-xs font-semibold text-slate-500">No products added yet to this order</p>
                 </div>
@@ -358,7 +358,7 @@ export default function CreatePOClient() {
           </Card>
 
           {/* Card 3: Notes */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Fulfillment Notes</CardTitle>
               <CardDescription className="text-xs text-slate-500">Optional instructions or delivery notes for the vendor</CardDescription>
@@ -377,7 +377,7 @@ export default function CreatePOClient() {
 
         {/* Right Column — Summary Box */}
         <div className="space-y-5">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm sticky top-20">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm sticky top-20">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <ShoppingCartIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -403,7 +403,7 @@ export default function CreatePOClient() {
               </div>
 
               {/* Total Value Box */}
-              <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex items-center justify-between">
+              <div className="p-4 rounded-lg bg-indigo-500/5 border border-indigo-500/20 flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-900 dark:text-white">Total Value</span>
                 <span className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400 tabular-nums">
                   {formatCurrency(totalValue)}

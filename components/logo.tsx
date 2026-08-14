@@ -22,7 +22,7 @@ export function Logo({
   const containerSizes = {
     sm: "h-9 w-auto rounded-xl",
     md: "h-11 w-auto rounded-xl",
-    lg: "h-16 w-auto rounded-2xl",
+    lg: "h-16 w-auto rounded-lg",
   };
 
   const textSizes = {

@@ -100,13 +100,13 @@ export default function SuppliersClient() {
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
           <div className="flex items-start gap-4">
-            <div className="size-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+            <div className="size-12 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
               <Building2Icon className="w-6 h-6 text-indigo-400" />
             </div>
             <div>
@@ -137,7 +137,7 @@ export default function SuppliersClient() {
 
       {/* ── 2. TOP KPI METRICS ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Suppliers</p>
             <Badge variant="outline" className="text-[10px] font-bold border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5">
@@ -150,7 +150,7 @@ export default function SuppliersClient() {
           <p className="text-[11px] text-slate-500 font-medium mt-1">Total Registered Vendor Partners</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Vendors</p>
             <Badge className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5">
@@ -163,7 +163,7 @@ export default function SuppliersClient() {
           <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">Primary Active Supply Channels</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">On Hold</p>
             <Badge className="text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2 py-0.5">
@@ -176,7 +176,7 @@ export default function SuppliersClient() {
           <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">Pending Audit / Dispute</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Inactive</p>
             <Badge variant="outline" className="text-[10px] font-bold border-slate-300 dark:border-slate-700 text-slate-500 px-2 py-0.5">
@@ -191,7 +191,7 @@ export default function SuppliersClient() {
       </div>
 
       {/* ── 3. MASTER SUPPLIERS LOG CARD ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

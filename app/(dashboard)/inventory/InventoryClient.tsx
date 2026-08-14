@@ -216,7 +216,7 @@ export default function InventoryClient({ role }: Props) {
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
 
       {/* ── 1. EXECUTIVE HERO BANNER ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Overlay */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -279,7 +279,7 @@ export default function InventoryClient({ role }: Props) {
 
         {/* Stock Valuation */}
         {canViewFinancials ? (
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
             <CardHeader className="pb-2 space-y-1.5">
               <div className="flex items-center justify-between">
                 <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Total Stock Valuation</CardDescription>
@@ -299,7 +299,7 @@ export default function InventoryClient({ role }: Props) {
             </CardFooter>
           </Card>
         ) : (
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
             <CardHeader className="pb-2 space-y-1.5">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Healthy Stock SKUs</CardDescription>
               <CardTitle className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
@@ -311,7 +311,7 @@ export default function InventoryClient({ role }: Props) {
         )}
 
         {/* Total Tracked SKUs */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Total Product SKUs</CardDescription>
@@ -332,7 +332,7 @@ export default function InventoryClient({ role }: Props) {
         </Card>
 
         {/* Critical Stock Risk */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Critical Risk Items</CardDescription>
@@ -351,7 +351,7 @@ export default function InventoryClient({ role }: Props) {
         </Card>
 
         {/* Low Stock Warning */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Low Stock Warnings</CardDescription>
@@ -414,7 +414,7 @@ export default function InventoryClient({ role }: Props) {
       </div>
 
       {/* ── 4. INVENTORY OVERVIEW DATA TABLE CONTAINER ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
         <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -538,7 +538,7 @@ export default function InventoryClient({ role }: Props) {
           </div>
 
           {/* High-Contrast Data Table */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
             <Table>
               <TableHeader className="bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 z-10 backdrop-blur-md">
                 <TableRow className="border-b border-slate-200 dark:border-slate-800 hover:bg-transparent h-11">

@@ -90,13 +90,13 @@ export default function ReordersClient() {
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. HERO REORDER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
           <div className="flex items-start gap-4">
-            <div className="size-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+            <div className="size-12 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
               <SparklesIcon className="w-6 h-6 text-indigo-400 animate-pulse" />
             </div>
             <div>
@@ -134,7 +134,7 @@ export default function ReordersClient() {
 
       {/* ── 2. TOP KPI STATS METRICS ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pending Suggestions</p>
             <Badge variant="outline" className="text-[10px] font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5 px-2 py-0.5">
@@ -147,7 +147,7 @@ export default function ReordersClient() {
           <p className="text-[11px] text-slate-500 font-medium mt-1">Awaiting Review & PO Generation</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Critical Emergencies</p>
             <Badge className="text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20 px-2 py-0.5">
@@ -160,7 +160,7 @@ export default function ReordersClient() {
           <p className="text-[11px] text-red-600 dark:text-red-400 font-medium mt-1">Below Safety Stock Buffer</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">High Priority Items</p>
             <Badge className="text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2 py-0.5">
@@ -173,7 +173,7 @@ export default function ReordersClient() {
           <p className="text-[11px] text-slate-500 font-medium mt-1">Nearing Reorder Threshold</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Approved Today</p>
             <Badge className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5">
@@ -188,7 +188,7 @@ export default function ReordersClient() {
       </div>
 
       {/* ── 3. REORDER SUGGESTIONS QUEUE ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -250,7 +250,7 @@ export default function ReordersClient() {
                   <div
                     key={s._id}
                     className={`
-                      rounded-2xl border p-4 sm:p-5 transition-all duration-200
+                      rounded-lg border p-4 sm:p-5 transition-all duration-200
                       ${
                         s.status === "pending"
                           ? "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/40 shadow-xs"

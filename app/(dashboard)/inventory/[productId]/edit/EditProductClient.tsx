@@ -145,14 +145,14 @@ export default function EditProductClient({ productId, role }: { productId: stri
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <Button
               variant="outline"
               size="icon"
               onClick={() => router.push(`/inventory/${productId}`)}
-              className="shrink-0 size-10 rounded-2xl border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="shrink-0 size-10 rounded-lg border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <ChevronLeftIcon className="w-5 h-5 text-slate-700 dark:text-slate-300" />
             </Button>
@@ -195,7 +195,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
         {/* Left Column — Form Fields */}
         <div className="lg:col-span-2 space-y-5">
           {/* Card 1: Primary Identity & Metadata */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <TagIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -317,7 +317,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
 
           {/* Card 2: Financial Pricing Strategy */}
           {canViewFinancials && (
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
               <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <TrendingUpIcon className="w-4 h-4 text-emerald-500" />
@@ -357,7 +357,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
                 </div>
 
                 {/* Margin Preview Banner */}
-                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between gap-4">
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4 flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-bold text-slate-900 dark:text-white">Projected Gross Margin</p>
                     <p className="text-[11px] text-slate-500">Net Profit: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(netProfit)}</strong> per unit</p>
@@ -371,7 +371,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
           )}
 
           {/* Card 3: Inventory Thresholds & Safety Limits */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Building2Icon className="w-4 h-4 text-amber-500" />
@@ -422,7 +422,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
         {/* Right Sidebar — Summary & Danger Zone */}
         <div className="space-y-5">
           {/* Card: Live SKU Summary Preview */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <PackageIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -431,7 +431,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
             </CardHeader>
             <CardContent className="pt-4 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="size-11 rounded-2xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                <div className="size-11 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
                   <PackageIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div className="min-w-0">
@@ -475,7 +475,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
 
           {/* Card: Danger Zone */}
           {canEdit && (
-            <Card className="bg-red-500/5 border border-red-500/20 rounded-3xl shadow-sm">
+            <Card className="bg-red-500/5 border border-red-500/20 rounded-xl shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
                   <AlertTriangleIcon className="w-4 h-4" />
@@ -502,7 +502,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
 
       {/* Save Confirmation Dialog */}
       <AlertDialog open={saveOpen} onOpenChange={setSaveOpen}>
-        <AlertDialogContent className="rounded-3xl border-slate-200 dark:border-slate-800">
+        <AlertDialogContent className="rounded-xl border-slate-200 dark:border-slate-800">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
               Save Product SKU Changes?
@@ -528,7 +528,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="rounded-3xl border-slate-200 dark:border-slate-800">
+        <AlertDialogContent className="rounded-xl border-slate-200 dark:border-slate-800">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-bold text-red-600 dark:text-red-400">
               Delete Product SKU Permanently?

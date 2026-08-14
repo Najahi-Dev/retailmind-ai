@@ -172,7 +172,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6">
       {/* ── 1. HERO PRODUCT HEADER BANNER ── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           {/* Product Info & Status */}
           <div className="flex items-start gap-4">
@@ -180,7 +180,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
               variant="outline"
               size="icon"
               onClick={() => router.back()}
-              className="shrink-0 size-10 rounded-2xl border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="shrink-0 size-10 rounded-lg border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <ChevronLeftIcon className="w-5 h-5 text-slate-700 dark:text-slate-300" />
             </Button>
@@ -257,7 +257,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
       {/* ── 2. TOP KPI METRICS GRID ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">On Hand Inventory</p>
           <div className="flex items-baseline gap-1.5 mt-1">
             <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">
@@ -268,7 +268,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
           <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">Physical Stock in Store</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Available to Fulfill</p>
           <div className="flex items-baseline gap-1.5 mt-1">
             <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">
@@ -279,7 +279,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
           <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium mt-1">Unreserved Net Inventory</p>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Reorder Threshold</p>
           <div className="flex items-baseline gap-1.5 mt-1">
             <p className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
@@ -291,7 +291,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
         </Card>
 
         {canViewFinancials ? (
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Stock Value</p>
             <div className="mt-1">
               <p className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums truncate">
@@ -303,7 +303,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
             </p>
           </Card>
         ) : (
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Safety Buffer Qty</p>
             <div className="flex items-baseline gap-1.5 mt-1">
               <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">
@@ -318,7 +318,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
       {/* ── 3. EXECUTIVE TABS SYSTEM ── */}
       <Tabs defaultValue="overview" className="flex flex-col gap-4">
-        <TabsList className="w-full justify-start overflow-x-auto h-auto flex-wrap gap-1.5 bg-slate-100 dark:bg-slate-800/60 p-1.5 rounded-2xl">
+        <TabsList className="w-full justify-start overflow-x-auto h-auto flex-wrap gap-1.5 bg-slate-100 dark:bg-slate-800/60 p-1.5 rounded-lg">
           <TabsTrigger value="overview" className="rounded-xl text-xs font-bold px-4 py-2">Overview & Health</TabsTrigger>
           <TabsTrigger value="stock-history" className="rounded-xl text-xs font-bold px-4 py-2">Stock Movement History</TabsTrigger>
           <TabsTrigger value="forecasts" className="rounded-xl text-xs font-bold px-4 py-2">
@@ -344,7 +344,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
         <TabsContent value="overview" className="flex flex-col gap-4">
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Product Info Card */}
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
               <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <PackageIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -391,7 +391,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
             {/* Stock Info & Financials Column */}
             <div className="flex flex-col gap-4">
-              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                   <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <TrendingUpIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -461,7 +461,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
               {/* Financial info — admin/manager only */}
               {canViewFinancials && (
-                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
                   <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                     <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <ShoppingCartIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -508,7 +508,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
         {/* ══ Tab 2 — Stock History ══════════════ */}
         <TabsContent value="stock-history">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <RefreshCwIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -531,7 +531,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
                   <p className="text-xs text-slate-500">No stock entries, transfers, or write-offs recorded for this SKU.</p>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100/90 dark:bg-slate-800/90 h-10">
                       <tr>
@@ -593,7 +593,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
         {/* ══ Tab 3 — Forecasts ═════════════════ */}
         <TabsContent value="forecasts">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <TrendingUpIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -606,7 +606,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
             <CardContent className="pt-6">
               {!forecasts || forecasts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                  <div className="size-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
+                  <div className="size-14 rounded-lg bg-indigo-500/10 flex items-center justify-center">
                     <TrendingUpIcon className="size-7 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <p className="font-bold text-slate-900 dark:text-white text-base">AI Demand Engine Active</p>
@@ -618,7 +618,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
                   </Badge>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100/90 dark:bg-slate-800/90 h-10">
                       <tr>
@@ -665,7 +665,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
         {/* ══ Tab 4 — Purchase Orders ═══════════ */}
         <TabsContent value="purchase-orders">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <ShoppingCartIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -688,7 +688,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
                   <p className="text-xs text-slate-500">No active POs have been issued for this product SKU yet.</p>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100/90 dark:bg-slate-800/90 h-10">
                       <tr>
@@ -751,7 +751,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
           <TabsContent value="settings">
             <div className="grid gap-4 lg:grid-cols-2">
               {/* Reorder settings */}
-              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                   <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <TrendingDownIcon className="w-4 h-4 text-amber-500" />
@@ -797,7 +797,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
               </Card>
 
               {/* Product settings */}
-              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
                   <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <ShoppingCartIcon className="w-4 h-4 text-emerald-500" />

@@ -64,7 +64,7 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-3xl border-slate-200 dark:border-slate-800 p-6">
+      <DialogContent className="sm:max-w-md rounded-xl border-slate-200 dark:border-slate-800 p-6">
         <DialogHeader className="pb-2 border-b border-slate-100 dark:border-slate-800">
           <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Building2Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />

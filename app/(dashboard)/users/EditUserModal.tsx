@@ -136,7 +136,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-3xl border-slate-200 dark:border-slate-800 p-6">
+      <DialogContent className="sm:max-w-md rounded-xl border-slate-200 dark:border-slate-800 p-6">
         <input
           type="file"
           ref={fileInputRef}
@@ -157,7 +157,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
 
         <div className="flex flex-col gap-4 py-3">
           {/* Avatar Photo Header */}
-          <div className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+          <div className="flex items-center gap-3.5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
             <div className="relative group shrink-0">
               {imageUrl ? (
                 <img
@@ -246,7 +246,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
           </div>
 
           {/* Account Status Toggle */}
-          <div className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-3">
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-bold text-slate-900 dark:text-white">Account Status</p>
               <p className="text-[11px] text-slate-500">

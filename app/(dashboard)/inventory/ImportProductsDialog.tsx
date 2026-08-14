@@ -279,7 +279,7 @@ export default function ImportProductsDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl rounded-3xl border-slate-200 dark:border-slate-800 p-6 max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-3xl rounded-xl border-slate-200 dark:border-slate-800 p-6 max-h-[90vh] flex flex-col">
         <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between gap-4">
             <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -304,7 +304,7 @@ export default function ImportProductsDialog({ open, onOpenChange }: Props) {
           {/* File Upload Zone */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
               file
                 ? "border-indigo-500 bg-indigo-500/5 dark:bg-indigo-500/10"
                 : "border-slate-200 dark:border-slate-800 hover:border-indigo-400 bg-slate-50/50 dark:bg-slate-900/50"
@@ -318,7 +318,7 @@ export default function ImportProductsDialog({ open, onOpenChange }: Props) {
               className="hidden"
             />
             <div className="flex flex-col items-center gap-2">
-              <div className="size-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <div className="size-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                 <UploadIcon className="w-5 h-5" />
               </div>
               {file ? (
@@ -363,7 +363,7 @@ export default function ImportProductsDialog({ open, onOpenChange }: Props) {
                 </div>
               </div>
 
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden max-h-56 overflow-y-auto">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden max-h-56 overflow-y-auto">
                 <Table>
                   <TableHeader className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10">
                     <TableRow>

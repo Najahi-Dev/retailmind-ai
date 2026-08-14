@@ -25,11 +25,11 @@ export default function NotFound() {
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="max-w-lg w-full text-center space-y-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 rounded-3xl shadow-xl relative z-10 overflow-hidden mx-auto my-auto"
+        className="max-w-lg w-full text-center space-y-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-xl relative z-10 overflow-hidden mx-auto my-auto"
       >
         {/* Glowing 404 Hero Illustration */}
         <div className="flex flex-col items-center gap-3 pt-2">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner relative">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner relative">
             <Compass className="w-10 h-10 sm:w-12 sm:h-12 animate-spin-slow" />
             <Sparkles className="w-4 h-4 text-amber-400 absolute top-2 right-2 animate-bounce" />
           </div>

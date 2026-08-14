@@ -304,9 +304,9 @@ export default function Home() {
             className="mt-14 relative max-w-5xl mx-auto"
           >
             {/* Glowing Backdrop Border */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-600 rounded-3xl blur-xl opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-600 rounded-xl blur-xl opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
 
-            <div className="relative rounded-2xl bg-slate-900/95 border border-slate-800 shadow-2xl overflow-hidden backdrop-blur-xl text-slate-100">
+            <div className="relative rounded-lg bg-slate-900/95 border border-slate-800 shadow-2xl overflow-hidden backdrop-blur-xl text-slate-100">
               {/* Dashboard Header Bar */}
               <div className="px-6 py-4 border-b border-slate-800/80 bg-slate-950/80 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -461,9 +461,9 @@ export default function Home() {
           >
             {/* Card 1 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-red-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-red-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 dark:text-red-400 group-hover:scale-110 transition-transform">
+                  <div className="w-13 h-13 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 dark:text-red-400 group-hover:scale-110 transition-transform">
                     <TrendingDown className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -478,9 +478,9 @@ export default function Home() {
 
             {/* Card 2 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-amber-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-amber-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                  <div className="w-13 h-13 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
                     <PackageMinus className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -495,9 +495,9 @@ export default function Home() {
 
             {/* Card 3 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-indigo-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                  <div className="w-13 h-13 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
                     <Clock className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -537,9 +537,9 @@ export default function Home() {
           >
             {/* Feature 1 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                  <div className="w-13 h-13 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
                     <Activity className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -554,9 +554,9 @@ export default function Home() {
 
             {/* Feature 2 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-all">
+                  <div className="w-13 h-13 rounded-lg bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-all">
                     <BrainCircuit className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -571,9 +571,9 @@ export default function Home() {
 
             {/* Feature 3 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:bg-violet-600 group-hover:text-white transition-all">
+                  <div className="w-13 h-13 rounded-lg bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:bg-violet-600 group-hover:text-white transition-all">
                     <RefreshCw className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -588,9 +588,9 @@ export default function Home() {
 
             {/* Feature 4 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <div className="w-13 h-13 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
                     <ClipboardList className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -605,9 +605,9 @@ export default function Home() {
 
             {/* Feature 5 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                  <div className="w-13 h-13 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                     <Truck className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -622,9 +622,9 @@ export default function Home() {
 
             {/* Feature 6 */}
             <motion.div variants={fadeInVariants}>
-              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
+              <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
-                  <div className="w-13 h-13 rounded-2xl bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:bg-amber-600 group-hover:text-white transition-all">
+                  <div className="w-13 h-13 rounded-lg bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:bg-amber-600 group-hover:text-white transition-all">
                     <Zap className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
@@ -660,7 +660,7 @@ export default function Home() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative"
           >
             {/* Step 1 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-indigo-500/60 dark:text-indigo-500/40">01</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">Connect your inventory</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
@@ -669,7 +669,7 @@ export default function Home() {
             </motion.div>
 
             {/* Step 2 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-purple-500/60 dark:text-purple-500/40">02</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">AI analyses your data</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
@@ -678,7 +678,7 @@ export default function Home() {
             </motion.div>
 
             {/* Step 3 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-violet-500/60 dark:text-violet-500/40">03</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">Get smart suggestions</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
@@ -687,7 +687,7 @@ export default function Home() {
             </motion.div>
 
             {/* Step 4 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-emerald-500/60 dark:text-emerald-500/40">04</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">Approve and automate</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
@@ -710,7 +710,7 @@ export default function Home() {
             className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
           >
             {/* Stat 1 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-sm space-y-2">
+            <motion.div variants={fadeInVariants} className="p-8 rounded-lg bg-slate-900/90 border border-slate-800 backdrop-blur-sm space-y-2">
               <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-300">
                 500+
               </p>
@@ -719,7 +719,7 @@ export default function Home() {
             </motion.div>
 
             {/* Stat 2 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-slate-900/90 border border-indigo-500/30 backdrop-blur-sm space-y-2 shadow-xl shadow-indigo-500/10">
+            <motion.div variants={fadeInVariants} className="p-8 rounded-lg bg-slate-900/90 border border-indigo-500/30 backdrop-blur-sm space-y-2 shadow-xl shadow-indigo-500/10">
               <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
                 97%
               </p>
@@ -728,7 +728,7 @@ export default function Home() {
             </motion.div>
 
             {/* Stat 3 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-sm space-y-2">
+            <motion.div variants={fadeInVariants} className="p-8 rounded-lg bg-slate-900/90 border border-slate-800 backdrop-blur-sm space-y-2">
               <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">
                 30 Day
               </p>
@@ -753,7 +753,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch pt-4">
             {/* Starter Plan */}
-            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm relative overflow-visible">
+            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm relative overflow-visible">
               <CardHeader className="space-y-4 pt-6">
                 <div>
                   <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">Starter</CardTitle>
@@ -792,7 +792,7 @@ export default function Home() {
             </Card>
 
             {/* Growth Plan (Most Popular Highlighted) */}
-            <Card className="bg-white dark:bg-slate-900 border-2 border-indigo-600 dark:border-indigo-500/80 rounded-3xl relative flex flex-col justify-between shadow-2xl shadow-indigo-600/15 overflow-visible">
+            <Card className="bg-white dark:bg-slate-900 border-2 border-indigo-600 dark:border-indigo-500/80 rounded-xl relative flex flex-col justify-between shadow-2xl shadow-indigo-600/15 overflow-visible">
               {/* Floating Top Badge */}
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
                 <Badge className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-0 text-xs font-semibold px-4 py-1 uppercase tracking-wider shadow-md shadow-indigo-600/30">
@@ -848,7 +848,7 @@ export default function Home() {
             </Card>
 
             {/* Enterprise Plan */}
-            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm relative overflow-visible">
+            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm relative overflow-visible">
               <CardHeader className="space-y-4 pt-6">
                 <div>
                   <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">Enterprise</CardTitle>
@@ -893,7 +893,7 @@ export default function Home() {
       {/* 8. CTA SECTION */}
       <section className="py-20 relative">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-3xl bg-gradient-to-br from-indigo-900/90 via-slate-900 to-violet-950/90 border border-indigo-500/30 p-10 sm:p-16 text-center overflow-hidden shadow-2xl text-white">
+          <div className="relative rounded-xl bg-gradient-to-br from-indigo-900/90 via-slate-900 to-violet-950/90 border border-indigo-500/30 p-10 sm:p-16 text-center overflow-hidden shadow-2xl text-white">
             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl pointer-events-none" />
 

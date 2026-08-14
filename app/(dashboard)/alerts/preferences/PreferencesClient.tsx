@@ -97,7 +97,7 @@ export default function PreferencesClient() {
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full max-w-4xl mx-auto">
       {/* ── HERO HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -107,7 +107,7 @@ export default function PreferencesClient() {
               variant="outline"
               size="icon"
               onClick={() => router.back()}
-              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+              className="shrink-0 size-10 rounded-lg bg-white/10 hover:bg-white/20 border-white/20 text-white"
             >
               <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
             </Button>
@@ -129,7 +129,7 @@ export default function PreferencesClient() {
       </div>
 
       {/* ── SECTION 1: ALERT TYPES ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <BellIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -184,7 +184,7 @@ export default function PreferencesClient() {
             return (
               <div
                 key={item.id}
-                className="flex items-center justify-between gap-4 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                className="flex items-center justify-between gap-4 p-3.5 rounded-lg border border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0 mt-0.5">
@@ -219,7 +219,7 @@ export default function PreferencesClient() {
       </Card>
 
       {/* ── SECTION 2: NOTIFICATION CHANNELS ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <MailIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -232,7 +232,7 @@ export default function PreferencesClient() {
 
         <CardContent className="pt-4 space-y-4">
           {/* In-App Notifications */}
-          <div className="flex items-center justify-between gap-4 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between gap-4 p-3.5 rounded-lg border border-slate-100 dark:border-slate-800">
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-white">In-App Notifications</p>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
@@ -256,7 +256,7 @@ export default function PreferencesClient() {
           </div>
 
           {/* Email Notifications */}
-          <div className="flex flex-col gap-2 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">Email Notifications</p>
@@ -289,7 +289,7 @@ export default function PreferencesClient() {
       </Card>
 
       {/* ── SECTION 3: ALERT THRESHOLDS ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <SlidersIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -356,14 +356,14 @@ export default function PreferencesClient() {
         <Button
           variant="outline"
           onClick={() => router.back()}
-          className="h-10 rounded-2xl text-xs font-semibold px-5"
+          className="h-10 rounded-lg text-xs font-semibold px-5"
         >
           Cancel
         </Button>
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="h-10 rounded-2xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-6 shadow-md border-0"
+          className="h-10 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-6 shadow-md border-0"
         >
           {saving ? (
             <>

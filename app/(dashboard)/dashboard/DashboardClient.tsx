@@ -101,7 +101,7 @@ export function DashboardClient() {
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
 
       {/* ── 1. EXECUTIVE HEADER & LIVE AI ALERT BAR ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -123,17 +123,17 @@ export function DashboardClient() {
 
         {/* Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5 z-10 pt-2 lg:pt-0">
-          <Button asChild size="sm" className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-md border-0 rounded-xl">
+          <Button asChild size="sm" className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-md border-0 rounded-lg">
             <Link href="/reorders/purchase-orders">
               <ShoppingCart className="w-4 h-4 mr-1.5" /> PO Drafts ({reorders?.length ?? 0})
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-xl">
+          <Button asChild variant="outline" size="sm" className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-lg">
             <Link href="/forecasting">
               <Sparkles className="w-4 h-4 mr-1.5 text-amber-400" /> AI Forecasts
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-xl">
+          <Button asChild variant="outline" size="sm" className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-lg">
             <Link href="/forecasting/pricing">
               <Zap className="w-4 h-4 mr-1.5 text-indigo-400" /> Price Cut AI
             </Link>
@@ -145,11 +145,11 @@ export function DashboardClient() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
 
         {/* Stock Value */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Total Stock Value</CardDescription>
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <div className="p-2 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <DollarSign className="w-4 h-4" />
               </div>
             </div>
@@ -166,11 +166,11 @@ export function DashboardClient() {
         </Card>
 
         {/* Active SKUs */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Active Product SKUs</CardDescription>
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+              <div className="p-2 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                 <Package className="w-4 h-4" />
               </div>
             </div>
@@ -187,11 +187,11 @@ export function DashboardClient() {
         </Card>
 
         {/* AI Forecast Accuracy */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">AI Forecast Precision</CardDescription>
-              <div className="p-2 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
+              <div className="p-2 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400">
                 <Sparkles className="w-4 h-4" />
               </div>
             </div>
@@ -208,11 +208,11 @@ export function DashboardClient() {
         </Card>
 
         {/* Critical Stock */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Critical Risk Items</CardDescription>
-              <div className="p-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
+              <div className="p-2 rounded-md bg-red-500/10 text-red-600 dark:text-red-400">
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
@@ -227,11 +227,11 @@ export function DashboardClient() {
         </Card>
 
         {/* Pending Reorder Capital */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Pending PO Drafts</CardDescription>
-              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <div className="p-2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
                 <ShoppingCart className="w-4 h-4" />
               </div>
             </div>
@@ -257,7 +257,7 @@ export function DashboardClient() {
         </div>
 
         {/* Inventory Health & Distribution Overview */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm flex flex-col justify-between">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col justify-between">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -318,7 +318,7 @@ export function DashboardClient() {
             { dept: "Beverages & Cold Drinks", items: "310 SKUs", health: "99% Healthy", risk: "1 Overstock", color: "border-blue-500/30 text-blue-500" },
             { dept: "Pantry & Grain Staples", items: "266 SKUs", health: "97% Healthy", risk: "2 Low Stock", color: "border-amber-500/30 text-amber-500" },
           ].map((d) => (
-            <Card key={d.dept} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:border-indigo-500/30 transition-all">
+            <Card key={d.dept} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm hover:border-indigo-500/30 transition-all">
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">{d.dept}</h3>
@@ -341,11 +341,11 @@ export function DashboardClient() {
       <div className="grid gap-6 lg:grid-cols-2">
 
         {/* High-Priority AI Reorders Stream */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm flex flex-col h-full">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col h-full">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <div className="p-2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
                   <ShoppingCart className="w-5 h-5" />
                 </div>
                 <div>
@@ -353,7 +353,7 @@ export function DashboardClient() {
                   <CardDescription className="text-xs text-slate-500">Auto-calculated quantities based on safety stock levels</CardDescription>
                 </div>
               </div>
-              <Button asChild variant="outline" size="xs" className="rounded-lg text-xs">
+              <Button asChild variant="outline" size="xs" className="rounded-md text-xs">
                 <Link href="/reorders/purchase-orders">View All ({reorders?.length ?? 0})</Link>
               </Button>
             </div>
@@ -367,7 +367,7 @@ export function DashboardClient() {
               </div>
             ) : (
               reorders.slice(0, 4).map((item) => (
-                <div key={item._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 gap-3">
+                <div key={item._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-slate-900 dark:text-white">{item.productName}</span>
@@ -402,11 +402,11 @@ export function DashboardClient() {
         </Card>
 
         {/* AI Dynamic Price Cuts Stream */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm flex flex-col h-full">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col h-full">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                <div className="p-2 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
@@ -414,7 +414,7 @@ export function DashboardClient() {
                   <CardDescription className="text-xs text-slate-500">AI markdown optimization to prevent food waste & spoilage loss</CardDescription>
                 </div>
               </div>
-              <Button asChild variant="outline" size="xs" className="rounded-lg text-xs">
+              <Button asChild variant="outline" size="xs" className="rounded-md text-xs">
                 <Link href="/forecasting/pricing">View All</Link>
               </Button>
             </div>
@@ -428,7 +428,7 @@ export function DashboardClient() {
               </div>
             ) : (
               pricingSuggestions.slice(0, 4).map((s) => (
-                <div key={s._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 gap-3">
+                <div key={s._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-slate-900 dark:text-white">{s.productName}</span>

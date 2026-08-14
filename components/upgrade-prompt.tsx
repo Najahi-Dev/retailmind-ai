@@ -46,7 +46,7 @@ export function UpgradePrompt({
   };
 
   return (
-    <div className="w-full my-8 p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-indigo-950/80 via-slate-900 to-violet-950/80 border border-indigo-500/30 text-white shadow-2xl relative overflow-hidden">
+    <div className="w-full my-8 p-8 sm:p-12 rounded-xl bg-gradient-to-br from-indigo-950/80 via-slate-900 to-violet-950/80 border border-indigo-500/30 text-white shadow-2xl relative overflow-hidden">
       {/* Background Ambient Glows */}
       <div className="absolute top-0 right-0 -mt-12 -mr-12 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
@@ -65,7 +65,7 @@ export function UpgradePrompt({
           {description}
         </p>
 
-        <div className="py-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto bg-slate-950/50 p-6 rounded-2xl border border-slate-800/80">
+        <div className="py-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto bg-slate-950/50 p-6 rounded-lg border border-slate-800/80">
           <div className="flex items-center gap-2.5 text-xs sm:text-sm text-slate-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>AI Demand Forecasting (SKU Level)</span>

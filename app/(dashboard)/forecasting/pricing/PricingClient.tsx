@@ -149,7 +149,7 @@ export default function PricingClient() {
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
 
       {/* ── 1. EXECUTIVE HEADER & HERO BANNER ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Overlay */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -185,7 +185,7 @@ export default function PricingClient() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* Pending Review */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Pending Review</CardDescription>
@@ -204,7 +204,7 @@ export default function PricingClient() {
         </Card>
 
         {/* Recommended Markdowns */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Recommended Markdowns</CardDescription>
@@ -223,7 +223,7 @@ export default function PricingClient() {
         </Card>
 
         {/* Recommended Increases */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Margin Boosts</CardDescription>
@@ -242,7 +242,7 @@ export default function PricingClient() {
         </Card>
 
         {/* Applied Today */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <CardHeader className="pb-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Applied Price Updates</CardDescription>
@@ -263,7 +263,7 @@ export default function PricingClient() {
       </div>
 
       {/* ── 3. SEARCH, FILTER & LIST CONTAINER ── */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
         <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -328,7 +328,7 @@ export default function PricingClient() {
                   <div
                     key={s._id}
                     className={`
-                      rounded-2xl border p-4 sm:p-5 transition-all duration-200
+                      rounded-lg border p-4 sm:p-5 transition-all duration-200
                       ${
                         s.status === "pending"
                           ? "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/40 shadow-xs"

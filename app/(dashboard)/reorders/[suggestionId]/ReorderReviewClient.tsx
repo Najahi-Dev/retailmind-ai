@@ -110,7 +110,7 @@ export default function ReorderReviewClient({
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
       {/* ── 1. EXECUTIVE HERO HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -120,7 +120,7 @@ export default function ReorderReviewClient({
               variant="outline"
               size="icon"
               onClick={() => router.back()}
-              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+              className="shrink-0 size-10 rounded-lg bg-white/10 hover:bg-white/20 border-white/20 text-white"
             >
               <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
             </Button>
@@ -162,7 +162,7 @@ export default function ReorderReviewClient({
         {/* Left Column — AI Rationale & Stock Levels */}
         <div className="space-y-5">
           {/* Card 1: AI Rationale */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <SparklesIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -170,7 +170,7 @@ export default function ReorderReviewClient({
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-3">
-              <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 font-medium bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 font-medium bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-lg border border-slate-200/60 dark:border-slate-800">
                 {suggestion.rationale}
               </p>
               {suggestion.orderByDate && (
@@ -189,7 +189,7 @@ export default function ReorderReviewClient({
           </Card>
 
           {/* Card 2: Current Stock Levels & Capacity Gauge */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <PackageIcon className="w-4 h-4 text-emerald-500" />
@@ -235,7 +235,7 @@ export default function ReorderReviewClient({
         </div>
 
         {/* Right Column — Create PO Form */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
             <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <ShoppingCartIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -302,7 +302,7 @@ export default function ReorderReviewClient({
             </div>
 
             {/* Order Summary Box */}
-            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 p-4 space-y-2.5">
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 p-4 space-y-2.5">
               <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Purchase Order Summary
               </p>

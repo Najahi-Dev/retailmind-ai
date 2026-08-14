@@ -150,7 +150,7 @@ export default function BillingPage() {
 
       {/* Current Subscription Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+        <Card className="lg:col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
             <div className="space-y-1">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -193,7 +193,7 @@ export default function BillingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-slate-600 dark:text-slate-400">
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40">
               <Clock className="w-5 h-5 text-indigo-500 shrink-0" />
               <div>
                 <p className="text-xs font-medium text-slate-500">Next Billing Date</p>
@@ -203,7 +203,7 @@ export default function BillingPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40">
               <Shield className="w-5 h-5 text-indigo-500 shrink-0" />
               <div>
                 <p className="text-xs font-medium text-slate-500">Product Limit</p>
@@ -243,7 +243,7 @@ export default function BillingPage() {
         </Card>
 
         {/* Feature Overview Card */}
-        <Card className="bg-gradient-to-br from-indigo-900/90 to-slate-900 border-indigo-500/30 rounded-3xl p-6 text-white shadow-lg space-y-4">
+        <Card className="bg-gradient-to-br from-indigo-900/90 to-slate-900 border-indigo-500/30 rounded-xl p-6 text-white shadow-lg space-y-4">
           <div className="flex items-center gap-2 text-indigo-300 font-semibold text-xs uppercase tracking-wider">
             <Sparkles className="w-4 h-4 text-indigo-400" /> Plan Features
           </div>
@@ -273,7 +273,7 @@ export default function BillingPage() {
 
       {/* Admin VIP / Unlimited Access Management Section */}
       {currentUser?.role === "admin" && (
-        <Card className="bg-white dark:bg-slate-900 border-indigo-500/30 rounded-3xl p-6 shadow-md space-y-6">
+        <Card className="bg-white dark:bg-slate-900 border-indigo-500/30 rounded-xl p-6 shadow-md space-y-6">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
             <div>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
@@ -289,7 +289,7 @@ export default function BillingPage() {
             </Badge>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+          <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
             <div className="space-y-1">
               <p className="font-bold text-sm text-slate-900 dark:text-white">
                 {currentUser.name} ({currentUser.email})

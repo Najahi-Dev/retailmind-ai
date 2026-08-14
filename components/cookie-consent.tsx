@@ -93,12 +93,12 @@ export function CookieConsent() {
       {/* Floating Cookie Consent Banner */}
       {isOpen && !showPreferences && (
         <div className="fixed bottom-6 left-6 right-6 md:right-auto md:max-w-md z-50 animate-in fade-in slide-in-from-bottom-5 duration-500">
-          <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 backdrop-blur-xl shadow-2xl rounded-3xl p-6 relative overflow-hidden text-slate-900 dark:text-slate-100">
+          <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 backdrop-blur-xl shadow-2xl rounded-xl p-6 relative overflow-hidden text-slate-900 dark:text-slate-100">
             {/* Ambient Accent Glow */}
             <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <div className="w-12 h-12 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
                 <Cookie className="w-6 h-6 animate-pulse" />
               </div>
 
@@ -152,7 +152,7 @@ export function CookieConsent() {
 
       {/* Cookie Preferences Modal */}
       <Dialog open={showPreferences} onOpenChange={setShowPreferences}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-3xl p-6">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl p-6">
           <DialogHeader className="space-y-2">
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
               <ShieldCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
@@ -165,7 +165,7 @@ export function CookieConsent() {
 
           <div className="space-y-4 py-4">
             {/* Category 1: Necessary */}
-            <div className="p-4 rounded-2xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4">
+            <div className="p-4 rounded-lg bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-slate-900 dark:text-white">
@@ -182,7 +182,7 @@ export function CookieConsent() {
             </div>
 
             {/* Category 2: Analytics & Performance */}
-            <div className="p-4 rounded-2xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4">
+            <div className="p-4 rounded-lg bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="font-bold text-sm text-slate-900 dark:text-white">
                   Analytics & Telemetry
@@ -202,7 +202,7 @@ export function CookieConsent() {
             </div>
 
             {/* Category 3: Functional & Preferences */}
-            <div className="p-4 rounded-2xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4">
+            <div className="p-4 rounded-lg bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="font-bold text-sm text-slate-900 dark:text-white">
                   Functional Preferences

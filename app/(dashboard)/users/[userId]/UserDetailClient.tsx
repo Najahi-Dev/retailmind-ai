@@ -216,7 +216,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
       />
 
       {/* ── HERO BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
@@ -225,7 +225,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
               variant="outline"
               size="icon"
               onClick={() => router.push("/users")}
-              className="shrink-0 size-10 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white"
+              className="shrink-0 size-10 rounded-lg bg-white/10 hover:bg-white/20 border-white/20 text-white"
             >
               <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
             </Button>
@@ -237,10 +237,10 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
                   <img
                     src={imageUrl}
                     alt={name}
-                    className="size-14 rounded-2xl object-cover border-2 border-indigo-400/40 shadow-lg"
+                    className="size-14 rounded-lg object-cover border-2 border-indigo-400/40 shadow-lg"
                   />
                 ) : (
-                  <div className="size-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
+                  <div className="size-14 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
                     {initials}
                   </div>
                 )}
@@ -288,7 +288,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="h-10 rounded-2xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-5 shadow-md border-0"
+              className="h-10 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-5 shadow-md border-0"
             >
               {saving ? (
                 <>
@@ -306,7 +306,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
 
       <div className="w-full">
         {/* ── PROFILE & EDIT FORM ── */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
             <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <UsersIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -423,7 +423,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
             </div>
 
             {/* Account Status Switch */}
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-4">
+            <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">Account Status</p>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
