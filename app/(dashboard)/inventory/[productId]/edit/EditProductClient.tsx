@@ -143,7 +143,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
   const netProfit = sellingPrice - costPrice;
 
   return (
-    <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
+    <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

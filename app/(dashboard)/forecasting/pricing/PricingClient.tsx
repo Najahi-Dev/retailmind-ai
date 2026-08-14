@@ -86,7 +86,7 @@ export default function PricingClient() {
 
   if (access && !access.canAccessPricingEngine) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="p-6">
         <UpgradePrompt
           title="Dynamic Pricing Engine Gated"
           description="Automated margin optimization and near-expiry price adjustments are exclusive to RetailMind AI Growth & Enterprise plans."
@@ -146,7 +146,7 @@ export default function PricingClient() {
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
 
       {/* ── 1. EXECUTIVE HEADER & HERO BANNER ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">

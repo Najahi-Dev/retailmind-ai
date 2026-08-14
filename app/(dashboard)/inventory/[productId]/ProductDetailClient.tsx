@@ -145,7 +145,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
   // ── Loading ───────────────────────────────────
   if (!detail) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
+      <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5">
         <div className="flex items-center gap-2 text-muted-foreground">
           <RefreshCwIcon className="animate-spin size-4" />
           Loading product...
@@ -170,7 +170,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
   const { product, category, supplier, inventory, location, status } = detail;
 
   return (
-    <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6">
+    <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5">
       {/* ── 1. HERO PRODUCT HEADER BANNER ── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">

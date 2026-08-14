@@ -190,7 +190,7 @@ export default function SupplierDetailClient({
   const statusCfg = SUPPLIER_STATUS[supplier.status] ?? SUPPLIER_STATUS.active;
 
   return (
-    <div className="flex flex-1 flex-col gap-5 p-4 lg:p-6 w-full">
+    <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
       {/* ── 1. HERO HEADER BANNER ── */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         {/* Glow Ambient Effect */}

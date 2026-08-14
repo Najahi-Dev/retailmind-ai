@@ -145,7 +145,7 @@ export default function TransferClient({ role }: Props) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
+    <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5">
       <Card>
         <CardHeader>
           <CardTitle>Stock Transfer</CardTitle>

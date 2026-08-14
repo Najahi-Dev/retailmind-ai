@@ -119,7 +119,7 @@ export default function BillingPage() {
     : "N/A";
 
   return (
-    <div className="space-y-8 p-6 max-w-6xl mx-auto">
+    <div className="space-y-5 p-3 sm:p-4 lg:p-5 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>

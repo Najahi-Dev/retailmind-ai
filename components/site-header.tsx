@@ -64,7 +64,7 @@ export function SiteHeader() {
     <header className="
       sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 border-b border-slate-200/80 dark:border-slate-800/80
       bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl text-slate-900 dark:text-slate-100
-      px-6 lg:px-8
+      px-4 lg:px-5
       transition-all ease-linear
       group-has-data-[collapsible=icon]/sidebar-wrapper:h-16
     ">

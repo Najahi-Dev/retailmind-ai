@@ -206,7 +206,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6 w-full max-w-5xl mx-auto">
+    <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
       <input
         type="file"
         ref={fileInputRef}

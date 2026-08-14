@@ -216,7 +216,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 lg:p-8 w-full max-w-7xl mx-auto">
+    <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
       {/* Top Navigation / Breadcrumb */}
       <div className="flex items-center justify-between">
         <Link
