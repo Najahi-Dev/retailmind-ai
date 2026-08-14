@@ -65,6 +65,51 @@ export const getCurrentUser = query({
   },
 });
 
+// Auto-provision or update logged-in Clerk user in Convex database
+export const storeUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    const name =
+      identity.name ||
+      `${identity.givenName ?? ""} ${identity.familyName ?? ""}`.trim() ||
+      identity.email ||
+      "User";
+    const email = identity.email ?? "";
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        name,
+        email: email || existing.email,
+      });
+      return existing._id;
+    }
+
+    const allUsers = await ctx.db.query("users").collect();
+    const hasAdmin = allUsers.some((u) => u.role === "admin");
+    const role = !hasAdmin ? "admin" : "staff";
+
+    const userId = await ctx.db.insert("users", {
+      clerkId: identity.subject,
+      email,
+      name,
+      role,
+      isActive: true,
+      plan: "starter",
+      createdAt: Date.now(),
+    });
+
+    return userId;
+  },
+});
+
 // Get all users for admin management
 export const getUsers = query({
   args: {

@@ -533,3 +533,66 @@ export const seedPriceSuggestions = mutation({
     return { message: `Created ${created} price suggestions!` };
   },
 });
+
+// ── Seed Platform Users ──
+export const seedUsers = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const existing = await ctx.db.query("users").first();
+    if (existing) return { message: "Users already exist in database!" };
+
+    const sampleUsers = [
+      {
+        clerkId: "user_ashan_070",
+        name: "Ashan",
+        email: "mohamedashan070@gmail.com",
+        role: "staff" as const,
+        plan: "starter" as const,
+        isActive: false,
+        createdAt: Date.now() - 5 * 86400000,
+      },
+      {
+        clerkId: "user_ahmed_2003",
+        name: "AHMADH NAJAHI",
+        email: "ahmednajahi2003@gmail.com",
+        role: "supplier" as const,
+        plan: "starter" as const,
+        isActive: true,
+        createdAt: Date.now() - 90 * 86400000,
+      },
+      {
+        clerkId: "user_naji_1",
+        name: "Ahmadh Najahi",
+        email: "najinajahi1@gmail.com",
+        role: "manager" as const,
+        plan: "growth" as const,
+        isActive: true,
+        createdAt: Date.now() - 90 * 86400000,
+      },
+      {
+        clerkId: "user_devnaja",
+        name: "Dev Naja",
+        email: "devnaja.arcade@gmail.com",
+        role: "admin" as const,
+        plan: "starter" as const,
+        isActive: true,
+        createdAt: Date.now() - 90 * 86400000,
+      },
+      {
+        clerkId: "user_najahikiller",
+        name: "Najahi Killer",
+        email: "najahikiller@gmail.com",
+        role: "staff" as const,
+        plan: "starter" as const,
+        isActive: true,
+        createdAt: Date.now() - 90 * 86400000,
+      },
+    ];
+
+    for (const u of sampleUsers) {
+      await ctx.db.insert("users", u);
+    }
+
+    return { message: `✓ Seeded ${sampleUsers.length} platform users!` };
+  },
+});
