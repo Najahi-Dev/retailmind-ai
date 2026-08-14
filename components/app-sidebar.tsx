@@ -199,6 +199,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: "/users",
       icon: <UsersIcon className="size-4" />,
     },
+    {
+      title: "Database Backup",
+      url: "/settings/backup",
+      icon: <DatabaseIcon className="size-4 text-amber-500" />,
+    },
   ];
 
   const adminDocuments = [
