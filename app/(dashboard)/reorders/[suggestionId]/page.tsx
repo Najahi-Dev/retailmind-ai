@@ -1,16 +1,20 @@
-import { currentUser } from "@clerk/nextjs/server";
-import { redirect }    from "next/navigation";
+import { redirect } from "next/navigation";
 import ReorderReviewClient from "./ReorderReviewClient";
+import { getServerUser } from "@/lib/get-server-user";
 
-export default async function ReorderReviewPage({
-  params,
-}: {
+interface Props {
   params: Promise<{ suggestionId: string }>;
-}) {
-  const user = await currentUser();
+}
+
+export default async function SuggestionDetailPage({ params }: Props) {
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
-  const role = user.publicMetadata?.role as string;
-  if (!["admin", "manager"].includes(role)) redirect("/access-denied");
-  const { suggestionId } = await params;
-  return <ReorderReviewClient suggestionId={suggestionId} />;
+
+  const resolvedParams = await params;
+
+  return (
+    <ReorderReviewClient
+      suggestionId={resolvedParams.suggestionId}
+    />
+  );
 }

@@ -15,23 +15,20 @@ import {
   Loader2,
   UserCheck,
   UserX,
-  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 export default function BillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [vipLoadingId, setVipLoadingId] = useState<string | null>(null);
 
-  // Queries
-  const currentUser = useQuery(api.users.getCurrentUser);
-  const subData = useQuery(api.subscriptions.getUserSubscription, {});
-  const allUsers = useQuery(api.users.getCurrentUser) ? useQuery(api.users.getCurrentUser) : null;
+  const { currentUser } = useAuth();
+  const subData = useQuery(api.subscriptions.getUserSubscription, { userId: currentUser?.id });
 
   // Admin mutation
   const grantVip = useMutation(api.subscriptions.grantVipAccess);
@@ -39,7 +36,7 @@ export default function BillingPage() {
 
   const plan = subData?.userPlan || "starter";
   const isVip = subData?.isVipAccess || currentUser?.role === "admin" || false;
-  const subscription = subData?.subscription;
+  const subscription: any = subData?.subscription;
 
   const handleUpgrade = async () => {
     try {
@@ -88,20 +85,20 @@ export default function BillingPage() {
   };
 
   const handleCancelAtPeriodEnd = async () => {
-    if (!currentUser?.clerkId) return;
+    if (!currentUser?.id) return;
     try {
-      await cancelSub({ clerkId: currentUser.clerkId });
+      await cancelSub({ userId: currentUser.id });
       toast.success("Subscription set to cancel at period end.");
     } catch (err: any) {
       toast.error(err.message || "Failed to cancel subscription.");
     }
   };
 
-  const handleToggleVip = async (targetClerkId: string, currentVip: boolean, targetName: string) => {
+  const handleToggleVip = async (targetUserId: string, currentVip: boolean) => {
     try {
-      setVipLoadingId(targetClerkId);
+      setVipLoadingId(targetUserId);
       const res = await grantVip({
-        targetClerkId,
+        targetUserId,
         isVipAccess: !currentVip,
         grantedPlan: !currentVip ? "enterprise" : undefined,
       });
@@ -233,7 +230,7 @@ export default function BillingPage() {
               Stripe Customer Portal
             </Button>
 
-            {plan === "growth" && !subscription?.cancelAtPeriodEnd && (
+            {plan === "growth" && subscription && !subscription.cancelAtPeriodEnd && (
               <Button
                 onClick={handleCancelAtPeriodEnd}
                 variant="ghost"
@@ -304,15 +301,15 @@ export default function BillingPage() {
                 Full Admin VIP Access
               </Badge>
               <Button
-                onClick={() => handleToggleVip(currentUser.clerkId, currentUser.isVipAccess || false, currentUser.name)}
-                disabled={vipLoadingId === currentUser.clerkId}
+                onClick={() => handleToggleVip(currentUser.id, isVip)}
+                disabled={vipLoadingId === currentUser.id}
                 size="sm"
-                variant={currentUser.isVipAccess ? "destructive" : "default"}
+                variant={isVip ? "destructive" : "default"}
                 className="rounded-xl text-xs"
               >
-                {vipLoadingId === currentUser.clerkId ? (
+                {vipLoadingId === currentUser.id ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : currentUser.isVipAccess ? (
+                ) : isVip ? (
                   <>
                     <UserX className="w-3.5 h-3.5 mr-1" /> Revoke VIP
                   </>

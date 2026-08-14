@@ -1,14 +1,13 @@
 // app/(dashboard)/users/page.tsx
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import UsersClient from "./UsersClient";
-import { getAuthUserRole } from "@/lib/auth-server";
+import { getServerUser } from "@/lib/get-server-user";
 
 export default async function UsersPage() {
-  const user = await currentUser();
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
 
-  const role = await getAuthUserRole(user);
+  const role = user.role;
 
   // Only Admin or Manager can access user management
   if (!["admin", "manager"].includes(role)) {

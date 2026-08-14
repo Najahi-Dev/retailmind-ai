@@ -1,125 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-// Called by webhook — save user to DB
-export const syncClerkUser = mutation({
-  args: {
-    clerkId:  v.string(),
-    email:    v.string(),
-    name:     v.string(),
-    role:     v.union(
-      v.literal("admin"),
-      v.literal("manager"),
-      v.literal("staff"),
-      v.literal("supplier")
-    ),
-    isActive: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    // Check if user already exists
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", args.clerkId)
-      )
-      .first();
-
-    if (existing) {
-      // Update existing user
-      await ctx.db.patch(existing._id, {
-        email:    args.email,
-        name:     args.name,
-        role:     args.role,
-        isActive: args.isActive,
-      });
-      return existing._id;
-    }
-
-    // Create new user
-    const userId = await ctx.db.insert("users", {
-      clerkId:   args.clerkId,
-      email:     args.email,
-      name:      args.name,
-      role:      args.role,
-      isActive:  args.isActive,
-      createdAt: Date.now(),
-    });
-
-    return userId;
-  },
-});
-
-// Get current logged-in user
-export const getCurrentUser = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    return await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", identity.subject)
-      )
-      .first();
-  },
-});
-
-// Get user document by Clerk Subject ID
-export const getUserByClerkId = query({
-  args: { clerkId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .first();
-  },
-});
-
-// Auto-provision or update logged-in Clerk user in Convex database
-export const storeUser = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    const name =
-      identity.name ||
-      `${identity.givenName ?? ""} ${identity.familyName ?? ""}`.trim() ||
-      identity.email ||
-      "User";
-    const email = identity.email ?? "";
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        name,
-        email: email || existing.email,
-      });
-      return existing._id;
-    }
-
-    const allUsers = await ctx.db.query("users").collect();
-    const hasAdmin = allUsers.some((u) => u.role === "admin");
-    const role = !hasAdmin ? "admin" : "staff";
-
-    const userId = await ctx.db.insert("users", {
-      clerkId: identity.subject,
-      email,
-      name,
-      role,
-      isActive: true,
-      plan: "starter",
-      createdAt: Date.now(),
-    });
-
-    return userId;
-  },
-});
+import bcrypt from "bcryptjs";
 
 // Get all users for admin management
 export const getUsers = query({
@@ -131,12 +12,12 @@ export const getUsers = query({
     let users = await ctx.db.query("users").collect();
 
     if (args.role && args.role !== "all") {
-      users = users.filter(u => u.role === args.role);
+      users = users.filter((u) => u.role === args.role);
     }
 
     if (args.status && args.status !== "all") {
       const isActive = args.status === "active";
-      users = users.filter(u => u.isActive === isActive);
+      users = users.filter((u) => u.isActive === isActive);
     }
 
     return users.sort((a, b) => b.createdAt - a.createdAt);
@@ -149,11 +30,11 @@ export const getUserStats = query({
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
     const total = users.length;
-    const adminCount = users.filter(u => u.role === "admin").length;
-    const managerCount = users.filter(u => u.role === "manager").length;
-    const staffCount = users.filter(u => u.role === "staff").length;
-    const supplierCount = users.filter(u => u.role === "supplier").length;
-    const activeCount = users.filter(u => u.isActive).length;
+    const adminCount = users.filter((u) => u.role === "admin").length;
+    const managerCount = users.filter((u) => u.role === "manager").length;
+    const staffCount = users.filter((u) => u.role === "staff").length;
+    const supplierCount = users.filter((u) => u.role === "supplier").length;
+    const activeCount = users.filter((u) => u.isActive).length;
     const inactiveCount = total - activeCount;
 
     return {
@@ -206,11 +87,12 @@ export const updateUserPlan = mutation({
   },
 });
 
-// Create Manual User Record
+// Create User Record
 export const createUser = mutation({
   args: {
     name: v.string(),
     email: v.string(),
+    password: v.optional(v.string()),
     role: v.union(
       v.literal("admin"),
       v.literal("manager"),
@@ -220,19 +102,23 @@ export const createUser = mutation({
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
   },
   handler: async (ctx, args) => {
+    const emailClean = args.email.trim().toLowerCase();
     const existing = await ctx.db
       .query("users")
-      .filter(q => q.eq(q.field("email"), args.email))
+      .withIndex("by_email", (q) => q.eq("email", emailClean))
       .first();
 
     if (existing) {
       throw new Error(`User with email ${args.email} already exists`);
     }
 
+    const rawPassword = args.password && args.password.trim() ? args.password : "retailmind123";
+    const passwordHash = bcrypt.hashSync(rawPassword, 12);
+
     const userId = await ctx.db.insert("users", {
-      clerkId: `manual_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      email: args.email,
-      name: args.name,
+      email: emailClean,
+      name: args.name.trim(),
+      passwordHash,
       role: args.role,
       isActive: true,
       plan: args.plan ?? "starter",
@@ -240,23 +126,6 @@ export const createUser = mutation({
     });
 
     return userId;
-  },
-});
-
-// Deactivate user (soft delete)
-export const deactivateByClerkId = mutation({
-  args: { clerkId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", args.clerkId)
-      )
-      .first();
-
-    if (user) {
-      await ctx.db.patch(user._id, { isActive: false });
-    }
   },
 });
 
@@ -295,7 +164,7 @@ export const updateUserFullDetail = mutation({
       isActive: args.isActive,
     });
 
-    return { success: true, clerkId: user.clerkId };
+    return { success: true };
   },
 });
 

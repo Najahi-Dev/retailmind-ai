@@ -1,5 +1,4 @@
 // app/layout.tsx
-import { ClerkProvider } from "@clerk/nextjs";
 import { Poppins, Inter } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
@@ -40,18 +39,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en" className="scroll-smooth no-scrollbar" suppressHydrationWarning>
-        <body className={`${poppins.variable} ${inter.variable} font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200 no-scrollbar transition-colors duration-300`}>
-          <ConvexClientProvider>
-            <ThemeProvider>
-              <TooltipProvider>{children}</TooltipProvider>
-              <Toaster />
-              <CookieConsent />
-            </ThemeProvider>
-          </ConvexClientProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className="scroll-smooth no-scrollbar" suppressHydrationWarning>
+      <body className={`${poppins.variable} ${inter.variable} font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200 no-scrollbar transition-colors duration-300`}>
+        <ConvexClientProvider>
+          <ThemeProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+            <Toaster />
+            <CookieConsent />
+          </ThemeProvider>
+        </ConvexClientProvider>
+      </body>
+    </html>
   );
 }

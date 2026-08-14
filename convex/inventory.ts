@@ -34,10 +34,6 @@ export const getProducts = query({
 export const getInventoryOverview = query({
   args: {},
   handler: async (ctx) => {
-    // ✅ Fix — throw pannaadha, null return pannu
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];  // ← throw illai, empty array return
-
     const [inventoryRecords, products, categories, locations] =
       await Promise.all([
         ctx.db.query("inventory").collect(),
@@ -98,9 +94,6 @@ export const getInventoryOverview = query({
 export const getStockInFormData = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
     const [products, categories, inventories, locations] = await Promise.all([
       ctx.db.query("products").collect(),
       ctx.db.query("categories").collect(),
@@ -176,9 +169,6 @@ export const getStockInFormData = query({
 export const getCategories = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
     return await ctx.db
       .query("categories")
       .collect()
@@ -196,9 +186,6 @@ export const getCategories = query({
 export const getSuppliers = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
     return await ctx.db
       .query("suppliers")
       .collect()
@@ -217,9 +204,6 @@ export const getSuppliers = query({
 export const getStockControlFormData = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
     const [products, locations, inventory] = await Promise.all([
       ctx.db.query("products").collect(),
       ctx.db.query("locations").collect(),
@@ -282,9 +266,6 @@ export const getNextSku = query({
 export const getInventoryStats = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;  // ← throw illai, null return
-
     const [inventoryRecords, products] = await Promise.all([
       ctx.db.query("inventory").collect(),
       ctx.db.query("products").collect(),
@@ -331,9 +312,6 @@ export const getInventoryStats = query({
 export const getProductDetail = query({
   args: { productId: v.id("products") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;  // ← throw illai
-
     const product = await ctx.db.get(args.productId);
     if (!product) return null;
 
@@ -369,9 +347,6 @@ export const getProductDetail = query({
 export const getStockHistory = query({
   args: { productId: v.id("products") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];  // ← throw illai
-
     const movements = await ctx.db
       .query("stockMovements")
       .withIndex("by_product_date", q =>
@@ -400,9 +375,6 @@ export const getStockHistory = query({
 export const getProductPurchaseOrders = query({
   args: { productId: v.id("products") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
     const allPOs = await ctx.db
       .query("purchaseOrders")
       .order("desc")
@@ -433,9 +405,6 @@ export const getProductPurchaseOrders = query({
 export const getProductForecasts = query({
   args: { productId: v.id("products") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
     return await ctx.db
       .query("forecasts")
       .withIndex("by_product", q =>
@@ -456,21 +425,6 @@ export const updateProduct = mutation({
     trackBatches: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Role check — admin and manager only
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", identity.subject)
-      )
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     const { productId, ...updates } = args;
 
     // Remove undefined fields
@@ -502,18 +456,6 @@ export const editProduct = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     const { productId, ...updates } = args;
     const cleanUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined)
@@ -529,17 +471,6 @@ export const editProduct = mutation({
 export const deleteProduct = mutation({
   args: { productId: v.id("products") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
 
     // Remove inventory records
     const inventories = await ctx.db
@@ -685,19 +616,10 @@ export const recordStockIn = mutation({
       });
     }
 
-    // Get user from Convex
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", identity.subject)
-      )
-      .first();
-
     // Audit log
     await ctx.db.insert("stockMovements", {
       productId:  args.productId,
       locationId: args.locationId,
-      userId:     user?._id,
       type:       "stock_in",
       reason:     args.reason ?? "Restock",
       quantity:   args.quantity,
@@ -732,18 +654,6 @@ export const createProduct = mutation({
     initialQuantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     const product = {
       categoryId: args.categoryId,
       primarySupplierId: args.primarySupplierId,
@@ -790,15 +700,9 @@ export const createProduct = mutation({
         });
       }
 
-      const user = await ctx.db
-        .query("users")
-        .withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject))
-        .first();
-
       await ctx.db.insert("stockMovements", {
         productId: id,
         locationId: args.initialLocationId!,
-        userId: user?._id,
         type: "stock_in",
         reason: "Initial stock",
         quantity: args.initialQuantity,
@@ -821,9 +725,6 @@ export const recordStockOut = mutation({
     notes:      v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
     if (args.quantity <= 0) {
       throw new Error("Quantity must be greater than zero.");
     }
@@ -852,18 +753,10 @@ export const recordStockOut = mutation({
       lastUpdated: Date.now(),
     });
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", identity.subject)
-      )
-      .first();
-
     // Audit log
     await ctx.db.insert("stockMovements", {
       productId:  args.productId,
       locationId: args.locationId,
-      userId:     user!._id,
       type:       "stock_out",
       reason:     args.reason ?? "Sale",
       quantity:   -args.quantity,
@@ -879,8 +772,6 @@ export const recordStockOut = mutation({
     const product = await ctx.db.get(args.productId);
 
     if (product && newOnHand < product.reorderPoint) {
-
-      // Already pending suggestion irukka check
       const existing = await ctx.db
         .query("reorderSuggestions")
         .withIndex("by_product", q =>
@@ -889,7 +780,6 @@ export const recordStockOut = mutation({
         .filter(q => q.eq(q.field("status"), "pending"))
         .first();
 
-      // Illana — new suggestion create pannu
       if (!existing) {
         let urgency: "critical" | "high" | "medium" | "low";
         let rationale = "";
@@ -928,7 +818,6 @@ export const recordStockOut = mutation({
           createdAt:           Date.now(),
         });
 
-        // Alert also create pannu
         await ctx.db.insert("alerts", {
           productId:   args.productId,
           type:        urgency === "critical" ? "critical_stock" : "low_stock",
@@ -944,7 +833,6 @@ export const recordStockOut = mutation({
     return { success: true, newOnHand };
   },
 });
-
 
 export const getStockOutFormData = query({
   args: {},
@@ -975,7 +863,6 @@ export const getStockOutFormData = query({
       })
     );
 
-    // Filter nulls with type guard
     const filtered = productsWithStock
       .filter((p): p is NonNullable<typeof p> => p !== null)
       .filter(p => p.onHand > 0)
@@ -998,20 +885,8 @@ export const recordStockAdjustment = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
     if (args.adjustedOnHand < 0) {
       throw new Error("Adjusted stock cannot be negative.");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
     }
 
     const inv = await ctx.db
@@ -1047,7 +922,6 @@ export const recordStockAdjustment = mutation({
     await ctx.db.insert("stockMovements", {
       productId: args.productId,
       locationId: args.locationId,
-      userId: user._id,
       type: "adjustment",
       reason: args.reason ?? "Manual stock adjustment",
       quantity: delta,
@@ -1076,24 +950,12 @@ export const transferStockBetweenLocations = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
     if (args.fromLocationId === args.toLocationId) {
       throw new Error("Source and destination locations must be different.");
     }
 
     if (args.quantity <= 0) {
       throw new Error("Transfer quantity must be greater than zero.");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
     }
 
     const sourceInventory = await ctx.db
@@ -1151,7 +1013,6 @@ export const transferStockBetweenLocations = mutation({
     await ctx.db.insert("stockMovements", {
       productId: args.productId,
       locationId: args.fromLocationId,
-      userId: user._id,
       type: "transfer_out",
       reason,
       quantity: -args.quantity,
@@ -1163,7 +1024,6 @@ export const transferStockBetweenLocations = mutation({
     await ctx.db.insert("stockMovements", {
       productId: args.productId,
       locationId: args.toLocationId,
-      userId: user._id,
       type: "transfer_in",
       reason,
       quantity: args.quantity,
@@ -1205,18 +1065,6 @@ export const batchImportProducts = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     let defaultLocation = await ctx.db.query("locations").first();
     let defaultLocationId: Id<"locations">;
     if (!defaultLocation) {
@@ -1301,7 +1149,6 @@ export const batchImportProducts = mutation({
         await ctx.db.insert("stockMovements", {
           productId,
           locationId: defaultLocationId,
-          userId: user._id,
           type: "stock_in",
           reason: "Initial CSV Import Stock",
           quantity: initQty,

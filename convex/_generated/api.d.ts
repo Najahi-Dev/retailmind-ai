@@ -9,8 +9,11 @@
  */
 
 import type * as alerts from "../alerts.js";
+import type * as auth from "../auth.js";
+import type * as authInternal from "../authInternal.js";
 import type * as crons from "../crons.js";
 import type * as inventory from "../inventory.js";
+import type * as lib_roleGuard from "../lib/roleGuard.js";
 import type * as pricing from "../pricing.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as reorder from "../reorder.js";
@@ -27,8 +30,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   alerts: typeof alerts;
+  auth: typeof auth;
+  authInternal: typeof authInternal;
   crons: typeof crons;
   inventory: typeof inventory;
+  "lib/roleGuard": typeof lib_roleGuard;
   pricing: typeof pricing;
   purchaseOrders: typeof purchaseOrders;
   reorder: typeof reorder;

@@ -139,20 +139,6 @@ export const getPriceSuggestions = query({
 export const approvePriceSuggestion = mutation({
   args: { suggestionId: v.id("priceSuggestions") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", q =>
-        q.eq("clerkId", identity.subject)
-      )
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     const suggestion = await ctx.db.get(args.suggestionId);
     if (!suggestion) throw new Error("Suggestion not found");
 

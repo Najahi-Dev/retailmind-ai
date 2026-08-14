@@ -1,19 +1,18 @@
 // app/(dashboard)/users/[userId]/page.tsx
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import UserDetailClient from "./UserDetailClient";
-import { getAuthUserRole } from "@/lib/auth-server";
+import { getServerUser } from "@/lib/get-server-user";
 
 interface Props {
   params: Promise<{ userId: string }>;
 }
 
 export default async function UserDetailPage({ params }: Props) {
-  const user = await currentUser();
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
 
   const resolvedParams = await params;
-  const role = await getAuthUserRole(user);
+  const role = user.role;
 
   // Only Admin or Manager can view/edit user details
   if (!["admin", "manager"].includes(role)) {

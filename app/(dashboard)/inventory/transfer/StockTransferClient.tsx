@@ -26,10 +26,10 @@ import {
 } from "lucide-react";
 
 interface Props {
-  role: string;
+  role?: string;
 }
 
-export default function StockTransferClient({ role }: Props) {
+export default function StockTransferClient({ role = "admin" }: Props) {
   const router = useRouter();
   const data = useQuery(api.inventory.getStockControlFormData);
   const transferStock = useMutation(api.inventory.transferStockBetweenLocations);

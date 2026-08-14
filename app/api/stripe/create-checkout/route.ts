@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import Stripe from "stripe";
+import { getServerUser } from "@/lib/get-server-user";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "sk_test_mock";
 
@@ -10,13 +10,13 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    const user = await currentUser();
+    const user = await getServerUser();
 
-    if (!userId || !user) {
+    if (!user) {
       return NextResponse.json({ redirectUrl: "/sign-in" });
     }
 
+    const userId = user.id;
     const body = await req.json().catch(() => ({}));
     const priceId =
       body.priceId ||
@@ -24,14 +24,13 @@ export async function POST(req: Request) {
       "price_growth_lkr4900";
     const plan = body.plan || "growth";
 
-    const userEmail =
-      user.emailAddresses?.[0]?.emailAddress || `${userId}@user.retailmind.ai`;
-    const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || userEmail;
+    const userEmail = user.email || `${userId}@user.retailmind.ai`;
+    const userName = user.name || userEmail;
 
-    // Search for existing Stripe customer by metadata clerkId or email
+    // Search for existing Stripe customer by metadata userId or email
     let customerId: string | undefined;
     const existingCustomers = await stripe.customers.search({
-      query: `metadata['clerkId']:'${userId}' OR email:'${userEmail}'`,
+      query: `metadata['userId']:'${userId}' OR email:'${userEmail}'`,
     }).catch(() => ({ data: [] }));
 
     if (existingCustomers.data.length > 0) {
@@ -41,7 +40,7 @@ export async function POST(req: Request) {
         email: userEmail,
         name: userName,
         metadata: {
-          clerkId: userId,
+          userId: userId,
         },
       });
       customerId = newCustomer.id;
@@ -60,7 +59,7 @@ export async function POST(req: Request) {
         },
       ],
       metadata: {
-        clerkId: userId,
+        userId: userId,
         plan: plan,
       },
       success_url: `${origin}/dashboard?subscription=success&plan=${plan}`,

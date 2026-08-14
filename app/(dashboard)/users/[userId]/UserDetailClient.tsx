@@ -153,7 +153,6 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user._id,
-          clerkId: user.clerkId,
           name,
           imageUrl,
           role: userRole,

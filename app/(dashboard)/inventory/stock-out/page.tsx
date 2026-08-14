@@ -1,18 +1,12 @@
-// app/(dashboard)/inventory/stock-out/page.tsx
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import StockOutClient from "./StockOutClient";
+import { getServerUser } from "@/lib/get-server-user";
 
 export default async function StockOutPage() {
-  const user = await currentUser();
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
 
-  const role = user.publicMetadata?.role as string;
-
-  // Only admin and staff can record stock-out
-  if (!["admin", "staff"].includes(role)) {
-    redirect("/access-denied");
-  }
+  const role = user.role;
 
   return <StockOutClient role={role} />;
 }

@@ -4,9 +4,10 @@ import { v } from "convex/values";
 export default defineSchema({
   // ── Users ──────────────────────────────────────
   users: defineTable({
-    clerkId: v.string(),
     email: v.string(),
     name: v.string(),
+    passwordHash: v.optional(v.string()),
+    clerkId: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     role: v.union(
       v.literal("admin"),
@@ -17,8 +18,17 @@ export default defineSchema({
     isActive: v.boolean(),
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
     isVipAccess: v.optional(v.boolean()),
+    lastLogin: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_clerk_id", ["clerkId"]),
+  }).index("by_email", ["email"]),
+
+  // ── Sessions ───────────────────────────────────
+  sessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_token", ["token"]),
 
   // ── Locations ──────────────────────────────────
   locations: defineTable({

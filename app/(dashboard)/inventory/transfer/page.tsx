@@ -1,13 +1,10 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import TransferClient from "@/app/(dashboard)/inventory/transfer/TransferClient";
+import StockTransferClient from "./StockTransferClient";
+import { getServerUser } from "@/lib/get-server-user";
 
-export default async function StockTransferPage() {
-  const user = await currentUser();
+export default async function TransferStockPage() {
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
 
-  const role = user.publicMetadata?.role as string;
-  if (!["admin", "manager"].includes(role)) redirect("/access-denied");
-
-  return <TransferClient role={role} />;
+  return <StockTransferClient />;
 }

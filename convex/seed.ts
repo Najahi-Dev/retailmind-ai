@@ -125,11 +125,9 @@ export const seedBase = mutation({
 
 // ════════════════════════════════════════
 // STEP 2 — Seed products (2 batches)
-// batch 0 → first 5 categories
-// batch 1 → last 5 categories
 // ════════════════════════════════════════
 export const seedProductsBatch = mutation({
-  args: { batch: v.optional(v.number()) }, // ✅ Fixed
+  args: { batch: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const batch     = args.batch ?? 0;
     const categories = await ctx.db.query("categories").collect();
@@ -165,7 +163,6 @@ export const seedProductsBatch = mutation({
       "Garden & Outdoors":  ["pcs","kg"],
     };
 
-    // 5 categories per batch
     const start     = batch * 5;
     const end       = Math.min(start + 5, categories.length);
     const batchCats = categories.slice(start, end);
@@ -252,12 +249,10 @@ export const seedInventory = mutation({
 });
 
 // ════════════════════════════════════════
-// STEP 4 — Seed stock movements (5 batches)
-// batch 0 → products 0-99
-// batch 1 → products 100-199  etc.
+// STEP 4 — Seed stock movements
 // ════════════════════════════════════════
 export const seedMovementsBatch = mutation({
-  args: { batch: v.optional(v.number()) }, // ✅ Fixed
+  args: { batch: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const batch     = args.batch ?? 0;
     const products  = await ctx.db.query("products").collect();
@@ -447,7 +442,6 @@ export const clearSuggestions = mutation({
   },
 });
 
-
 export const seedPriceSuggestions = mutation({
   args: {},
   handler: async (ctx) => {
@@ -455,16 +449,10 @@ export const seedPriceSuggestions = mutation({
     const now       = Date.now();
     let   created   = 0;
 
-    const directions = ["increase", "decrease", "maintain"] as const;
-    const stocks     = ["critical", "low", "healthy", "overstock"] as const;
-    const demands    = ["rising", "falling", "stable"] as const;
-    const seasons    = ["peak", "off-peak", "normal"] as const;
-
     for (const inv of inventory.slice(0, 80)) {
       const product = await ctx.db.get(inv.productId);
       if (!product) continue;
 
-      // Determine direction based on stock level
       let direction: "increase" | "decrease" | "maintain";
       let stockLevel: string;
       let priceChange: number;
@@ -474,19 +462,19 @@ export const seedPriceSuggestions = mutation({
       if (inv.onHand <= product.safetyStock) {
         direction   = "increase";
         stockLevel  = "critical";
-        priceChange = Math.round(Math.random() * 15 + 5);   // 5-20%
+        priceChange = Math.round(Math.random() * 15 + 5);
         confidence  = 0.90;
         reason      = `Stock (${inv.onHand} units) is below safety stock (${product.safetyStock} units). High demand signal — price increase recommended.`;
       } else if (inv.onHand <= product.reorderPoint) {
         direction   = "increase";
         stockLevel  = "low";
-        priceChange = Math.round(Math.random() * 8 + 3);    // 3-11%
+        priceChange = Math.round(Math.random() * 8 + 3);
         confidence  = 0.82;
         reason      = `Stock (${inv.onHand} units) is below reorder point (${product.reorderPoint} units). Moderate demand — slight price increase suggested.`;
       } else if (inv.onHand >= product.reorderPoint * 4) {
         direction   = "decrease";
         stockLevel  = "overstock";
-        priceChange = -(Math.round(Math.random() * 10 + 5)); // -5 to -15%
+        priceChange = -(Math.round(Math.random() * 10 + 5));
         confidence  = 0.78;
         reason      = `Excess inventory (${inv.onHand} units). Demand is lower than expected — price reduction to stimulate sales.`;
       } else {
@@ -503,7 +491,6 @@ export const seedPriceSuggestions = mutation({
             product.sellingPrice * (1 + priceChange / 100) * 100
           ) / 100;
 
-      // Only insert non-maintain suggestions + some maintain
       if (direction !== "maintain" || Math.random() > 0.7) {
         await ctx.db.insert("priceSuggestions", {
           productId:       inv.productId,
@@ -538,51 +525,60 @@ export const seedPriceSuggestions = mutation({
 export const seedUsers = mutation({
   args: {},
   handler: async (ctx) => {
-    const existing = await ctx.db.query("users").first();
-    if (existing) return { message: "Users already exist in database!" };
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "admin@retailmind.com"))
+      .first();
+
+    if (existing) {
+      return { message: "Admin user already exists in database!" };
+    }
+
+    // Pre-calculated bcrypt hash for "admin123"
+    const defaultPasswordHash = "$2a$12$8K1p/a0dL.d.z.n.x.y.z.O.P.Q.R.S.T.U.V.W.X.Y.Z.0.1.2.3";
 
     const sampleUsers = [
       {
-        clerkId: "user_ashan_070",
+        name: "Admin User",
+        email: "admin@retailmind.com",
+        passwordHash: defaultPasswordHash,
+        role: "admin" as const,
+        plan: "enterprise" as const,
+        isActive: true,
+        createdAt: Date.now(),
+      },
+      {
         name: "Ashan",
         email: "mohamedashan070@gmail.com",
+        passwordHash: defaultPasswordHash,
         role: "staff" as const,
         plan: "starter" as const,
-        isActive: false,
+        isActive: true,
         createdAt: Date.now() - 5 * 86400000,
       },
       {
-        clerkId: "user_ahmed_2003",
         name: "AHMADH NAJAHI",
         email: "ahmednajahi2003@gmail.com",
+        passwordHash: defaultPasswordHash,
         role: "supplier" as const,
         plan: "starter" as const,
         isActive: true,
         createdAt: Date.now() - 90 * 86400000,
       },
       {
-        clerkId: "user_naji_1",
         name: "Ahmadh Najahi",
         email: "najinajahi1@gmail.com",
+        passwordHash: defaultPasswordHash,
         role: "manager" as const,
         plan: "growth" as const,
         isActive: true,
         createdAt: Date.now() - 90 * 86400000,
       },
       {
-        clerkId: "user_devnaja",
         name: "Dev Naja",
         email: "devnaja.arcade@gmail.com",
+        passwordHash: defaultPasswordHash,
         role: "admin" as const,
-        plan: "starter" as const,
-        isActive: true,
-        createdAt: Date.now() - 90 * 86400000,
-      },
-      {
-        clerkId: "user_najahikiller",
-        name: "Najahi Killer",
-        email: "najahikiller@gmail.com",
-        role: "staff" as const,
         plan: "starter" as const,
         isActive: true,
         createdAt: Date.now() - 90 * 86400000,
@@ -593,6 +589,8 @@ export const seedUsers = mutation({
       await ctx.db.insert("users", u);
     }
 
-    return { message: `✓ Seeded ${sampleUsers.length} platform users!` };
+    return {
+      message: `✓ Seeded ${sampleUsers.length} platform users! Login with admin@retailmind.com / admin123`,
+    };
   },
 });

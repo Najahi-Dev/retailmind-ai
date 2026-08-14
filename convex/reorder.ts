@@ -195,21 +195,9 @@ export const approveSuggestion = mutation({
     unitCost: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
     const suggestion = await ctx.db.get(args.suggestionId);
     if (!suggestion) throw new Error("Suggestion not found");
     if (suggestion.status !== "pending") throw new Error("Already processed");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
 
     // Create draft PO
     const poNumber = `PO-${Date.now()}`;
@@ -217,7 +205,6 @@ export const approveSuggestion = mutation({
 
     const poId = await ctx.db.insert("purchaseOrders", {
       supplierId: args.supplierId,
-      createdBy: user._id,
       poNumber,
       status: "draft",
       lineItems: [
@@ -253,18 +240,6 @@ export const dismissSuggestion = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     await ctx.db.patch(args.suggestionId, {
       status: "dismissed",
       dismissedReason: args.reason,

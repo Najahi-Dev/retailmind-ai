@@ -152,18 +152,6 @@ export const createSupplier = mutation({
     leadTimeDays: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     // Check duplicate email
     const existing = await ctx.db
       .query("suppliers")
@@ -196,18 +184,6 @@ export const updateSupplier = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     const { supplierId, ...fields } = args;
     const updateFields = Object.fromEntries(
       Object.entries(fields).filter(([_, v]) => v !== undefined),

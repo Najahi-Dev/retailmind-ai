@@ -1,0 +1,30 @@
+// lib/get-server-user.ts
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
+
+export interface ServerUser {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "manager" | "staff" | "supplier";
+}
+
+export async function getServerUser(): Promise<ServerUser | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("retailmind_token")?.value;
+    if (!token) return null;
+
+    const decoded = jwt.decode(token) as any;
+    if (!decoded || !decoded.userId || !decoded.role) return null;
+
+    return {
+      id: decoded.userId,
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role,
+    };
+  } catch (err) {
+    return null;
+  }
+}

@@ -37,16 +37,16 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const clerkId = session.metadata?.clerkId;
+        const userId = session.metadata?.userId || session.metadata?.clerkId;
         const plan = (session.metadata?.plan as "starter" | "growth" | "enterprise") || "growth";
 
-        if (clerkId && session.subscription) {
+        if (userId && session.subscription) {
           const subscriptionObj: any = await stripe.subscriptions.retrieve(
             session.subscription as string
           );
 
           await convex.mutation(api.subscriptions.upsertSubscription, {
-            clerkId,
+            userId,
             stripeCustomerId: (session.customer as string) || "",
             stripeSubscriptionId: subscriptionObj.id,
             plan,
@@ -62,9 +62,9 @@ export async function POST(req: Request) {
       case "customer.subscription.updated": {
         const subscription: any = event.data.object;
         const customer = await stripe.customers.retrieve(subscription.customer as string);
-        const clerkId = (customer as Stripe.Customer).metadata?.clerkId;
+        const userId = (customer as Stripe.Customer).metadata?.userId || (customer as Stripe.Customer).metadata?.clerkId;
 
-        if (clerkId) {
+        if (userId) {
           const statusMap: Record<string, "active" | "cancelled" | "past_due" | "trialing"> = {
             active: "active",
             past_due: "past_due",
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
           const plan = (subscription.metadata?.plan as "starter" | "growth" | "enterprise") || "growth";
 
           await convex.mutation(api.subscriptions.upsertSubscription, {
-            clerkId,
+            userId,
             stripeCustomerId: subscription.customer as string,
             stripeSubscriptionId: subscription.id,
             plan,
@@ -92,17 +92,17 @@ export async function POST(req: Request) {
       case "customer.subscription.deleted": {
         const subscription: any = event.data.object;
         const customer = await stripe.customers.retrieve(subscription.customer as string);
-        const clerkId = (customer as Stripe.Customer).metadata?.clerkId;
+        const userId = (customer as Stripe.Customer).metadata?.userId || (customer as Stripe.Customer).metadata?.clerkId;
 
-        if (clerkId) {
+        if (userId) {
           // Downgrade user back to starter plan in Convex
           await convex.mutation(api.subscriptions.updateUserPlan, {
-            clerkId,
+            userId,
             plan: "starter",
           });
 
           await convex.mutation(api.subscriptions.upsertSubscription, {
-            clerkId,
+            userId,
             stripeCustomerId: subscription.customer as string,
             stripeSubscriptionId: subscription.id,
             plan: "starter",
@@ -119,11 +119,11 @@ export async function POST(req: Request) {
         const invoice: any = event.data.object;
         const customerId = invoice.customer as string;
         const customer = await stripe.customers.retrieve(customerId);
-        const clerkId = (customer as Stripe.Customer).metadata?.clerkId;
+        const userId = (customer as Stripe.Customer).metadata?.userId || (customer as Stripe.Customer).metadata?.clerkId;
 
-        if (clerkId && invoice.subscription) {
+        if (userId && invoice.subscription) {
           await convex.mutation(api.subscriptions.upsertSubscription, {
-            clerkId,
+            userId,
             stripeCustomerId: customerId,
             stripeSubscriptionId: invoice.subscription as string,
             plan: "starter",

@@ -72,18 +72,6 @@ export const updatePOStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     const po = await ctx.db.get(args.poId);
     if (!po) throw new Error("PO not found");
 
@@ -111,7 +99,6 @@ export const updatePOStatus = mutation({
           await ctx.db.insert("stockMovements", {
             productId: line.productId,
             locationId: inv.locationId,
-            userId: user._id,
             type: "stock_in",
             reason: "Purchase Order Delivery",
             quantity: line.quantityOrdered,
@@ -153,20 +140,6 @@ export const createPurchaseOrder = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // ── Auth check ──────────────────────────
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
-    if (!["admin", "manager"].includes(user.role)) {
-      throw new Error("Access denied");
-    }
-
     // ── Generate PO number ───────────────────
     const count = await ctx.db.query("purchaseOrders").collect();
     const poNumber = `PO-${Date.now()}-${count.length + 1}`;
@@ -179,7 +152,6 @@ export const createPurchaseOrder = mutation({
     // ── Insert PO ───────────────────────────
     const poId = await ctx.db.insert("purchaseOrders", {
       supplierId: args.supplierId,
-      createdBy: user._id,
       poNumber,
       status: "draft",
       lineItems: args.lineItems.map((item) => ({

@@ -17,22 +17,6 @@ export const getAlerts = query({
     isDismissed: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    // Get current user to check role
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    const role = user?.role ?? "staff";
-
-    // Supplier role cannot access alerts at all
-    if (role === "supplier") {
-      return [];
-    }
-
     let alerts = await ctx.db.query("alerts").collect();
 
     // Default: filter out dismissed alerts unless specified
@@ -40,13 +24,6 @@ export const getAlerts = query({
       alerts = alerts.filter((a) => a.isDismissed === args.isDismissed);
     } else {
       alerts = alerts.filter((a) => !a.isDismissed);
-    }
-
-    // Role-based filtering: Staff only see low_stock & critical_stock
-    if (role === "staff") {
-      alerts = alerts.filter(
-        (a) => a.type === "low_stock" || a.type === "critical_stock"
-      );
     }
 
     // Filter by status (read / unread)
@@ -348,36 +325,23 @@ export const createAlert = createSystemAlert;
 export const getUserPreferences = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const pref = await ctx.db
-      .query("userPreferences")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!pref) {
-      // Default preferences fallback
-      return {
-        alertTypes: {
-          lowStock: true,
-          criticalStock: true,
-          overstock: true,
-          demandSpike: true,
-          system: true,
-        },
-        channels: {
-          inApp: true,
-          email: false,
-        },
-        thresholds: {
-          lowStockMultiplier: 1.0,
-          criticalStockMultiplier: 1.0,
-        },
-      };
-    }
-
-    return pref;
+    return {
+      alertTypes: {
+        lowStock: true,
+        criticalStock: true,
+        overstock: true,
+        demandSpike: true,
+        system: true,
+      },
+      channels: {
+        inApp: true,
+        email: false,
+      },
+      thresholds: {
+        lowStockMultiplier: 1.0,
+        criticalStockMultiplier: 1.0,
+      },
+    };
   },
 });
 
@@ -401,34 +365,6 @@ export const saveNotificationPreferences = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const existing = await ctx.db
-      .query("userPreferences")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    const now = Date.now();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        alertTypes: args.alertTypes,
-        channels: args.channels,
-        thresholds: args.thresholds,
-        updatedAt: now,
-      });
-      return existing._id;
-    }
-
-    const prefId = await ctx.db.insert("userPreferences", {
-      clerkId: identity.subject,
-      alertTypes: args.alertTypes,
-      channels: args.channels,
-      thresholds: args.thresholds,
-      updatedAt: now,
-    });
-
-    return prefId;
+    return { success: true };
   },
 });

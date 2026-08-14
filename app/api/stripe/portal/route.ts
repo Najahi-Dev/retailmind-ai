@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import Stripe from "stripe";
+import { getServerUser } from "@/lib/get-server-user";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "sk_test_mock";
 
@@ -10,20 +10,19 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    const user = await currentUser();
+    const user = await getServerUser();
 
-    if (!userId || !user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userEmail =
-      user.emailAddresses?.[0]?.emailAddress || `${userId}@user.retailmind.ai`;
+    const userId = user.id;
+    const userEmail = user.email || `${userId}@user.retailmind.ai`;
 
     // Retrieve Customer from Stripe
     let customerId: string | undefined;
     const existingCustomers = await stripe.customers.search({
-      query: `metadata['clerkId']:'${userId}' OR email:'${userEmail}'`,
+      query: `metadata['userId']:'${userId}' OR email:'${userEmail}'`,
     }).catch(() => ({ data: [] }));
 
     if (existingCustomers.data.length > 0) {
@@ -31,7 +30,7 @@ export async function POST(req: Request) {
     } else {
       const newCustomer = await stripe.customers.create({
         email: userEmail,
-        metadata: { clerkId: userId },
+        metadata: { userId },
       });
       customerId = newCustomer.id;
     }

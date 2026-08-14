@@ -1,14 +1,17 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import EditProductClient from "./EditProductClient";
+import { getServerUser } from "@/lib/get-server-user";
 
-export default async function EditProductPage({ params }: { params: Promise<{ productId: string }> }) {
-  const resolvedParams = await params;
-  const user = await currentUser();
+interface Props {
+  params: Promise<{ productId: string }>;
+}
+
+export default async function EditProductPage({ params }: Props) {
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
 
-  const role = user.publicMetadata?.role as string;
-  if (!["admin", "manager"].includes(role)) redirect("/access-denied");
+  const resolvedParams = await params;
+  const role = user.role;
 
   return <EditProductClient productId={resolvedParams.productId} role={role} />;
 }

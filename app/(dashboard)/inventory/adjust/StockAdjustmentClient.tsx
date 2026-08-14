@@ -27,10 +27,10 @@ import {
 } from "lucide-react";
 
 interface Props {
-  role: string;
+  role?: string;
 }
 
-export default function StockAdjustmentClient({ role }: Props) {
+export default function StockAdjustmentClient({ role = "admin" }: Props) {
   const router = useRouter();
   const data = useQuery(api.inventory.getStockControlFormData);
   const adjustStock = useMutation(api.inventory.recordStockAdjustment);

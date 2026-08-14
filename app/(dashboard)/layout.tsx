@@ -1,4 +1,3 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -7,13 +6,14 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { getServerUser } from "@/lib/get-server-user";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
 
   return (

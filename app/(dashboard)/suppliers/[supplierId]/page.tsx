@@ -1,17 +1,16 @@
-// app/(dashboard)/suppliers/[supplierId]/page.tsx
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import SupplierDetailClient from "./SupplierDetailClient";
+import { getServerUser } from "@/lib/get-server-user";
 
-export default async function SupplierDetailPage({
-  params,
-}: {
+interface Props {
   params: Promise<{ supplierId: string }>;
-}) {
-  const user = await currentUser();
+}
+
+export default async function SupplierDetailPage({ params }: Props) {
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
-  const role = user.publicMetadata?.role as string;
-  if (!["admin", "manager"].includes(role)) redirect("/access-denied");
-  const { supplierId } = await params;
-  return <SupplierDetailClient supplierId={supplierId} />;
+
+  const resolvedParams = await params;
+
+  return <SupplierDetailClient supplierId={resolvedParams.supplierId} />;
 }

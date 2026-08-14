@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -62,7 +62,7 @@ import { Logo } from '@/components/logo';
 import { ModeToggle } from '@/components/mode-toggle';
 
 export default function Home() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
@@ -100,12 +100,12 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (!isLoading && isAuthenticated) {
       router.replace('/dashboard');
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (!isLoaded || isSignedIn) {
+  if (isLoading || isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center relative overflow-hidden">
         <div className="absolute w-[450px] h-[450px] bg-indigo-600/20 rounded-full blur-[130px] animate-pulse pointer-events-none" />

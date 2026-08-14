@@ -1,19 +1,17 @@
-// app/(dashboard)/reorders/purchase-orders/[poId]/page.tsx
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import PODetailClient from "./PODetailClient";
+import { getServerUser } from "@/lib/get-server-user";
 
-export default async function PODetailPage({
-  params,
-}: {
+interface Props {
   params: Promise<{ poId: string }>;
-}) {
-  const user = await currentUser();
+}
+
+export default async function PODetailPage({ params }: Props) {
+  const user = await getServerUser();
   if (!user) redirect("/sign-in");
-  const role = user.publicMetadata?.role as string;
-  if (!["admin", "manager", "staff", "supplier"].includes(role)) {
-    redirect("/access-denied");
-  }
-  const { poId } = await params;
-  return <PODetailClient poId={poId} role={role} />;
+
+  const resolvedParams = await params;
+  const role = user.role;
+
+  return <PODetailClient poId={resolvedParams.poId} role={role} />;
 }
