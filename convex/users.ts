@@ -65,6 +65,17 @@ export const getCurrentUser = query({
   },
 });
 
+// Get user document by Clerk Subject ID
+export const getUserByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+  },
+});
+
 // Auto-provision or update logged-in Clerk user in Convex database
 export const storeUser = mutation({
   args: {},

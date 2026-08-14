@@ -2,6 +2,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import UserDetailClient from "./UserDetailClient";
+import { getAuthUserRole } from "@/lib/auth-server";
 
 interface Props {
   params: Promise<{ userId: string }>;
@@ -12,7 +13,7 @@ export default async function UserDetailPage({ params }: Props) {
   if (!user) redirect("/sign-in");
 
   const resolvedParams = await params;
-  const role = (user.publicMetadata?.role as string) || "staff";
+  const role = await getAuthUserRole(user);
 
   // Only Admin or Manager can view/edit user details
   if (!["admin", "manager"].includes(role)) {
