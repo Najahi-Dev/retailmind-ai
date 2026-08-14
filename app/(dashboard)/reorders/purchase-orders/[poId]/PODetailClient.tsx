@@ -42,6 +42,8 @@ import {
   ClockIcon,
 } from "lucide-react";
 
+import { useAuth } from "@/lib/auth-context";
+
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; border: string }> = {
   draft: { label: "Draft", bg: "bg-slate-100 dark:bg-slate-800", color: "text-slate-600 dark:text-slate-300", border: "border-slate-300 dark:border-slate-700" },
   sent: { label: "Sent", bg: "bg-blue-500/10", color: "text-blue-600 dark:text-blue-400", border: "border-blue-500/20" },
@@ -75,14 +77,18 @@ export default function PODetailClient({
   role: string;
 }) {
   const router = useRouter();
+  const { token } = useAuth();
   const [updating, setUpdating] = useState(false);
 
   const po = useQuery(api.purchaseOrders.getPODetail, {
     poId: poId as Id<"purchaseOrders">,
+    token: token ?? undefined,
   });
   const updateStatus = useMutation(api.purchaseOrders.updatePOStatus);
 
+  const isSupplier = role === "supplier";
   const canEdit = ["admin", "manager"].includes(role);
+  const canUpdateFulfillment = canEdit || (isSupplier && ["sent", "confirmed", "shipped"].includes(po?.status ?? ""));
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-LK", {
@@ -98,16 +104,17 @@ export default function PODetailClient({
       year: "numeric",
     });
 
-  const handleStatusUpdate = async (nextStatus: string) => {
+  const handleStatusUpdate = async (status: string) => {
     setUpdating(true);
     try {
       await updateStatus({
         poId: poId as Id<"purchaseOrders">,
-        status: nextStatus as any,
+        token: token ?? undefined,
+        status: status as any,
       });
-      toast.success(`Purchase order status updated to ${nextStatus}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Update failed");
+      toast.success(`PO status updated to ${status}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update PO status");
     } finally {
       setUpdating(false);
     }
@@ -138,6 +145,10 @@ export default function PODetailClient({
   }
 
   if (po === null) {
+    if (isSupplier) {
+      router.replace("/access-denied");
+      return null;
+    }
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-12 text-slate-500">
         <ShoppingCartIcon className="size-10 text-indigo-500/40" />
@@ -192,7 +203,7 @@ export default function PODetailClient({
           </div>
 
           {/* Action buttons */}
-          {canEdit && po.status !== "delivered" && po.status !== "cancelled" && (
+          {canUpdateFulfillment && po.status !== "delivered" && po.status !== "cancelled" && (
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
               {nextStatus && (
                 <Button
@@ -210,6 +221,7 @@ export default function PODetailClient({
                 </Button>
               )}
 
+              {canEdit && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -263,6 +275,7 @@ export default function PODetailClient({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              )}
             </div>
           )}
         </div>

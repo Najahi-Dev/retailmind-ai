@@ -42,7 +42,10 @@ export const generatePriceSuggestions = internalMutation({
         .order("desc")
         .first();
 
-      // Call Python pricing API
+      // Call Python pricing API if configured
+      if (!process.env.AI_SERVICE_URL) {
+        continue;
+      }
       try {
         const response = await fetch(
           `${process.env.AI_SERVICE_URL}/price`,
@@ -68,7 +71,7 @@ export const generatePriceSuggestions = internalMutation({
         const data = await response.json();
 
         // Only save if price change is meaningful
-        if (data.direction !== "maintain") {
+        if (data && data.direction !== "maintain") {
           await ctx.db.insert("priceSuggestions", {
             productId:       inv.productId,
             currentPrice:    product.sellingPrice,
@@ -89,7 +92,7 @@ export const generatePriceSuggestions = internalMutation({
           created++;
         }
       } catch {
-        console.error(`Pricing failed for ${product._id}`);
+        // AI service optional
       }
     }
 

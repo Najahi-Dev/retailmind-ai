@@ -4,6 +4,7 @@ import { api }       from "@/convex/_generated/api";
 import { Id }        from "@/convex/_generated/dataModel";
 import { useState }  from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   Card, CardContent, CardDescription,
   CardHeader, CardTitle,
@@ -56,14 +57,18 @@ const NEXT_ACTION: Record<string, {
 
 export default function PurchaseOrdersClient({ role }: Props) {
   const router = useRouter();
+  const { token } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [updating, setUpdating] = useState<string | null>(null);
 
   const orders = useQuery(api.purchaseOrders.getPurchaseOrders, {
-    status: statusFilter === "all" ? undefined : statusFilter as any,
+    token: token ?? undefined,
+    status: statusFilter === "all" ? undefined : (statusFilter as any),
   });
-  const stats = useQuery(api.purchaseOrders.getPOStats);
+  const stats = useQuery(api.purchaseOrders.getPOStats, {
+    token: token ?? undefined,
+  });
   const updateStatus = useMutation(api.purchaseOrders.updatePOStatus);
 
   const isSupplier = role === "supplier";
@@ -87,12 +92,8 @@ export default function PurchaseOrdersClient({ role }: Props) {
     try {
       await updateStatus({
         poId,
-        status: status as
-          | "sent"
-          | "confirmed"
-          | "shipped"
-          | "delivered"
-          | "cancelled",
+        token: token ?? undefined,
+        status: status as any,
       });
       toast.success(`Purchase Order status updated to ${status}`);
     } catch (err) {
@@ -147,20 +148,23 @@ export default function PurchaseOrdersClient({ role }: Props) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/reorders")}
-              className="h-9 rounded-xl text-xs font-semibold text-indigo-200 bg-white/10 hover:bg-white/20 border-white/20 px-4"
-            >
-              <SparklesIcon className="w-3.5 h-3.5 mr-1.5 text-indigo-400" /> Reorder Suggestions
-            </Button>
             {!isSupplier && (
-              <Button
-                onClick={() => router.push("/reorders/purchase-orders/create")}
-                className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
-              >
-                <PlusIcon className="w-4 h-4 mr-1.5" /> New PO
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/reorders")}
+                  className="h-9 rounded-xl text-xs font-semibold text-indigo-200 bg-white/10 hover:bg-white/20 border-white/20 px-4"
+                >
+                  <SparklesIcon className="w-3.5 h-3.5 mr-1.5 text-indigo-400" /> Reorder Suggestions
+                </Button>
+
+                <Button
+                  onClick={() => router.push("/reorders/purchase-orders/create")}
+                  className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1.5" /> New PO
+                </Button>
+              </>
             )}
           </div>
         </div>

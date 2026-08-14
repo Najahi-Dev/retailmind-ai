@@ -25,11 +25,7 @@ export async function getCallerUser(
   token?: string
 ) {
   if (!token) {
-    const firstAdmin = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q: any) => q.eq("email", "admin@retailmind.com"))
-      .first();
-    return firstAdmin;
+    return null;
   }
 
   const session = await ctx.db
@@ -42,4 +38,45 @@ export async function getCallerUser(
   }
 
   return await ctx.db.get(session.userId);
+}
+
+export async function getSupplierForUser(
+  ctx: GenericMutationCtx<any> | GenericQueryCtx<any>,
+  user: any
+) {
+  if (!user) return null;
+
+  // 1. Check direct supplierId link on user record
+  if (user.supplierId) {
+    const supplier = await ctx.db.get(user.supplierId);
+    if (supplier) return supplier;
+  }
+
+  // 2. Lookup supplier by email
+  if (user.email) {
+    const cleanEmail = user.email.toLowerCase().trim();
+    const allSuppliers = await ctx.db.query("suppliers").collect();
+    const supplierByEmail = allSuppliers.find(
+      (s) => s.email && s.email.toLowerCase().trim() === cleanEmail
+    );
+    if (supplierByEmail) return supplierByEmail;
+  }
+
+  // 3. Lookup supplier by name
+  if (user.name) {
+    const cleanName = user.name.toLowerCase().trim();
+    const allSuppliers = await ctx.db.query("suppliers").collect();
+    const supplierByName = allSuppliers.find(
+      (s) => s.name && s.name.toLowerCase().trim() === cleanName
+    );
+    if (supplierByName) return supplierByName;
+  }
+
+  // 4. Default fallback for supplier role
+  if (user.role === "supplier") {
+    const firstSupplier = await ctx.db.query("suppliers").first();
+    return firstSupplier;
+  }
+
+  return null;
 }

@@ -17,6 +17,7 @@ export default defineSchema({
       v.literal("pending"),
     ),
     isActive: v.boolean(),
+    supplierId: v.optional(v.id("suppliers")),
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
     isVipAccess: v.optional(v.boolean()),
     lastLogin: v.optional(v.number()),
@@ -309,4 +310,17 @@ export default defineSchema({
     }),
     updatedAt: v.number(),
   }).index("by_clerk_id", ["clerkId"]),
+
+  // ── Security & Audit Logs ─────────────────────
+  securityLogs: defineTable({
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    role: v.optional(v.string()),
+    eventType: v.string(), // "SECURITY_WARNING" | "IDOR_ATTEMPT" | "UNAUTHORIZED_MUTATION"
+    details: v.string(),
+    targetId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_event_type", ["eventType"]),
 });
