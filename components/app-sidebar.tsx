@@ -280,7 +280,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu className="w-full">
           <SidebarMenuItem className="flex justify-center">
             <div className="relative flex items-center justify-center w-full">
-              <Logo size="sm" href="/dashboard" />
+              <Logo size="sm" href="/dashboard" layout="horizontal" />
             </div>
           </SidebarMenuItem>
         </SidebarMenu>

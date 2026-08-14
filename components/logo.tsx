@@ -10,6 +10,7 @@ interface LogoProps {
   href?: string;
   className?: string;
   textClassName?: string;
+  layout?: "horizontal" | "vertical";
 }
 
 export function Logo({
@@ -17,9 +18,16 @@ export function Logo({
   showText = true,
   href,
   className,
-  textClassName
+  textClassName,
+  layout = "vertical"
 }: LogoProps) {
   const containerSizes = {
+    sm: "h-9 w-9 rounded-xl",
+    md: "h-12 w-12 rounded-xl",
+    lg: "h-16 w-16 rounded-xl",
+  };
+
+  const horizontalContainerSizes = {
     sm: "h-9 w-auto rounded-xl",
     md: "h-11 w-auto rounded-xl",
     lg: "h-16 w-auto rounded-lg",
@@ -37,24 +45,32 @@ export function Logo({
     lg: "text-xs px-2.5 py-1",
   };
 
+  const isVertical = layout === "vertical";
+
   const content = (
-    <div className={cn("inline-flex items-center gap-2.5 group select-none cursor-pointer", className)}>
+    <div
+      className={cn(
+        "inline-flex group select-none cursor-pointer",
+        isVertical ? "flex-col items-center justify-center gap-2 text-center" : "flex-row items-center gap-2.5",
+        className
+      )}
+    >
       {/* Logo Image Container */}
       <div
         className={cn(
-          "relative shrink-0 flex items-center justify-center overflow-hidden border border-indigo-500/40 shadow-[0_0_18px_rgba(99,102,241,0.35)] group-hover:shadow-[0_0_24px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-all duration-300 bg-slate-950 p-1",
-          containerSizes[size]
+          "relative shrink-0 flex items-center justify-center overflow-hidden border border-indigo-500/40 shadow-[0_0_18px_rgba(99,102,241,0.35)] group-hover:shadow-[0_0_24px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-all duration-300 bg-slate-950 p-1.5",
+          isVertical ? containerSizes[size] : horizontalContainerSizes[size]
         )}
       >
         <img
           src="/logo.png"
           alt="RetailMind AI Logo"
-          className="h-full w-auto object-contain rounded-lg"
+          className="h-full w-full object-contain rounded-lg"
         />
       </div>
 
       {showText && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-center gap-1.5">
           <span
             className={cn(
               "font-heading font-extrabold tracking-tight text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors",

@@ -121,7 +121,7 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 h-20 sm:h-22 flex items-center justify-between relative">
           {/* Logo */}
-          <Logo href="/" size="md" />
+          <Logo href="/" size="md" layout="horizontal" />
 
           {/* Desktop Nav Links (Centered) */}
           <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-8 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -920,7 +920,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-slate-200 dark:border-slate-800/60">
             {/* Logo & Description Column */}
             <div className="space-y-4 md:col-span-1">
-              <Logo href="/" size="sm" />
+              <Logo href="/" size="sm" layout="horizontal" />
               <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
                 Smart inventory management and demand forecasting SaaS platform for supermarkets.
               </p>
