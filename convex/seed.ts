@@ -533,3 +533,19 @@ export const seedPriceSuggestions = mutation({
     return { message: `Created ${created} price suggestions!` };
   },
 });
+
+// ── Master Seed All Mutation ──
+export const seedAll = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await seedBase.toHandler()(ctx, {});
+    await seedProductsBatch.toHandler()(ctx, {});
+    await seedInventory.toHandler()(ctx, {});
+    await seedMovementsBatch.toHandler()(ctx, {});
+    await seedPurchaseOrders.toHandler()(ctx, {});
+    await seedAlertsAndReorders.toHandler()(ctx, {});
+    await seedPriceSuggestions.toHandler()(ctx, {});
+
+    return { success: true, message: "Production database fully seeded with sample inventory data!" };
+  },
+});
