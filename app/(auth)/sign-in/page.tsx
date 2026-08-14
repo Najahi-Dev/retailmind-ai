@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -111,8 +110,6 @@ export default function SignInPage() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-6 max-w-md w-full">
-        <Logo size="lg" href="/" />
-
         <div className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-2xl space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-2">

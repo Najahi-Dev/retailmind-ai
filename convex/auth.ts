@@ -53,7 +53,7 @@ export const loginUser = action({
     }
 
     if (user.isActive === false) {
-      if (user.role === "admin" || user.email === "admin@retailmind.com" || user.email === "devnaja.arcade@gmail.com") {
+      if (user.role !== "pending") {
         await ctx.runMutation(api.authInternal.updateUserStatus, {
           userId: user._id,
           isActive: true,
