@@ -120,7 +120,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update user");
 
-      toast.success(data.message || "User profile & status successfully updated in both Convex DB and Clerk Auth!");
+      toast.success("Updated Successfully");
       onOpenChange(false);
       router.refresh();
     } catch (err) {
@@ -280,11 +280,11 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
           >
             {saving ? (
               <>
-                <RefreshCwIcon className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving...
+                <RefreshCwIcon className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving Changes...
               </>
             ) : (
               <>
-                <SaveIcon className="w-3.5 h-3.5 mr-1.5" /> Save & Sync Clerk & DB
+                <SaveIcon className="w-3.5 h-3.5 mr-1.5" /> Save Changes
               </>
             )}
           </Button>

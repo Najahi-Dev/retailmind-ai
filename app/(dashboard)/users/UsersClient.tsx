@@ -121,7 +121,7 @@ export default function UsersClient({ role: currentRole }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update user role");
-      toast.success(data.message || `User role updated to ${newRole} in both DB and Clerk!`);
+      toast.success("Updated Successfully");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update role");
     } finally {
@@ -147,7 +147,7 @@ export default function UsersClient({ role: currentRole }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update status");
-      toast.success(data.message || `User status updated to ${newStatus ? "Active" : "Suspended"} in both DB and Clerk!`);
+      toast.success("Updated Successfully");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update status");
     } finally {
@@ -172,7 +172,7 @@ export default function UsersClient({ role: currentRole }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update plan");
-      toast.success(data.message || `Subscription plan updated to ${newPlan}`);
+      toast.success("Updated Successfully");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update plan");
     } finally {

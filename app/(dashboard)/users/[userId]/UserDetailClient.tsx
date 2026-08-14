@@ -165,7 +165,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update user");
 
-      toast.success(data.message || "User profile & status successfully updated in both Convex DB and Clerk Auth!");
+      toast.success("Updated Successfully");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update user");
@@ -262,8 +262,12 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
               </div>
 
               <div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{name}</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{name}</h1>
+                <p className="text-xs text-slate-300 font-medium mt-1 flex items-center gap-1.5">
+                  <MailIcon className="w-3.5 h-3.5 text-indigo-300 shrink-0" />
+                  <span>{user.email && user.email.trim() ? user.email : "No email registered"}</span>
+                </p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <Badge className={`text-xs font-bold ${roleStyle.bg} ${roleStyle.color} border ${roleStyle.border} px-2.5 py-0.5`}>
                     {roleStyle.label}
                   </Badge>
@@ -277,9 +281,6 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-slate-300 font-medium mt-1 flex items-center gap-2">
-                  <MailIcon className="w-3.5 h-3.5 text-indigo-300" /> {user.email}
-                </p>
               </div>
             </div>
           </div>
@@ -292,11 +293,11 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
             >
               {saving ? (
                 <>
-                  <RefreshCwIcon className="animate-spin size-4 mr-2" /> Syncing both DBs...
+                  <RefreshCwIcon className="animate-spin size-4 mr-2" /> Saving Changes...
                 </>
               ) : (
                 <>
-                  <SaveIcon className="w-4 h-4 mr-2" /> Save & Sync Clerk & DB
+                  <SaveIcon className="w-4 h-4 mr-2" /> Save Changes
                 </>
               )}
             </Button>
@@ -304,201 +305,151 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── LEFT 2 COLS: EDIT FORM ── */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <UsersIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                User Profile & Access Controls
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
-                Modify user details, system role, subscription level, and active account status
-              </CardDescription>
-            </CardHeader>
+      <div className="w-full">
+        {/* ── PROFILE & EDIT FORM ── */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <UsersIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              User Profile & Access Controls
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              Modify user details, system role, subscription level, and active account status
+            </CardDescription>
+          </CardHeader>
 
-            <CardContent className="pt-5 space-y-5">
-              {/* Full Name */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Full Name <span className="text-red-500">*</span>
-                </Label>
+          <CardContent className="pt-5 space-y-5">
+            {/* Full Name */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Full Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                placeholder="e.g. Ahmadh Najahi"
+              />
+            </div>
+
+            {/* Profile Avatar Photo */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Profile Avatar Photo
+              </Label>
+              <div className="flex items-center gap-3">
+                <div className="relative shrink-0">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={name}
+                      className="size-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
+                    />
+                  ) : (
+                    <div className="size-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+
                 <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800"
-                  placeholder="e.g. Ahmadh Najahi"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Paste image URL or click Upload..."
+                  className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800 flex-1"
                 />
-              </div>
 
-              {/* Profile Avatar Photo */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Profile Avatar Photo
-                </Label>
-                <div className="flex items-center gap-3">
-                  <div className="relative shrink-0">
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={name}
-                        className="size-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
-                      />
-                    ) : (
-                      <div className="size-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20">
-                        {initials}
-                      </div>
-                    )}
-                  </div>
-
-                  <Input
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Paste image URL or click Upload..."
-                    className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800 flex-1"
-                  />
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingImage}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="h-10 rounded-xl text-xs font-semibold shrink-0"
-                  >
-                    {uploadingImage ? (
-                      <RefreshCwIcon className="w-3.5 h-3.5 mr-1.5 animate-spin text-indigo-500" />
-                    ) : (
-                      <UploadIcon className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
-                    )}
-                    Upload Photo
-                  </Button>
-                </div>
-              </div>
-
-              {/* Email Address (Read-only) */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Email Address</Label>
-                <div className="relative">
-                  <Input
-                    value={user.email}
-                    disabled
-                    className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed pr-10"
-                  />
-                  <LockIcon className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* System Role */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
-                  <Select value={userRole} onValueChange={(val: any) => setUserRole(val)}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrator (Full Access)</SelectItem>
-                      <SelectItem value="manager">Store Manager</SelectItem>
-                      <SelectItem value="staff">Inventory Staff</SelectItem>
-                      <SelectItem value="supplier">Vendor Supplier</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Subscription Plan */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Subscription Tier</Label>
-                  <Select value={plan} onValueChange={(val: any) => setPlan(val)}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="starter">Starter Plan</SelectItem>
-                      <SelectItem value="growth">Growth Plan</SelectItem>
-                      <SelectItem value="enterprise">Enterprise Plan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Account Status Switch */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Account Status</p>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    {isActive
-                      ? "Account is Active. User can sign in and access RetailMind AI."
-                      : "Account is Banned/Suspended. User is blocked in Clerk Auth and Convex DB."}
-                  </p>
-                </div>
-
-                <button
+                <Button
                   type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  className={`w-12 h-6 rounded-full transition-colors relative shrink-0 p-1 ${
-                    isActive ? "bg-emerald-600" : "bg-red-500"
-                  }`}
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingImage}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-10 rounded-xl text-xs font-semibold shrink-0"
                 >
-                  <div
-                    className={`size-4 rounded-full bg-white transition-transform ${
-                      isActive ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                  {uploadingImage ? (
+                    <RefreshCwIcon className="w-3.5 h-3.5 mr-1.5 animate-spin text-indigo-500" />
+                  ) : (
+                    <UploadIcon className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
+                  )}
+                  Upload Photo
+                </Button>
+              </div>
+            </div>
+
+            {/* Email Address (Read-only) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Email Address</Label>
+              <div className="relative">
+                <Input
+                  value={user.email}
+                  disabled
+                  className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed pr-10"
+                />
+                <LockIcon className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* System Role */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
+                <Select value={userRole} onValueChange={(val: any) => setUserRole(val)}>
+                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrator (Full Access)</SelectItem>
+                    <SelectItem value="manager">Store Manager</SelectItem>
+                    <SelectItem value="staff">Inventory Staff</SelectItem>
+                    <SelectItem value="supplier">Vendor Supplier</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Real-time sync callout */}
-              <div className="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-2xl text-xs text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-2.5">
-                <SparklesIcon className="w-4 h-4 shrink-0" />
-                <span>
-                  Saving changes will automatically update the <strong>Convex Database</strong> and sync roles / ban status directly into <strong>Clerk Authentication</strong>.
-                </span>
+              {/* Subscription Plan */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Subscription Tier</Label>
+                <Select value={plan} onValueChange={(val: any) => setPlan(val)}>
+                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="starter">Starter Plan</SelectItem>
+                    <SelectItem value="growth">Growth Plan</SelectItem>
+                    <SelectItem value="enterprise">Enterprise Plan</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        {/* ── RIGHT 1 COL: AUDIT & DETAILS ── */}
-        <div className="space-y-6">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <CardTitle className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <KeyIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                Identity & Audit Information
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="pt-4 space-y-4 text-xs">
+            {/* Account Status Switch */}
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-4">
               <div>
-                <p className="text-slate-400 font-semibold uppercase text-[10px]">Clerk Subject ID</p>
-                <p className="font-mono text-slate-700 dark:text-slate-300 font-bold break-all mt-0.5">
-                  {user.clerkId}
+                <p className="text-sm font-bold text-slate-900 dark:text-white">Account Status</p>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  {isActive
+                    ? "Account is Active. User can sign in and access RetailMind AI."
+                    : "Account is Banned/Suspended. User is blocked in Clerk Auth and Convex DB."}
                 </p>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-slate-400 font-semibold uppercase text-[10px]">Registered Date</p>
-                <p className="font-semibold text-slate-900 dark:text-white mt-0.5 flex items-center gap-1.5">
-                  <CalendarIcon className="w-3.5 h-3.5 text-indigo-500" /> {formattedDate}
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-slate-400 font-semibold uppercase text-[10px]">Convex Document ID</p>
-                <p className="font-mono text-slate-500 text-[11px] break-all mt-0.5">{user._id}</p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-slate-400 font-semibold uppercase text-[10px]">Dual-Sync Engine Status</p>
-                <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] mt-1">
-                  <CheckCircle2Icon className="w-3 h-3 mr-1" /> Active Clerk & Convex Sync
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <button
+                type="button"
+                onClick={() => setIsActive(!isActive)}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 p-1 ${
+                  isActive ? "bg-emerald-600" : "bg-red-500"
+                }`}
+              >
+                <div
+                  className={`size-4 rounded-full bg-white transition-transform ${
+                    isActive ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

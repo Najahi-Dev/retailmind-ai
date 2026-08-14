@@ -55,25 +55,20 @@ export async function POST(req: Request) {
         // Sync Account Status (Ban / Unban in Clerk)
         if (isActive === false) {
           await clerk.users.banUser(clerkId);
-          clerkMessage = "User role updated and account banned (suspended) in Clerk Auth.";
         } else {
           await clerk.users.unbanUser(clerkId);
-          clerkMessage = "User role updated and account unbanned (activated) in Clerk Auth.";
         }
 
         clerkSynced = true;
       } catch (clerkErr) {
         console.error("Clerk API sync failed silently:", clerkErr);
-        clerkMessage = "Updated in Convex DB (Clerk sync note: User ID managed internally or pending Clerk API key).";
       }
-    } else {
-      clerkMessage = "Updated in Convex DB successfully.";
     }
 
     return NextResponse.json({
       success: true,
       clerkSynced,
-      message: clerkMessage || "User profile & status successfully updated in both Convex DB and Clerk Auth!",
+      message: "Updated Successfully",
     });
   } catch (error) {
     console.error("Failed to update user profile:", error);
