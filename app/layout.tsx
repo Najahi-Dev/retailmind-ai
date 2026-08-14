@@ -24,6 +24,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "RetailMind AI - Smart Inventory & Demand Forecasting",
   description: "RetailMind AI helps supermarkets predict demand, automate reorders, and optimize pricing using artificial intelligence.",
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+      { url: "/logo-icon.png", type: "image/png" },
+    ],
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
