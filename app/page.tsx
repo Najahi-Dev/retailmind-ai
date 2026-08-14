@@ -99,27 +99,7 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace('/dashboard');
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  if (isLoading || isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center relative overflow-hidden">
-        <div className="absolute w-[450px] h-[450px] bg-indigo-600/20 rounded-full blur-[130px] animate-pulse pointer-events-none" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="relative z-10 animate-pulse flex flex-col items-center gap-3"
-        >
-          <Logo size="lg" textClassName="text-white drop-shadow-md" />
-        </motion.div>
-      </div>
-    );
-  }
+  // Landing page renders for all visitors (public or authenticated)
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 overflow-x-hidden transition-colors duration-300 no-scrollbar relative">
@@ -162,12 +142,20 @@ export default function Home() {
           {/* Desktop Auth CTA & Theme Toggle */}
           <div className="hidden md:flex items-center gap-4">
             <ModeToggle />
-            <Button variant="ghost" asChild className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900">
-              <Link href="/sign-in">Sign In</Link>
-            </Button>
-            <Button asChild className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 font-medium px-5">
-              <Link href="/sign-in">Get Started</Link>
-            </Button>
+            {isAuthenticated ? (
+              <Button asChild className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 font-medium px-5">
+                <Link href="/dashboard">Dashboard <ChevronRight className="w-4 h-4 ml-1" /></Link>
+              </Button>
+            ) : (
+              <>
+                <Button variant="ghost" asChild className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900">
+                  <Link href="/sign-in">Sign In</Link>
+                </Button>
+                <Button asChild className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 font-medium px-5">
+                  <Link href="/sign-in">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile controls */}

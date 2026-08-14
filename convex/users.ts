@@ -34,6 +34,7 @@ export const getUserStats = query({
     const managerCount = users.filter((u) => u.role === "manager").length;
     const staffCount = users.filter((u) => u.role === "staff").length;
     const supplierCount = users.filter((u) => u.role === "supplier").length;
+    const pendingCount = users.filter((u) => u.role === "pending").length;
     const activeCount = users.filter((u) => u.isActive).length;
     const inactiveCount = total - activeCount;
 
@@ -43,6 +44,7 @@ export const getUserStats = query({
       managerCount,
       staffCount,
       supplierCount,
+      pendingCount,
       activeCount,
       inactiveCount,
     };
@@ -57,7 +59,8 @@ export const updateUserRole = mutation({
       v.literal("admin"),
       v.literal("manager"),
       v.literal("staff"),
-      v.literal("supplier")
+      v.literal("supplier"),
+      v.literal("pending")
     ),
   },
   handler: async (ctx, args) => {
@@ -97,7 +100,8 @@ export const createUser = mutation({
       v.literal("admin"),
       v.literal("manager"),
       v.literal("staff"),
-      v.literal("supplier")
+      v.literal("supplier"),
+      v.literal("pending")
     ),
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
   },
@@ -147,7 +151,8 @@ export const updateUserFullDetail = mutation({
       v.literal("admin"),
       v.literal("manager"),
       v.literal("staff"),
-      v.literal("supplier")
+      v.literal("supplier"),
+      v.literal("pending")
     ),
     plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
     isActive: v.boolean(),

@@ -86,6 +86,13 @@ const ROLE_CONFIG: Record<
     border: "border-amber-500/20",
     icon: Building2Icon,
   },
+  pending: {
+    label: "Pending Approval",
+    bg: "bg-orange-500/10",
+    color: "text-orange-600 dark:text-orange-400 font-bold",
+    border: "border-orange-500/30 animate-pulse",
+    icon: SparklesIcon,
+  },
 };
 
 export default function UsersClient({ role: currentRole }: Props) {
@@ -339,6 +346,7 @@ export default function UsersClient({ role: currentRole }: Props) {
                   <SelectItem value="manager">Store Manager</SelectItem>
                   <SelectItem value="staff">Inventory Staff</SelectItem>
                   <SelectItem value="supplier">Vendor Supplier</SelectItem>
+                  <SelectItem value="pending">Pending Approval</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -505,6 +513,7 @@ export default function UsersClient({ role: currentRole }: Props) {
                                 <SelectItem value="manager">Store Manager</SelectItem>
                                 <SelectItem value="staff">Inventory Staff</SelectItem>
                                 <SelectItem value="supplier">Vendor Supplier</SelectItem>
+                                <SelectItem value="pending">Pending Approval</SelectItem>
                               </SelectContent>
                             </Select>
 

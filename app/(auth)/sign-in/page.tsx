@@ -10,7 +10,6 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   LockIcon,
   MailIcon,
@@ -44,6 +43,7 @@ export default function SignInPage() {
   const [role, setRole] = useState<string>("staff");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && currentUser) {
@@ -66,6 +66,7 @@ export default function SignInPage() {
 
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       if (mode === "signin") {
@@ -75,13 +76,12 @@ export default function SignInPage() {
           name: name.trim(),
           email: email.trim(),
           password: password.trim(),
-          role,
         });
 
-        if (res && res.token) {
-          localStorage.setItem("retailmind_token", res.token);
-          document.cookie = `retailmind_token=${res.token}; path=/; max-age=604800; SameSite=Lax`;
-          window.location.href = ROLE_DESTINATIONS[role] ?? "/dashboard";
+        if (res && res.isPending) {
+          setSuccessMessage(res.message);
+          setMode("signin");
+          setLoading(false);
         }
       }
     } catch (err: any) {
@@ -148,6 +148,13 @@ export default function SignInPage() {
               <UserPlusIcon className="w-3.5 h-3.5" /> Create Account
             </button>
           </div>
+
+          {successMessage && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5">
+              <ShieldCheckIcon className="w-4 h-4 shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-xs text-red-600 dark:text-red-400 flex items-center gap-2.5">
@@ -216,22 +223,7 @@ export default function SignInPage() {
               </div>
             </div>
 
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Account Role</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="h-11 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="admin">Administrator</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                    <SelectItem value="supplier">Supplier</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+
 
             <Button
               type="submit"

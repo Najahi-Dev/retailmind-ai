@@ -224,6 +224,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
                   <SelectItem value="manager">Store Manager</SelectItem>
                   <SelectItem value="staff">Inventory Staff</SelectItem>
                   <SelectItem value="supplier">Vendor Supplier</SelectItem>
+                  <SelectItem value="pending">Pending Approval</SelectItem>
                 </SelectContent>
               </Select>
             </div>

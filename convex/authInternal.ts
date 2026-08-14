@@ -136,3 +136,16 @@ export const updateUserPassword = mutation({
     });
   },
 });
+
+// Update user active status
+export const updateUserStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      isActive: args.isActive,
+    });
+  },
+});

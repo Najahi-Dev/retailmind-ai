@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(null);
       setIsLoading(false);
       if (typeof window !== "undefined") {
-        window.location.href = "/sign-in";
+        window.location.href = "/";
       }
     }
   };

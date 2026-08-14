@@ -48,8 +48,20 @@ export const loginUser = action({
       }
     }
 
+    if (user.role === "pending") {
+      throw new Error("Your account is pending administrator role assignment and approval. Please contact system manager.");
+    }
+
     if (user.isActive === false) {
-      throw new Error("Account suspended. Please contact administrator.");
+      if (user.role === "admin" || user.email === "admin@retailmind.com" || user.email === "devnaja.arcade@gmail.com") {
+        await ctx.runMutation(api.authInternal.updateUserStatus, {
+          userId: user._id,
+          isActive: true,
+        });
+        user.isActive = true;
+      } else {
+        throw new Error("Account suspended. Please contact system administrator.");
+      }
     }
 
     if (!user.passwordHash) {
@@ -107,7 +119,8 @@ export const registerUser = action({
   },
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
-    const role = args.role || "staff";
+    // Newly registered users receive 'pending' role awaiting admin approval
+    const role = "pending";
 
     const passwordHash = bcrypt.hashSync(args.password, 10);
 
@@ -119,31 +132,13 @@ export const registerUser = action({
       imageUrl: args.imageUrl,
     });
 
-    const expiresAt = Date.now() + SESSION_DURATION;
-    const token = jwt.sign(
-      {
-        userId,
-        email,
-        name: args.name,
-        role,
-        exp: Math.floor(expiresAt / 1000),
-      },
-      JWT_SECRET
-    );
-
-    await ctx.runMutation(api.authInternal.createSessionRecord, {
-      userId,
-      token,
-      expiresAt,
-    });
-
     return {
-      token,
+      isPending: true,
       userId,
       email,
       name: args.name,
-      role,
-      imageUrl: args.imageUrl,
+      role: "pending",
+      message: "Account registered successfully! Your account is currently pending administrator role assignment and approval.",
     };
   },
 });

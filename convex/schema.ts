@@ -14,6 +14,7 @@ export default defineSchema({
       v.literal("manager"),
       v.literal("staff"),
       v.literal("supplier"),
+      v.literal("pending"),
     ),
     isActive: v.boolean(),
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
