@@ -53,6 +53,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+import ImportProductsDialog from "./ImportProductsDialog";
+
 interface Props {
   role: string;
 }
@@ -91,6 +93,7 @@ export default function InventoryClient({ role }: Props) {
   const [locationFilter, setLocationFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [page, setPage] = useState(1);
+  const [importOpen, setImportOpen] = useState(false);
 
   const PAGE_SIZE = 25;
   const canViewFinancials = ["admin", "manager"].includes(role);
@@ -250,6 +253,14 @@ export default function InventoryClient({ role }: Props) {
               className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-xl"
             >
               <Boxes className="w-4 h-4 mr-1.5 text-emerald-400" /> Stock In
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-xl"
+            >
+              <Upload className="w-4 h-4 mr-1.5 text-purple-400" /> Import CSV
             </Button>
             <Button
               variant="outline"
@@ -667,6 +678,8 @@ export default function InventoryClient({ role }: Props) {
           )}
         </CardContent>
       </Card>
+
+      <ImportProductsDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

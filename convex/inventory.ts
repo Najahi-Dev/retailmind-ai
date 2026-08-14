@@ -2,6 +2,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 // ── Stock Status Helper ───────────────────────────
 function calcStatus(
@@ -1175,6 +1176,150 @@ export const transferStockBetweenLocations = mutation({
       success: true,
       sourceNewOnHand,
       destinationNewOnHand,
+    };
+  },
+});
+
+// ── Batch Import Products from CSV ─────────────────────────
+export const batchImportProducts = mutation({
+  args: {
+    products: v.array(
+      v.object({
+        sku: v.string(),
+        name: v.string(),
+        description: v.optional(v.string()),
+        categoryName: v.optional(v.string()),
+        unit: v.union(
+          v.literal("pcs"),
+          v.literal("kg"),
+          v.literal("litre"),
+          v.literal("box"),
+          v.literal("ml")
+        ),
+        costPrice: v.number(),
+        sellingPrice: v.number(),
+        reorderPoint: v.number(),
+        safetyStock: v.number(),
+        initialStock: v.optional(v.number()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      throw new Error("Access denied");
+    }
+
+    let defaultLocation = await ctx.db.query("locations").first();
+    let defaultLocationId: Id<"locations">;
+    if (!defaultLocation) {
+      defaultLocationId = await ctx.db.insert("locations", {
+        name: "Main Warehouse",
+        type: "warehouse",
+        isActive: true,
+        createdAt: Date.now(),
+      });
+    } else {
+      defaultLocationId = defaultLocation._id;
+    }
+
+    let importedCount = 0;
+    let skippedCount = 0;
+
+    const allCategories = await ctx.db.query("categories").collect();
+    const categoryMap = new Map<string, Id<"categories">>();
+    for (const cat of allCategories) {
+      categoryMap.set(cat.name.toLowerCase().trim(), cat._id);
+    }
+
+    for (const p of args.products) {
+      const skuClean = p.sku.trim().toUpperCase();
+      if (!skuClean || !p.name.trim()) {
+        skippedCount++;
+        continue;
+      }
+
+      const existingProduct = await ctx.db
+        .query("products")
+        .withIndex("by_sku", (q) => q.eq("sku", skuClean))
+        .first();
+
+      if (existingProduct) {
+        skippedCount++;
+        continue;
+      }
+
+      let categoryId: Id<"categories"> | undefined = undefined;
+      if (p.categoryName && p.categoryName.trim()) {
+        const catKey = p.categoryName.trim().toLowerCase();
+        if (categoryMap.has(catKey)) {
+          categoryId = categoryMap.get(catKey);
+        } else {
+          const newCatId = await ctx.db.insert("categories", {
+            name: p.categoryName.trim(),
+            description: "Auto-created during CSV product import",
+            createdAt: Date.now(),
+          });
+          categoryMap.set(catKey, newCatId);
+          categoryId = newCatId;
+        }
+      }
+
+      const productId = await ctx.db.insert("products", {
+        sku: skuClean,
+        name: p.name.trim(),
+        description: p.description?.trim(),
+        categoryId,
+        unit: p.unit,
+        costPrice: Math.max(0, p.costPrice),
+        sellingPrice: Math.max(0, p.sellingPrice),
+        reorderPoint: Math.max(0, p.reorderPoint),
+        safetyStock: Math.max(0, p.safetyStock),
+        trackBatches: false,
+        isActive: true,
+        createdAt: Date.now(),
+      });
+
+      const initQty = Math.max(0, p.initialStock ?? 0);
+      await ctx.db.insert("inventory", {
+        productId,
+        locationId: defaultLocationId,
+        onHand: initQty,
+        reserved: 0,
+        available: initQty,
+        lastUpdated: Date.now(),
+      });
+
+      if (initQty > 0) {
+        await ctx.db.insert("stockMovements", {
+          productId,
+          locationId: defaultLocationId,
+          userId: user._id,
+          type: "stock_in",
+          reason: "Initial CSV Import Stock",
+          quantity: initQty,
+          notes: `Batch imported from CSV`,
+          createdAt: Date.now(),
+        });
+      }
+
+      importedCount++;
+    }
+
+    await ctx.scheduler.runAfter(0, internal.alerts.generateStockAlerts, {});
+
+    return {
+      success: true,
+      importedCount,
+      skippedCount,
+      totalProcessed: args.products.length,
     };
   },
 });

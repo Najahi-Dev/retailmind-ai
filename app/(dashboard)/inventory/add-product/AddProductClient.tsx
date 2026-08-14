@@ -34,7 +34,9 @@ import {
   RefreshCw,
   CheckCircle2,
   BrainCircuit,
+  Upload,
 } from "lucide-react";
+import ImportProductsDialog from "../ImportProductsDialog";
 
 export default function AddProductClient() {
   const router = useRouter();
@@ -59,6 +61,7 @@ export default function AddProductClient() {
   const [initialQuantity, setInitialQuantity] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const locations = locationsQ?.locations ?? [];
   const categories = categoriesQ ?? [];
@@ -137,6 +140,16 @@ export default function AddProductClient() {
             Add a new item to your catalog, define safety stock thresholds, cost margins, and seed initial store inventory.
           </p>
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setImportOpen(true)}
+          className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-xl h-9 px-4 text-xs font-semibold z-10 shrink-0 self-start lg:self-center"
+        >
+          <Upload className="w-3.5 h-3.5 mr-1.5 text-purple-400" /> Batch Import CSV
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -462,6 +475,7 @@ export default function AddProductClient() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <ImportProductsDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }
