@@ -103,7 +103,9 @@ export function NavUser() {
             <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
 
             <DropdownMenuItem
-              onClick={() => logout()}
+              onClick={async () => {
+                await logout();
+              }}
               className="rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer py-2 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400"
             >
               <LogOutIcon className="mr-2 h-4 w-4" />

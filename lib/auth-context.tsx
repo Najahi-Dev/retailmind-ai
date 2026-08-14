@@ -120,10 +120,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } finally {
       localStorage.removeItem(TOKEN_KEY);
-      document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax`;
+      document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
       setToken(null);
       setCurrentUser(null);
       setIsLoading(false);
+      if (typeof window !== "undefined") {
+        window.location.href = "/sign-in";
+      }
     }
   };
 
