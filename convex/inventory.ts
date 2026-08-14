@@ -1,6 +1,7 @@
 // convex/inventory.ts
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // ── Stock Status Helper ───────────────────────────
 function calcStatus(
@@ -19,6 +20,14 @@ function calcStockPct(onHand: number, reorderPoint: number): number {
   const targetOptimalStock = reorderPoint * 2;
   return Math.min(100, Math.max(0, Math.round((onHand / targetOptimalStock) * 100)));
 }
+
+// Get all products
+export const getProducts = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("products").collect();
+  },
+});
 
 // ── Inventory Overview ────────────────────────────
 export const getInventoryOverview = query({
@@ -697,6 +706,9 @@ export const recordStockIn = mutation({
       createdAt:  Date.now(),
     });
 
+    // Real-time Stock Alert Generator Trigger
+    await ctx.scheduler.runAfter(0, internal.alerts.generateStockAlerts, {});
+
     return { success: true, newOnHand };
   },
 });
@@ -858,6 +870,9 @@ export const recordStockOut = mutation({
       notes:      args.notes,
       createdAt:  Date.now(),
     });
+
+    // Real-time Stock Alert Generator Trigger
+    await ctx.scheduler.runAfter(0, internal.alerts.generateStockAlerts, {});
 
     // ── AUTO REORDER CHECK ──────────────────────
     const product = await ctx.db.get(args.productId);

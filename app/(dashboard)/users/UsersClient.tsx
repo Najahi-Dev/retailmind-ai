@@ -208,7 +208,7 @@ export default function UsersClient({ role: currentRole }: Props) {
               onClick={() => setAddOpen(true)}
               className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
             >
-              <UserPlusIcon className="w-4 h-4 mr-1.5" /> + Add User Account
+              <UserPlusIcon className="w-4 h-4 mr-1.5" /> Add User Account
             </Button>
           </div>
         </div>

@@ -51,8 +51,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   } = useRole()
 
   // Alert count for badge
-  const alertStats = useQuery(api.alerts.getUnreadCount)
-  const alertBadge = alertStats?.unread ?? 0
+  const alertStats = useQuery(api.alerts.getAlertStats);
+  const unreadCount = alertStats?.unread ?? 0;
+  const alertBadge = unreadCount === 0 ? undefined : unreadCount > 99 ? "99+" : String(unreadCount);
 
   // ── Supplier nav ──────────────────────────────
   const supplierMain = [

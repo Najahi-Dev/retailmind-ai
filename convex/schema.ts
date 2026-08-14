@@ -276,4 +276,25 @@ export default defineSchema({
     .index("by_clerk_id", ["clerkId"])
     .index("by_stripe_subscription_id", ["stripeSubscriptionId"])
     .index("by_stripe_customer_id", ["stripeCustomerId"]),
+
+  // ── User Preferences ─────────────────────────
+  userPreferences: defineTable({
+    clerkId: v.string(),
+    alertTypes: v.object({
+      lowStock: v.boolean(),
+      criticalStock: v.boolean(),
+      overstock: v.boolean(),
+      demandSpike: v.boolean(),
+      system: v.boolean(),
+    }),
+    channels: v.object({
+      inApp: v.boolean(),
+      email: v.boolean(),
+    }),
+    thresholds: v.object({
+      lowStockMultiplier: v.number(),
+      criticalStockMultiplier: v.number(),
+    }),
+    updatedAt: v.number(),
+  }).index("by_clerk_id", ["clerkId"]),
 });

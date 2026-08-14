@@ -18,54 +18,90 @@ export const generateReorderSuggestions = internalMutation({
         .withIndex("by_product", q =>
           q.eq("productId", inv.productId)
         )
-        .filter(q => q.eq(q.field("status"), "pending"))
         .first();
 
-      if (existing) continue;
+      if (existing && existing.status === "pending") continue;
 
-      // Only if below reorder point
-      if (inv.onHand >= product.reorderPoint) continue;
+      const onHand = inv.onHand;
+      const reorderPoint = product.reorderPoint;
+      const safetyStock = product.safetyStock;
 
-      let urgency: "critical" | "high" | "medium" | "low";
-      let rationale = "";
+      if (onHand <= reorderPoint) {
+        let urgency: "critical" | "high" | "medium" | "low" = "medium";
+        if (onHand <= safetyStock) urgency = "critical";
+        else if (onHand <= reorderPoint * 0.5) urgency = "high";
 
-      if (inv.onHand <= product.safetyStock) {
-        urgency   = "critical";
-        rationale = `Stock (${inv.onHand} units) is below safety stock (${product.safetyStock} units). Immediate reorder required to prevent stockout.`;
-      } else if (inv.onHand <= product.reorderPoint * 0.5) {
-        urgency   = "high";
-        rationale = `Stock (${inv.onHand} units) is critically low — below 50% of reorder point (${product.reorderPoint} units). Reorder urgently.`;
-      } else {
-        urgency   = "medium";
-        rationale = `Stock (${inv.onHand} units) has fallen below reorder point (${product.reorderPoint} units). Schedule a reorder soon.`;
+        const suggestedQty = Math.max(
+          reorderPoint,
+          reorderPoint * 2 - onHand
+        );
+
+        const suppliers = await ctx.db.query("suppliers").collect();
+        const preferredSupplier = suppliers.length > 0 ? suppliers[0] : null;
+        if (!preferredSupplier) continue;
+
+        await ctx.db.insert("reorderSuggestions", {
+          productId: product._id,
+          preferredSupplierId: preferredSupplier._id,
+          urgency,
+          suggestedQuantity: suggestedQty,
+          estimatedCost: suggestedQty * product.costPrice,
+          orderByDate: Date.now() + 3 * 86400000,
+          rationale: `Automated reorder suggestion based on inventory levels (${onHand} on hand vs ${reorderPoint} reorder point)`,
+          status: "pending",
+          aiGenerated: true,
+          createdAt: Date.now(),
+        });
+
+        created++;
       }
-
-      const suggestedQty  = Math.max(
-        product.reorderPoint * 3 - inv.onHand,
-        product.reorderPoint
-      );
-      const estimatedCost = suggestedQty * product.costPrice;
-      const orderByDate   = Date.now() + (
-        urgency === "critical" ? 1 :
-        urgency === "high"     ? 3 : 7
-      ) * 24 * 60 * 60 * 1000;
-
-      await ctx.db.insert("reorderSuggestions", {
-        productId:           inv.productId,
-        preferredSupplierId: product.primarySupplierId,
-        urgency,
-        suggestedQuantity:   suggestedQty,
-        estimatedCost,
-        orderByDate,
-        rationale,
-        status:              "pending",
-        aiGenerated:         false,
-        createdAt:           Date.now(),
-      });
-
-      created++;
     }
 
+    return { created };
+  },
+});
+
+export const generateReorderSuggestionsPublic = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const inventory = await ctx.db.query("inventory").collect();
+    let created = 0;
+    for (const inv of inventory) {
+      const product = await ctx.db.get(inv.productId);
+      if (!product || !product.isActive) continue;
+
+      const existing = await ctx.db
+        .query("reorderSuggestions")
+        .withIndex("by_product", (q) => q.eq("productId", inv.productId))
+        .first();
+
+      if (existing && existing.status === "pending") continue;
+
+      if (inv.onHand <= product.reorderPoint) {
+        let urgency: "critical" | "high" | "medium" | "low" = "medium";
+        if (inv.onHand <= product.safetyStock) urgency = "critical";
+        else if (inv.onHand <= product.reorderPoint * 0.5) urgency = "high";
+
+        const suggestedQty = Math.max(product.reorderPoint, product.reorderPoint * 2 - inv.onHand);
+        const suppliers = await ctx.db.query("suppliers").collect();
+        const preferredSupplier = suppliers.length > 0 ? suppliers[0] : null;
+        if (!preferredSupplier) continue;
+
+        await ctx.db.insert("reorderSuggestions", {
+          productId: product._id,
+          preferredSupplierId: preferredSupplier._id,
+          urgency,
+          suggestedQuantity: suggestedQty,
+          estimatedCost: suggestedQty * product.costPrice,
+          orderByDate: Date.now() + 3 * 86400000,
+          rationale: `Automated reorder suggestion based on inventory levels`,
+          status: "pending",
+          aiGenerated: true,
+          createdAt: Date.now(),
+        });
+        created++;
+      }
+    }
     return { created };
   },
 });
