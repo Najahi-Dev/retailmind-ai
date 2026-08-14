@@ -113,9 +113,9 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="relative z-10 animate-pulse"
+          className="relative z-10 animate-pulse flex flex-col items-center gap-3"
         >
-          <Logo size="lg" />
+          <Logo size="lg" textClassName="text-white drop-shadow-md" />
         </motion.div>
       </div>
     );

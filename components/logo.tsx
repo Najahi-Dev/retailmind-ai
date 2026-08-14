@@ -9,13 +9,15 @@ interface LogoProps {
   showText?: boolean;
   href?: string;
   className?: string;
+  textClassName?: string;
 }
 
 export function Logo({
   size = "md",
   showText = true,
   href,
-  className
+  className,
+  textClassName
 }: LogoProps) {
   const containerSizes = {
     sm: "h-9 w-auto rounded-xl",
@@ -56,6 +58,7 @@ export function Logo({
           <span
             className={cn(
               "font-heading font-extrabold tracking-tight text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors",
+              textClassName,
               textSizes[size]
             )}
           >
