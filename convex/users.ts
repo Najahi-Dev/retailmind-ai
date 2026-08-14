@@ -14,6 +14,7 @@ export const syncClerkUser = mutation({
       v.literal("supplier")
     ),
     isActive: v.boolean(),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if user already exists
@@ -31,6 +32,7 @@ export const syncClerkUser = mutation({
         name:     args.name,
         role:     args.role,
         isActive: args.isActive,
+        imageUrl: args.imageUrl ?? existing.imageUrl,
       });
       return existing._id;
     }
@@ -42,6 +44,7 @@ export const syncClerkUser = mutation({
       name:      args.name,
       role:      args.role,
       isActive:  args.isActive,
+      imageUrl:  args.imageUrl,
       createdAt: Date.now(),
     });
 
@@ -83,11 +86,13 @@ export const storeUser = mutation({
       identity.email ||
       "User";
     const email = identity.email ?? "";
+    const imageUrl = identity.pictureUrl || (identity as any).imageUrl || undefined;
 
     if (existing) {
       await ctx.db.patch(existing._id, {
         name,
         email: email || existing.email,
+        imageUrl: imageUrl || existing.imageUrl,
       });
       return existing._id;
     }
@@ -103,6 +108,7 @@ export const storeUser = mutation({
       role,
       isActive: true,
       plan: "starter",
+      imageUrl,
       createdAt: Date.now(),
     });
 
@@ -246,5 +252,44 @@ export const deactivateByClerkId = mutation({
     if (user) {
       await ctx.db.patch(user._id, { isActive: false });
     }
+  },
+});
+
+// Get user detail by ID
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
+// Full update of user detail
+export const updateUserFullDetail = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("manager"),
+      v.literal("staff"),
+      v.literal("supplier")
+    ),
+    plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
+    isActive: v.boolean(),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User record not found");
+
+    await ctx.db.patch(args.userId, {
+      name: args.name,
+      role: args.role,
+      plan: args.plan,
+      isActive: args.isActive,
+      imageUrl: args.imageUrl ?? user.imageUrl,
+    });
+
+    return { success: true, clerkId: user.clerkId };
   },
 });

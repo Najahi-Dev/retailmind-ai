@@ -7,6 +7,7 @@ import { useRole } from "@/hooks/useRole"
 import { Badge } from "@/components/ui/badge"
 import { usePathname } from "next/navigation"
 import { ShieldCheckIcon, UserCheckIcon, CrownIcon } from "lucide-react"
+import { UserButton } from "@clerk/nextjs"
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard":                "Dashboard",
@@ -94,6 +95,7 @@ export function SiteHeader() {
             </Badge>
           )}
           <ModeToggle />
+          <UserButton appearance={{ elements: { avatarBox: "size-8 rounded-xl border border-slate-200 dark:border-slate-800" } }} />
         </div>
 
       </div>

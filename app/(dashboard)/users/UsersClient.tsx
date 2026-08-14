@@ -37,9 +37,12 @@ import {
   LockIcon,
   CheckIcon,
   SlidersHorizontalIcon,
+  EyeIcon,
+  EditIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import AddUserModal from "./AddUserModal";
+import EditUserModal from "./EditUserModal";
 
 interface Props {
   role: string;
@@ -91,6 +94,8 @@ export default function UsersClient({ role: currentRole }: Props) {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const users = useQuery(api.users.getUsers, {
@@ -99,18 +104,24 @@ export default function UsersClient({ role: currentRole }: Props) {
   });
   const stats = useQuery(api.users.getUserStats);
 
-  const updateRole = useMutation(api.users.updateUserRole);
-  const toggleStatus = useMutation(api.users.toggleUserStatus);
-  const updatePlan = useMutation(api.users.updateUserPlan);
-
-  const handleRoleChange = async (userId: Id<"users">, newRole: string) => {
-    setUpdatingId(userId);
+  const handleRoleChange = async (userRecord: any, newRole: string) => {
+    setUpdatingId(userRecord._id);
     try {
-      await updateRole({
-        userId,
-        role: newRole as "admin" | "manager" | "staff" | "supplier",
+      const res = await fetch("/api/users/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userRecord._id,
+          clerkId: userRecord.clerkId,
+          name: userRecord.name,
+          role: newRole,
+          plan: userRecord.plan ?? "starter",
+          isActive: userRecord.isActive,
+        }),
       });
-      toast.success(`User role updated to ${newRole}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user role");
+      toast.success(data.message || `User role updated to ${newRole} in both DB and Clerk!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update role");
     } finally {
@@ -118,14 +129,25 @@ export default function UsersClient({ role: currentRole }: Props) {
     }
   };
 
-  const handleStatusToggle = async (userId: Id<"users">, currentStatus: boolean) => {
-    setUpdatingId(userId);
+  const handleStatusToggle = async (userRecord: any, currentStatus: boolean) => {
+    setUpdatingId(userRecord._id);
+    const newStatus = !currentStatus;
     try {
-      await toggleStatus({
-        userId,
-        isActive: !currentStatus,
+      const res = await fetch("/api/users/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userRecord._id,
+          clerkId: userRecord.clerkId,
+          name: userRecord.name,
+          role: userRecord.role,
+          plan: userRecord.plan ?? "starter",
+          isActive: newStatus,
+        }),
       });
-      toast.success(`User account ${!currentStatus ? "activated" : "suspended"}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update status");
+      toast.success(data.message || `User status updated to ${newStatus ? "Active" : "Suspended"} in both DB and Clerk!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update status");
     } finally {
@@ -133,14 +155,24 @@ export default function UsersClient({ role: currentRole }: Props) {
     }
   };
 
-  const handlePlanChange = async (userId: Id<"users">, newPlan: string) => {
-    setUpdatingId(userId);
+  const handlePlanChange = async (userRecord: any, newPlan: string) => {
+    setUpdatingId(userRecord._id);
     try {
-      await updatePlan({
-        userId,
-        plan: newPlan as "starter" | "growth" | "enterprise",
+      const res = await fetch("/api/users/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userRecord._id,
+          clerkId: userRecord.clerkId,
+          name: userRecord.name,
+          role: userRecord.role,
+          plan: newPlan,
+          isActive: userRecord.isActive,
+        }),
       });
-      toast.success(`Subscription plan updated to ${newPlan}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update plan");
+      toast.success(data.message || `Subscription plan updated to ${newPlan}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update plan");
     } finally {
@@ -368,11 +400,20 @@ export default function UsersClient({ role: currentRole }: Props) {
                         {/* User Identity */}
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="size-9 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20 shrink-0">
-                              {getInitials(u.name)}
+                            <div className="size-9 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20 shrink-0 overflow-hidden">
+                              {u.imageUrl ? (
+                                <img src={u.imageUrl} alt={u.name} className="size-full object-cover" />
+                              ) : (
+                                getInitials(u.name)
+                              )}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-900 dark:text-white text-sm">{u.name}</p>
+                              <button
+                                onClick={() => router.push(`/users/${u._id}`)}
+                                className="font-bold text-slate-900 dark:text-white text-sm hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline text-left transition-colors"
+                              >
+                                {u.name}
+                              </button>
                               <p className="text-xs text-slate-500 font-medium">{u.email}</p>
                             </div>
                           </div>
@@ -390,7 +431,7 @@ export default function UsersClient({ role: currentRole }: Props) {
                         <td className="px-5 py-3.5 hidden md:table-cell">
                           <Select
                             value={u.plan ?? "starter"}
-                            onValueChange={(val) => handlePlanChange(u._id, val)}
+                            onValueChange={(val) => handlePlanChange(u, val)}
                             disabled={isUpdating}
                           >
                             <SelectTrigger className="w-32 h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 capitalize">
@@ -422,14 +463,37 @@ export default function UsersClient({ role: currentRole }: Props) {
 
                         {/* RBAC Controls */}
                         <td className="px-5 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Full Edit Modal Trigger */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setEditOpen(true);
+                              }}
+                              className="h-8 text-xs font-semibold px-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              <EditIcon className="w-3.5 h-3.5 mr-1 text-indigo-500" /> Edit
+                            </Button>
+
+                            {/* View Detail Link */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => router.push(`/users/${u._id}`)}
+                              className="h-8 text-xs font-semibold px-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              <EyeIcon className="w-3.5 h-3.5 text-slate-400" />
+                            </Button>
+
                             {/* Role Select Dropdown */}
                             <Select
                               value={u.role}
-                              onValueChange={(val) => handleRoleChange(u._id, val)}
+                              onValueChange={(val) => handleRoleChange(u, val)}
                               disabled={isUpdating}
                             >
-                              <SelectTrigger className="w-36 h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800">
+                              <SelectTrigger className="w-32 h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -445,7 +509,7 @@ export default function UsersClient({ role: currentRole }: Props) {
                               size="sm"
                               variant="outline"
                               disabled={isUpdating}
-                              onClick={() => handleStatusToggle(u._id, u.isActive)}
+                              onClick={() => handleStatusToggle(u, u.isActive)}
                               className={`h-8 text-xs px-3 rounded-xl font-bold border ${
                                 u.isActive
                                   ? "text-red-600 dark:text-red-400 border-red-500/20 hover:bg-red-500/10"
@@ -473,6 +537,7 @@ export default function UsersClient({ role: currentRole }: Props) {
       </Card>
 
       <AddUserModal open={addOpen} onOpenChange={setAddOpen} />
+      <EditUserModal user={selectedUser} open={editOpen} onOpenChange={setEditOpen} />
     </div>
   );
 }
