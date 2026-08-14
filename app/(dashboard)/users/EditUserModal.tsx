@@ -1,6 +1,8 @@
 // app/(dashboard)/users/EditUserModal.tsx
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -21,7 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserCheckIcon, RefreshCwIcon, SaveIcon, SparklesIcon } from "lucide-react";
+import {
+  UserCheckIcon,
+  RefreshCwIcon,
+  SaveIcon,
+  CameraIcon,
+  UploadIcon,
+} from "lucide-react";
 
 interface Props {
   user: any | null;
@@ -32,7 +40,13 @@ interface Props {
 export default function EditUserModal({ user, open, onOpenChange }: Props) {
   const router = useRouter();
 
+  const generateUploadUrl = useMutation(api.users.generateUploadUrl);
+  const updateUserProfileImage = useMutation(api.users.updateUserProfileImage);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [role, setRole] = useState<"admin" | "manager" | "staff" | "supplier">("staff");
   const [plan, setPlan] = useState<"starter" | "growth" | "enterprise">("starter");
   const [isActive, setIsActive] = useState(true);
@@ -41,11 +55,44 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
   useEffect(() => {
     if (user) {
       setName(user.name ?? "");
+      setImageUrl(user.imageUrl ?? "");
       setRole(user.role ?? "staff");
       setPlan(user.plan ?? "starter");
       setIsActive(user.isActive ?? true);
     }
   }, [user]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploadingImage(true);
+    try {
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!result.ok) throw new Error("Failed to upload image file");
+      const { storageId } = await result.json();
+
+      const res = await updateUserProfileImage({
+        userId: user._id,
+        storageId,
+      });
+
+      if (res.imageUrl) {
+        setImageUrl(res.imageUrl);
+        toast.success("Profile photo uploaded!");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -63,6 +110,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
           userId: user._id,
           clerkId: user.clerkId,
           name,
+          imageUrl,
           role,
           plan,
           isActive,
@@ -84,17 +132,23 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
 
   if (!user) return null;
 
+  const initials = name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() || "U";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-3xl border-slate-200 dark:border-slate-800 p-6">
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          className="hidden"
+        />
+
         <DialogHeader className="pb-2 border-b border-slate-100 dark:border-slate-800">
           <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            {user.imageUrl ? (
-              <img src={user.imageUrl} alt={name} className="size-6 rounded-full object-cover border border-indigo-500/20" />
-            ) : (
-              <UserCheckIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            )}
-            Edit User Profile & Status
+            <UserCheckIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            Edit User Profile & Photo
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
             Changes automatically update Convex DB and sync user roles/status with Clerk Auth.
@@ -102,6 +156,49 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-3">
+          {/* Avatar Photo Header */}
+          <div className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="relative group shrink-0">
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt={name}
+                  className="size-12 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shadow-sm"
+                />
+              ) : (
+                <div className="size-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-base shadow-sm">
+                  {initials}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
+                className="absolute -bottom-1 -right-1 size-5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-md transition-transform group-hover:scale-110"
+                title="Upload custom photo"
+              >
+                {uploadingImage ? (
+                  <RefreshCwIcon className="w-2.5 h-2.5 animate-spin" />
+                ) : (
+                  <CameraIcon className="w-2.5 h-2.5" />
+                )}
+              </button>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{name}</p>
+              <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline mt-0.5"
+              >
+                {uploadingImage ? "Uploading photo..." : "Upload Profile Photo"}
+              </button>
+            </div>
+          </div>
+
           {/* Full Name */}
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -111,16 +208,6 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
-            />
-          </div>
-
-          {/* Email (Read-only) */}
-          <div className="space-y-1">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Email Address</Label>
-            <Input
-              value={user.email}
-              disabled
-              className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed"
             />
           </div>
 

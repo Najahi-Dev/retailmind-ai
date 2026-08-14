@@ -14,7 +14,6 @@ export const syncClerkUser = mutation({
       v.literal("supplier")
     ),
     isActive: v.boolean(),
-    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if user already exists
@@ -32,7 +31,6 @@ export const syncClerkUser = mutation({
         name:     args.name,
         role:     args.role,
         isActive: args.isActive,
-        imageUrl: args.imageUrl ?? existing.imageUrl,
       });
       return existing._id;
     }
@@ -44,7 +42,6 @@ export const syncClerkUser = mutation({
       name:      args.name,
       role:      args.role,
       isActive:  args.isActive,
-      imageUrl:  args.imageUrl,
       createdAt: Date.now(),
     });
 
@@ -86,13 +83,11 @@ export const storeUser = mutation({
       identity.email ||
       "User";
     const email = identity.email ?? "";
-    const imageUrl = identity.pictureUrl || (identity as any).imageUrl || undefined;
 
     if (existing) {
       await ctx.db.patch(existing._id, {
         name,
         email: email || existing.email,
-        imageUrl: imageUrl || existing.imageUrl,
       });
       return existing._id;
     }
@@ -108,7 +103,6 @@ export const storeUser = mutation({
       role,
       isActive: true,
       plan: "starter",
-      imageUrl,
       createdAt: Date.now(),
     });
 
@@ -268,6 +262,7 @@ export const updateUserFullDetail = mutation({
   args: {
     userId: v.id("users"),
     name: v.string(),
+    imageUrl: v.optional(v.string()),
     role: v.union(
       v.literal("admin"),
       v.literal("manager"),
@@ -276,7 +271,6 @@ export const updateUserFullDetail = mutation({
     ),
     plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
     isActive: v.boolean(),
-    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
@@ -284,12 +278,44 @@ export const updateUserFullDetail = mutation({
 
     await ctx.db.patch(args.userId, {
       name: args.name,
+      imageUrl: args.imageUrl ?? user.imageUrl,
       role: args.role,
       plan: args.plan,
       isActive: args.isActive,
-      imageUrl: args.imageUrl ?? user.imageUrl,
     });
 
     return { success: true, clerkId: user.clerkId };
+  },
+});
+
+// Generate Convex File Upload URL for Profile Images
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Update Profile Image URL by Storage ID or Direct URL
+export const updateUserProfileImage = mutation({
+  args: {
+    userId: v.id("users"),
+    storageId: v.optional(v.id("_storage")),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let finalUrl = args.imageUrl;
+    if (args.storageId) {
+      const url = await ctx.storage.getUrl(args.storageId);
+      if (url) finalUrl = url;
+    }
+
+    if (!finalUrl) throw new Error("No valid profile image provided");
+
+    await ctx.db.patch(args.userId, {
+      imageUrl: finalUrl,
+    });
+
+    return { success: true, imageUrl: finalUrl };
   },
 });

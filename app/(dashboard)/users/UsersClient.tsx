@@ -400,13 +400,17 @@ export default function UsersClient({ role: currentRole }: Props) {
                         {/* User Identity */}
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="size-9 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20 shrink-0 overflow-hidden">
-                              {u.imageUrl ? (
-                                <img src={u.imageUrl} alt={u.name} className="size-full object-cover" />
-                              ) : (
-                                getInitials(u.name)
-                              )}
-                            </div>
+                            {u.imageUrl ? (
+                              <img
+                                src={u.imageUrl}
+                                alt={u.name}
+                                className="size-9 rounded-2xl object-cover border border-indigo-500/20 shadow-sm shrink-0"
+                              />
+                            ) : (
+                              <div className="size-9 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20 shrink-0">
+                                {getInitials(u.name)}
+                              </div>
+                            )}
                             <div>
                               <button
                                 onClick={() => router.push(`/users/${u._id}`)}

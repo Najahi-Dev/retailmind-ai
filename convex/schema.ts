@@ -7,6 +7,7 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     name: v.string(),
+    imageUrl: v.optional(v.string()),
     role: v.union(
       v.literal("admin"),
       v.literal("manager"),
@@ -15,7 +16,6 @@ export default defineSchema({
     ),
     isActive: v.boolean(),
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
-    imageUrl: v.optional(v.string()),
     isVipAccess: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_clerk_id", ["clerkId"]),

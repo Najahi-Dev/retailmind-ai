@@ -1,9 +1,9 @@
 // app/(dashboard)/users/[userId]/UserDetailClient.tsx
 "use client";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -40,6 +40,9 @@ import {
   CalendarIcon,
   KeyIcon,
   SparklesIcon,
+  CameraIcon,
+  UploadIcon,
+  ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -82,8 +85,14 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
     userId: userId as Id<"users">,
   });
 
+  const generateUploadUrl = useMutation(api.users.generateUploadUrl);
+  const updateUserProfileImage = useMutation(api.users.updateUserProfileImage);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [userRole, setUserRole] = useState<"admin" | "manager" | "staff" | "supplier">("staff");
   const [plan, setPlan] = useState<"starter" | "growth" | "enterprise">("starter");
   const [isActive, setIsActive] = useState(true);
@@ -91,11 +100,44 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
   useEffect(() => {
     if (user) {
       setName(user.name);
+      setImageUrl(user.imageUrl ?? "");
       setUserRole(user.role as any);
-      setPlan(user.plan as any ?? "starter");
+      setPlan((user.plan as any) ?? "starter");
       setIsActive(user.isActive);
     }
   }, [user]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploadingImage(true);
+    try {
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!result.ok) throw new Error("Failed to upload image file");
+      const { storageId } = await result.json();
+
+      const res = await updateUserProfileImage({
+        userId: user._id,
+        storageId,
+      });
+
+      if (res.imageUrl) {
+        setImageUrl(res.imageUrl);
+        toast.success("Profile avatar uploaded and updated successfully!");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -113,6 +155,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
           userId: user._id,
           clerkId: user.clerkId,
           name,
+          imageUrl,
           role: userRole,
           plan,
           isActive,
@@ -165,6 +208,14 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6 w-full max-w-5xl mx-auto">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* ── HERO BANNER ── */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -181,12 +232,33 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
             </Button>
 
             <div className="flex items-center gap-3.5">
-              <div className="size-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-lg shadow-md shrink-0 overflow-hidden border border-white/20">
-                {user.imageUrl ? (
-                  <img src={user.imageUrl} alt={name} className="size-full object-cover" />
+              {/* Profile Photo Avatar with Upload Camera Overlay */}
+              <div className="relative group shrink-0">
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={name}
+                    className="size-14 rounded-2xl object-cover border-2 border-indigo-400/40 shadow-lg"
+                  />
                 ) : (
-                  initials
+                  <div className="size-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
+                    {initials}
+                  </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="absolute -bottom-1 -right-1 size-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-md transition-transform group-hover:scale-110"
+                  title="Upload profile photo"
+                >
+                  {uploadingImage ? (
+                    <RefreshCwIcon className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <CameraIcon className="w-3 h-3" />
+                  )}
+                </button>
               </div>
 
               <div>
@@ -258,6 +330,51 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
                   className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800"
                   placeholder="e.g. Ahmadh Najahi"
                 />
+              </div>
+
+              {/* Profile Avatar Photo */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Profile Avatar Photo
+                </Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative shrink-0">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={name}
+                        className="size-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
+                      />
+                    ) : (
+                      <div className="size-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20">
+                        {initials}
+                      </div>
+                    )}
+                  </div>
+
+                  <Input
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="Paste image URL or click Upload..."
+                    className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800 flex-1"
+                  />
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingImage}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-10 rounded-xl text-xs font-semibold shrink-0"
+                  >
+                    {uploadingImage ? (
+                      <RefreshCwIcon className="w-3.5 h-3.5 mr-1.5 animate-spin text-indigo-500" />
+                    ) : (
+                      <UploadIcon className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
+                    )}
+                    Upload Photo
+                  </Button>
+                </div>
               </div>
 
               {/* Email Address (Read-only) */}

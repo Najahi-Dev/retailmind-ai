@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { userId, clerkId, name, role, plan, isActive } = body;
+    const { userId, clerkId, name, imageUrl, role, plan, isActive } = body;
 
     if (!userId || !name || !role || !plan || typeof isActive !== "boolean") {
       return NextResponse.json({ error: "Missing required user fields" }, { status: 400 });
@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     await convex.mutation(api.users.updateUserFullDetail, {
       userId: userId as Id<"users">,
       name,
+      imageUrl,
       role,
       plan,
       isActive,
@@ -42,9 +43,6 @@ export async function POST(req: Request) {
         const firstName = nameParts[0] || name;
         const lastName = nameParts.slice(1).join(" ") || "";
 
-        const clerkUser = await clerk.users.getUser(clerkId);
-        const imageUrl = clerkUser.imageUrl;
-
         // Update Clerk User Metadata & Name
         await clerk.users.updateUser(clerkId, {
           firstName,
@@ -52,16 +50,6 @@ export async function POST(req: Request) {
           publicMetadata: {
             role,
           },
-        });
-
-        // Update Convex with Clerk Image URL & details
-        await convex.mutation(api.users.updateUserFullDetail, {
-          userId: userId as Id<"users">,
-          name,
-          role,
-          plan,
-          isActive,
-          imageUrl,
         });
 
         // Sync Account Status (Ban / Unban in Clerk)
