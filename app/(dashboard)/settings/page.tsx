@@ -1,8 +1,10 @@
 // app/(dashboard)/settings/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWorkspaceBilling } from "@/hooks/useWorkspaceBilling";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import {
   CreditCard,
@@ -17,16 +19,28 @@ import {
   Settings2,
   SearchIcon,
   Copy,
+  Bell,
+  Smartphone,
+  TestTube,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, useRole } from "@/lib/auth-context";
+import {
+  isPushSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  sendTestNotification,
+  type PushPermissionStatus,
+} from "@/lib/push-notifications";
 
 export default function SettingsPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, token } = useAuth();
+  const { isStaff, isSupplier } = useRole();
+  const isRestrictedUser = isStaff || isSupplier;
   const {
     organization: org,
     tier,
@@ -41,6 +55,87 @@ export default function SettingsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
+  // ── Push Notification State ──
+  const [pushPermission, setPushPermission] = useState<PushPermissionStatus>("unsupported");
+  const [requestingPush, setRequestingPush] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
+
+  const savePreferences = useMutation(api.alerts.saveNotificationPreferences);
+  const userPrefs = useQuery(api.alerts.getUserPreferences, { token: token ?? undefined });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPushPermission(getNotificationPermission());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (userPrefs?.channels) {
+      setPushEnabled((userPrefs.channels as any).push ?? true);
+    }
+  }, [userPrefs]);
+
+  const handleRequestPush = async () => {
+    if (!isPushSupported()) {
+      toast.error("Push notifications not supported in this browser.");
+      return;
+    }
+    setRequestingPush(true);
+    try {
+      const result = await requestNotificationPermission();
+      setPushPermission(result);
+      if (result === "granted") {
+        toast.success("✅ Push notifications enabled! You'll now get desktop alerts.");
+        setPushEnabled(true);
+        await savePreferences({
+          token: token ?? undefined,
+          preferences: {
+            alertTypes: userPrefs?.alertTypes,
+            channels: { ...(userPrefs?.channels || {}), push: true },
+            thresholds: userPrefs?.thresholds,
+          },
+        });
+      } else if (result === "denied") {
+        toast.error("Notifications blocked. Allow in browser site settings.");
+        setPushEnabled(false);
+      }
+    } catch {
+      toast.error("Failed to request push permission.");
+    } finally {
+      setRequestingPush(false);
+    }
+  };
+
+  const handleTogglePush = async (enabled: boolean) => {
+    setPushEnabled(enabled);
+    try {
+      await savePreferences({
+        token: token ?? undefined,
+        preferences: {
+          alertTypes: userPrefs?.alertTypes,
+          channels: { ...(userPrefs?.channels || {}), push: enabled },
+          thresholds: userPrefs?.thresholds,
+        },
+      });
+      toast.success(enabled ? "Push notifications enabled." : "Push notifications disabled.");
+    } catch {
+      toast.error("Failed to save push notification preference.");
+    }
+  };
+
+  const handleTestPush = () => {
+    if (pushPermission !== "granted") {
+      toast.warning("Enable push notifications first.");
+      return;
+    }
+    const sent = sendTestNotification();
+    if (sent) {
+      toast.success("🔔 Test notification sent! Check your desktop.");
+    } else {
+      toast.error("Could not send test notification.");
+    }
+  };
+
   const copyInviteCode = () => {
     if (!org?.inviteCode) return;
     navigator.clipboard.writeText(org.inviteCode);
@@ -50,6 +145,7 @@ export default function SettingsPage() {
   const SETTINGS_SECTIONS = [
     {
       id: "billing",
+      adminOnly: true,
       title: "Billing & Plans",
       subtitle: "Stripe payment portal, plan upgrades, and invoice history",
       desc: "Manage your workspace subscription tier, update credit cards, download official receipts, or upgrade to Growth Plan.",
@@ -64,6 +160,7 @@ export default function SettingsPage() {
     },
     {
       id: "backup",
+      adminOnly: true,
       title: "Database Backup",
       subtitle: "Workspace data archives, JSON table exports, and maintenance",
       desc: "Generate instant JSON and CSV database backups for products, inventory stock movements, supplier catalogs, and purchase orders.",
@@ -78,6 +175,7 @@ export default function SettingsPage() {
     },
     {
       id: "workspace",
+      adminOnly: true,
       title: "Workspace Details",
       subtitle: "Active organization configuration and team access code",
       desc: `Workspace: ${org?.name || "RetailMind Supermarket"} (Slug: /${org?.slug || "main"}). Share invite code to onboard staff.`,
@@ -92,6 +190,7 @@ export default function SettingsPage() {
     },
     {
       id: "team",
+      adminOnly: true,
       title: "Team & Staff Accounts",
       subtitle: "Manage user access permissions and staff member roles",
       desc: "Invite store managers, inventory staff, cashiers, and vendor suppliers with role-based access control (RBAC).",
@@ -107,6 +206,8 @@ export default function SettingsPage() {
   ];
 
   const filteredSections = SETTINGS_SECTIONS.filter((s) => {
+    // Hide admin-only sections from staff and suppliers
+    if (isRestrictedUser && s.adminOnly) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q);
@@ -158,24 +259,28 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {/* Manage Billing Quick Trigger */}
-            <Link href="/settings/billing">
-              <Button className="h-10 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 px-4 shadow-lg border-0 cursor-pointer">
-                <CreditCard className="w-4 h-4 mr-2 text-emerald-300" />
-                Manage Billing & Plans
-              </Button>
-            </Link>
+            {/* Manage Billing Quick Trigger — hidden from staff/supplier */}
+            {!isRestrictedUser && (
+              <Link href="/settings/billing">
+                <Button className="h-10 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 px-4 shadow-lg border-0 cursor-pointer">
+                  <CreditCard className="w-4 h-4 mr-2 text-emerald-300" />
+                  Manage Billing & Plans
+                </Button>
+              </Link>
+            )}
 
-            {/* Database Backup Quick Trigger */}
-            <Link href="/settings/backup">
-              <Button
-                variant="ghost"
-                className="h-10 rounded-xl text-xs font-semibold text-white hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 px-4 cursor-pointer transition-colors"
-              >
-                <Database className="w-4 h-4 mr-2 text-amber-300" />
-                Database Backup
-              </Button>
-            </Link>
+            {/* Database Backup Quick Trigger — hidden from staff/supplier */}
+            {!isRestrictedUser && (
+              <Link href="/settings/backup">
+                <Button
+                  variant="ghost"
+                  className="h-10 rounded-xl text-xs font-semibold text-white hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 px-4 cursor-pointer transition-colors"
+                >
+                  <Database className="w-4 h-4 mr-2 text-amber-300" />
+                  Database Backup
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -211,11 +316,14 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <Link href="/settings/billing">
-              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm gap-1.5 cursor-pointer">
-                Manage Billing <ArrowRight className="size-3.5" />
-              </Button>
-            </Link>
+            {/* Manage Billing button — hidden from staff/supplier */}
+            {!isRestrictedUser && (
+              <Link href="/settings/billing">
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm gap-1.5 cursor-pointer">
+                  Manage Billing <ArrowRight className="size-3.5" />
+                </Button>
+              </Link>
+            )}
           </div>
         </CardHeader>
 
@@ -254,7 +362,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {!isSubscribed && (
+          {!isSubscribed && !isRestrictedUser && (
             <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200 font-medium">
                 <Clock className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -266,6 +374,124 @@ export default function SettingsPage() {
                 <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg px-4 border-none shadow-xs shrink-0 cursor-pointer">
                   Upgrade & Subscribe Now
                 </Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── 3. PUSH NOTIFICATION TOGGLE CARD ── */}
+      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-violet-600 text-white shadow-md shadow-violet-600/30">
+                <Bell className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                  Push Notifications
+                  {pushPermission === "granted" && pushEnabled ? (
+                    <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30 text-xs font-bold px-2.5 py-0.5">
+                      <CheckCircle2 className="size-3.5 mr-1 text-violet-600 dark:text-violet-400" /> Active
+                    </Badge>
+                  ) : pushPermission === "denied" ? (
+                    <Badge variant="destructive" className="text-xs font-bold px-2.5 py-0.5">
+                      <AlertCircle className="size-3.5 mr-1" /> Blocked
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30 text-xs font-bold px-2.5 py-0.5">
+                      Not Enabled
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                  Instant desktop &amp; mobile alerts for critical inventory events.
+                </CardDescription>
+              </div>
+            </div>
+
+            {pushPermission === "granted" ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleTestPush}
+                className="text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 border border-violet-500/20 rounded-xl text-xs font-bold gap-1.5"
+              >
+                <TestTube className="size-3.5" /> Send Test
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleRequestPush}
+                disabled={requestingPush || !isPushSupported()}
+                className="bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl shadow-sm gap-1.5 cursor-pointer"
+              >
+                <Bell className="size-3.5" /> Enable Push Alerts
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Toggle row */}
+            <div className="flex-1 flex items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-start gap-3">
+                <Smartphone className="size-5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Browser Push Notifications</p>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    Get real-time desktop alerts for stockouts, demand spikes, reorder suggestions, and AI events — even with the tab minimized.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (pushPermission !== "granted") {
+                    handleRequestPush();
+                  } else {
+                    handleTogglePush(!pushEnabled);
+                  }
+                }}
+                disabled={!isPushSupported() || requestingPush}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 p-1 ${
+                  pushEnabled && pushPermission === "granted"
+                    ? "bg-violet-600"
+                    : "bg-slate-300 dark:bg-slate-700"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <div
+                  className={`size-4 rounded-full bg-white transition-transform ${
+                    pushEnabled && pushPermission === "granted" ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Status message */}
+          {pushPermission === "denied" && (
+            <div className="mt-3 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-700 dark:text-red-300 font-medium flex items-start gap-2">
+              <AlertCircle className="size-4 shrink-0 mt-0.5 text-red-500" />
+              <span>Notifications are <strong>blocked</strong> by your browser. Click the lock icon in your browser’s address bar, set &ldquo;Notifications&rdquo; to &ldquo;Allow&rdquo;, then refresh this page.</span>
+            </div>
+          )}
+          {pushPermission === "default" && (
+            <div className="mt-3 p-3 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-900/60 text-xs text-violet-700 dark:text-violet-300 font-medium flex items-center gap-2">
+              <Bell className="size-4 shrink-0 text-violet-500" />
+              <span>Click <strong>"Enable Push Alerts"</strong> to grant browser notification permission. A browser prompt will appear asking for your consent.</span>
+            </div>
+          )}
+          {pushPermission === "granted" && pushEnabled && (
+            <div className="mt-3 p-3 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-900/60 text-xs text-violet-700 dark:text-violet-300 font-medium flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 shrink-0 text-violet-500" />
+                <span>Push notifications are <strong>active</strong>. You’ll receive instant desktop alerts for all enabled alert types.</span>
+              </div>
+              <Link href="/alerts/preferences" className="text-violet-600 dark:text-violet-400 font-bold underline-offset-4 hover:underline text-[11px] shrink-0">
+                Manage Alert Types
               </Link>
             </div>
           )}
