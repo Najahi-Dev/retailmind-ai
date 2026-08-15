@@ -90,6 +90,7 @@ export default defineSchema({
     reorderPoint: v.number(),
     safetyStock: v.number(),
     trackBatches: v.boolean(),
+    barcode: v.optional(v.string()),
     isActive: v.boolean(),
     createdAt: v.number(),
   })
@@ -138,6 +139,8 @@ export default defineSchema({
     supplierId: v.id("suppliers"),
     createdBy: v.optional(v.id("users")),
     poNumber: v.string(),
+    invoiceNumber: v.optional(v.string()),
+    invoiceDate: v.optional(v.number()),
     status: v.union(
       v.literal("draft"),
       v.literal("sent"),

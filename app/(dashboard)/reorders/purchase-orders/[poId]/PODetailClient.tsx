@@ -40,9 +40,12 @@ import {
   CheckSquareIcon,
   PackageCheckIcon,
   ClockIcon,
+  FileTextIcon,
+  PrinterIcon,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
+import { InvoiceModal } from "./InvoiceModal";
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; border: string }> = {
   draft: { label: "Draft", bg: "bg-slate-100 dark:bg-slate-800", color: "text-slate-600 dark:text-slate-300", border: "border-slate-300 dark:border-slate-700" },
@@ -79,6 +82,7 @@ export default function PODetailClient({
   const router = useRouter();
   const { token } = useAuth();
   const [updating, setUpdating] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const po = useQuery(api.purchaseOrders.getPODetail, {
     poId: poId as Id<"purchaseOrders">,
@@ -274,7 +278,17 @@ export default function PODetailClient({
               </>
             )}
 
-              {canEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowInvoiceModal(true)}
+              className="h-9 rounded-xl text-xs font-bold text-white bg-white/10 hover:bg-white/20 border-white/20 px-3.5 shadow-sm"
+            >
+              <FileTextIcon className="size-4 mr-1.5 text-indigo-300" />
+              View / Print Invoice
+            </Button>
+
+            {canEdit && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -328,8 +342,8 @@ export default function PODetailClient({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              )}
-            </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -508,6 +522,34 @@ export default function PODetailClient({
           </Card>
         </div>
       </div>
+
+      {/* Invoice Modal */}
+      {po && (
+        <InvoiceModal
+          open={showInvoiceModal}
+          onOpenChange={setShowInvoiceModal}
+          po={{
+            _id: po._id,
+            poNumber: po.poNumber,
+            invoiceNumber: (po as any).invoiceNumber,
+            status: po.status,
+            createdAt: po.createdAt,
+            supplierName: po.supplierName,
+            supplierEmail: (po as any).supplierEmail,
+            supplierPhone: (po as any).supplierPhone,
+            supplierAddress: (po as any).supplierAddress,
+            totalValue: po.totalValue,
+            lineItems: po.lineItems.map((item) => ({
+              productId: item.productId,
+              productName: item.productName,
+              sku: (item as any).productSku || (item as any).sku || "SKU-ITEM",
+              quantityOrdered: item.quantityOrdered,
+              unitCost: item.unitCost,
+              lineTotal: item.lineTotal ?? item.unitCost * item.quantityOrdered,
+            })),
+          }}
+        />
+      )}
     </div>
   );
 }

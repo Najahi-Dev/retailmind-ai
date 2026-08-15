@@ -23,6 +23,7 @@ import {
   Building2Icon, CalendarIcon, SendIcon, CheckSquareIcon, PackageCheckIcon, XCircleIcon
 } from "lucide-react";
 import { toast } from "sonner";
+import { InvoiceModal } from "./[poId]/InvoiceModal";
 
 interface Props { role: string }
 
@@ -33,12 +34,12 @@ const STATUS_CONFIG: Record<string, {
   border:  string;
   icon:    any;
 }> = {
-  draft:     { label: "Draft",     color: "text-slate-600 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-800", border: "border-slate-300 dark:border-slate-700", icon: FileTextIcon },
-  sent:      { label: "Sent",      color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-500/10", border: "border-blue-500/20", icon: ClockIcon },
-  confirmed: { label: "Confirmed", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", icon: CheckSquareIcon },
-  shipped:   { label: "Shipped",   color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", icon: TruckIcon },
-  delivered: { label: "Delivered", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: PackageCheckIcon },
-  cancelled: { label: "Cancelled", color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10", border: "border-red-500/20", icon: XCircleIcon },
+  draft:     { label: "Draft",     color: "text-slate-600 dark:text-slate-300",  bg: "bg-slate-100 dark:bg-slate-800",       border: "border-slate-300 dark:border-slate-700",  icon: ClockIcon },
+  sent:      { label: "Sent",      color: "text-amber-600 dark:text-amber-400",  bg: "bg-amber-500/10 dark:bg-amber-500/15", border: "border-amber-500/30",              icon: ClockIcon },
+  confirmed: { label: "Confirmed", color: "text-indigo-600 dark:text-indigo-400",bg: "bg-indigo-500/10 dark:bg-indigo-500/15",border: "border-indigo-500/30",            icon: CheckSquareIcon },
+  shipped:   { label: "Shipped",   color: "text-purple-600 dark:text-purple-400",bg: "bg-purple-500/10 dark:bg-purple-500/15",border: "border-purple-500/30",            icon: TruckIcon },
+  delivered: { label: "Delivered", color: "text-emerald-600 dark:text-emerald-400",bg:"bg-emerald-500/10 dark:bg-emerald-500/15",border:"border-emerald-500/30",          icon: PackageCheckIcon },
+  cancelled: { label: "Cancelled", color: "text-red-600 dark:text-red-400 font-bold",bg:"bg-red-500/10 dark:bg-red-500/15",    border:"border-red-500/30",              icon: XCircleIcon },
 };
 
 // What action is available for each status
@@ -61,6 +62,7 @@ export default function PurchaseOrdersClient({ role }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [selectedInvoicePO, setSelectedInvoicePO] = useState<any | null>(null);
 
   const orders = useQuery(api.purchaseOrders.getPurchaseOrders, {
     token: token ?? undefined,
@@ -469,6 +471,16 @@ export default function PurchaseOrdersClient({ role }: Props) {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => setSelectedInvoicePO(po)}
+                              title="View & Print Invoice"
+                              className="size-8 p-0 rounded-xl border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0"
+                            >
+                              <FileTextIcon className="w-4 h-4" />
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() =>
                                 router.push(
                                   `/reorders/purchase-orders/${po._id}`,
@@ -489,6 +501,36 @@ export default function PurchaseOrdersClient({ role }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* Quick Invoice Modal */}
+      {selectedInvoicePO && (
+        <InvoiceModal
+          open={!!selectedInvoicePO}
+          onOpenChange={(open) => {
+            if (!open) setSelectedInvoicePO(null);
+          }}
+          po={{
+            _id: selectedInvoicePO._id,
+            poNumber: selectedInvoicePO.poNumber,
+            invoiceNumber: selectedInvoicePO.invoiceNumber,
+            status: selectedInvoicePO.status,
+            createdAt: selectedInvoicePO.createdAt,
+            supplierName: selectedInvoicePO.supplierName,
+            supplierEmail: selectedInvoicePO.supplierEmail,
+            supplierPhone: selectedInvoicePO.supplierPhone,
+            supplierAddress: selectedInvoicePO.supplierAddress,
+            totalValue: selectedInvoicePO.totalValue,
+            lineItems: (selectedInvoicePO.lineItems || []).map((item: any) => ({
+              productId: item.productId,
+              productName: item.productName || "Purchase Item",
+              sku: item.sku || "SKU-ITEM",
+              quantityOrdered: item.quantityOrdered,
+              unitCost: item.unitCost,
+              lineTotal: item.lineTotal ?? item.unitCost * item.quantityOrdered,
+            })),
+          }}
+        />
+      )}
     </div>
   );
 }

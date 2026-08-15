@@ -52,9 +52,12 @@ import {
   Store,
   ChevronLeft,
   ChevronRight,
+  QrCode,
+  Tag,
 } from "lucide-react";
 
 import ImportProductsDialog from "./ImportProductsDialog";
+import { BarcodeModal } from "./BarcodeModal";
 
 interface Props {
   role: string;
@@ -95,6 +98,7 @@ export default function InventoryClient({ role }: Props) {
   const [sortBy, setSortBy] = useState("name");
   const [page, setPage] = useState(1);
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedBarcodeProduct, setSelectedBarcodeProduct] = useState<any | null>(null);
 
   const PAGE_SIZE = 25;
   const canViewFinancials = ["admin", "manager"].includes(role);
@@ -593,7 +597,25 @@ export default function InventoryClient({ role }: Props) {
                         onClick={() => router.push(`/inventory/${item!.productId}`)}
                       >
                         <TableCell className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
-                          {item!.sku}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedBarcodeProduct({
+                                  sku: item!.sku,
+                                  name: item!.name,
+                                  category: item!.category,
+                                  price: (item as any)!.sellingPrice,
+                                });
+                              }}
+                              className="p-1 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 transition-colors"
+                              title="Generate & Print Shelf Barcode Label"
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                            </button>
+                            <span>{item!.sku}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="font-bold text-sm text-slate-900 dark:text-white max-w-48 truncate">
                           {item!.name}
@@ -691,6 +713,13 @@ export default function InventoryClient({ role }: Props) {
       </Card>
 
       <ImportProductsDialog open={importOpen} onOpenChange={setImportOpen} />
+      <BarcodeModal
+        open={!!selectedBarcodeProduct}
+        onOpenChange={(open: boolean) => {
+          if (!open) setSelectedBarcodeProduct(null);
+        }}
+        product={selectedBarcodeProduct}
+      />
     </div>
   );
 }
