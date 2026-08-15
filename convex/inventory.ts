@@ -845,32 +845,51 @@ export const getStockOutFormData = query({
       .query("locations")
       .collect();
 
-    const productsWithStock = await Promise.all(
-      allInventory.map(async (inv) => {
-        const product = await ctx.db.get(inv.productId);
-        if (!product || !product.isActive) return null;
+    const productMap = new Map<
+      string,
+      {
+        _id: Id<"products">;
+        sku: string;
+        name: string;
+        unit: string;
+        onHand: number;
+        reserved: number;
+        available: number;
+        locationId?: string;
+      }
+    >();
 
-        return {
-          _id:        product._id,
-          sku:        product.sku,
-          name:       product.name,
-          unit:       product.unit,
-          onHand:     inv.onHand,
-          reserved:   inv.reserved,
-          available:  inv.available,
-          locationId: inv.locationId as string,
-        };
-      })
-    );
+    for (const inv of allInventory) {
+      const product = await ctx.db.get(inv.productId);
+      if (!product || !product.isActive) continue;
 
-    const filtered = productsWithStock
-      .filter((p): p is NonNullable<typeof p> => p !== null)
-      .filter(p => p.onHand > 0)
+      const key = product._id;
+      const existing = productMap.get(key);
+      if (existing) {
+        existing.onHand += inv.onHand;
+        existing.reserved += inv.reserved;
+        existing.available += inv.available;
+      } else {
+        productMap.set(key, {
+          _id: product._id,
+          sku: product.sku,
+          name: product.name,
+          unit: product.unit,
+          onHand: inv.onHand,
+          reserved: inv.reserved,
+          available: inv.available,
+          locationId: inv.locationId,
+        });
+      }
+    }
+
+    const filtered = Array.from(productMap.values())
+      .filter((p) => p.onHand > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return {
-      products:  filtered,
-      locations: locations.filter(l => l.isActive),
+      products: filtered,
+      locations: locations.filter((l) => l.isActive),
     };
   },
 });

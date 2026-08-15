@@ -169,8 +169,8 @@ export default function StockOutClient({ role }: Props) {
                       <SelectValue placeholder="Select Product..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {formData.products.map((p) => (
-                        <SelectItem key={p._id} value={p._id}>
+                      {formData.products.map((p, idx) => (
+                        <SelectItem key={`${p._id}_${idx}`} value={p._id}>
                           {p.sku} — {p.name} ({p.available} {p.unit} avail)
                         </SelectItem>
                       ))}
@@ -187,8 +187,8 @@ export default function StockOutClient({ role }: Props) {
                       <SelectValue placeholder="Select Location..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {formData.locations.map((l) => (
-                        <SelectItem key={l._id} value={l._id}>
+                      {formData.locations.map((l, idx) => (
+                        <SelectItem key={`${l._id}_${idx}`} value={l._id}>
                           {l.name}
                         </SelectItem>
                       ))}
