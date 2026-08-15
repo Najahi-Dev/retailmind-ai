@@ -160,21 +160,21 @@ export const getAlertStats = query({
   },
 });
 
-// ── 4. MARK SINGLE ALERT AS READ ──
+// ── 4. MARK SINGLE ALERT AS READ (DELETES FROM DB) ──
 export const markAlertRead = mutation({
   args: {
     token: v.optional(v.string()),
     alertId: v.id("alerts"),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.alertId, { isRead: true });
+    await ctx.db.delete(args.alertId);
   },
 });
 
 // Alias for markAlertRead
 export const markAsRead = markAlertRead;
 
-// ── 5. MARK ALL UNREAD ALERTS AS READ ──
+// ── 5. MARK ALL UNREAD ALERTS AS READ (DELETES FROM DB) ──
 export const markAllRead = mutation({
   args: {
     token: v.optional(v.string()),
@@ -190,7 +190,7 @@ export const markAllRead = mutation({
 
     const orgUnread = unreadAlerts.filter((a) => a.orgId === caller.orgId && !a.isRead);
     for (const alert of orgUnread) {
-      await ctx.db.patch(alert._id, { isRead: true });
+      await ctx.db.delete(alert._id);
     }
   },
 });

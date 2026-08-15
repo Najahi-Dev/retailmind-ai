@@ -95,18 +95,18 @@ export default function AlertsClient({ role }: Props) {
   const handleMarkRead = async (alertId: Id<"alerts">) => {
     try {
       await markAlertRead({ alertId });
-      toast.success("Alert marked as read");
+      toast.success("Alert Marked");
     } catch (err) {
-      toast.error("Failed to mark alert as read");
+      toast.error("Failed to remove alert");
     }
   };
 
   const handleMarkAllRead = async () => {
     try {
       await markAllRead({ token: token ?? undefined });
-      toast.success("All unread alerts marked as read");
+      toast.success("All unread alerts cleared");
     } catch (err) {
-      toast.error("Failed to mark all alerts as read");
+      toast.error("Failed to clear alerts");
     }
   };
 
