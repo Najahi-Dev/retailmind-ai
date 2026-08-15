@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import bcrypt from "bcryptjs";
+import { getSupplierForUser } from "./lib/roleGuard";
 
 // Get all users for admin management
 export const getUsers = query({
@@ -168,6 +169,16 @@ export const updateUserFullDetail = mutation({
       plan: args.plan,
       isActive: args.isActive,
     });
+
+    // ── Sync supplier master record if user is a supplier ──
+    if (user.role === "supplier" || args.role === "supplier") {
+      const supplier = await getSupplierForUser(ctx, user);
+      if (supplier) {
+        await ctx.db.patch(supplier._id, {
+          name: args.name,
+        });
+      }
+    }
 
     return { success: true };
   },

@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 import {
   Card,
@@ -80,6 +81,8 @@ const ROLE_CONFIG: Record<string, { label: string; bg: string; color: string; bo
 
 export default function UserDetailClient({ userId, role: callerRole }: Props) {
   const router = useRouter();
+  const { refreshUser } = useAuth();
+  const canManageSystemRole = ["admin", "manager"].includes(callerRole);
 
   const user = useQuery(api.users.getUserById, {
     userId: userId as Id<"users">,
@@ -130,6 +133,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
 
       if (res.imageUrl) {
         setImageUrl(res.imageUrl);
+        await refreshUser();
         toast.success("Profile avatar uploaded and updated successfully!");
       }
     } catch (err) {
@@ -164,7 +168,8 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update user");
 
-      toast.success("Updated Successfully");
+      await refreshUser();
+      toast.success("Profile Updated Successfully");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update user");
@@ -190,8 +195,8 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
         <p className="text-xs text-slate-500 max-w-sm">
           The requested platform user record does not exist or has been removed.
         </p>
-        <Button variant="outline" size="sm" onClick={() => router.push("/users")} className="mt-2 rounded-xl text-xs">
-          <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Users Directory
+        <Button variant="outline" size="sm" onClick={() => router.back()} className="mt-2 rounded-xl text-xs">
+          <ChevronLeftIcon className="w-4 h-4 mr-1" /> Return Back
         </Button>
       </div>
     );
@@ -224,7 +229,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => router.push("/users")}
+              onClick={() => router.back()}
               className="shrink-0 size-10 rounded-lg bg-white/10 hover:bg-white/20 border-white/20 text-white"
             >
               <ChevronLeftIcon className="w-5 h-5 text-indigo-200" />
@@ -393,7 +398,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
               {/* System Role */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
-                <Select value={userRole} onValueChange={(val: any) => setUserRole(val)}>
+                <Select value={userRole} onValueChange={(val: any) => setUserRole(val)} disabled={!canManageSystemRole}>
                   <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800">
                     <SelectValue />
                   </SelectTrigger>
@@ -409,7 +414,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
               {/* Subscription Plan */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Subscription Tier</Label>
-                <Select value={plan} onValueChange={(val: any) => setPlan(val)}>
+                <Select value={plan} onValueChange={(val: any) => setPlan(val)} disabled={!canManageSystemRole}>
                   <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800">
                     <SelectValue />
                   </SelectTrigger>
@@ -435,8 +440,11 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
 
               <button
                 type="button"
-                onClick={() => setIsActive(!isActive)}
+                onClick={() => canManageSystemRole && setIsActive(!isActive)}
+                disabled={!canManageSystemRole}
                 className={`w-12 h-6 rounded-full transition-colors relative shrink-0 p-1 ${
+                  !canManageSystemRole ? "opacity-60 cursor-not-allowed" : ""
+                } ${
                   isActive ? "bg-emerald-600" : "bg-red-500"
                 }`}
               >

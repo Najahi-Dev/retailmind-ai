@@ -23,6 +23,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -46,6 +47,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logoutUserAction = useAction(api.auth.logoutUser);
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const sessionUser = await validateSessionAction({ token });
+      if (sessionUser) {
+        setCurrentUser({
+          id: sessionUser.id,
+          _id: sessionUser._id,
+          email: sessionUser.email,
+          name: sessionUser.name,
+          role: sessionUser.role as Role,
+          plan: sessionUser.plan,
+          imageUrl: sessionUser.imageUrl,
+          isActive: sessionUser.isActive,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to refresh session user", err);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -138,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         login,
         logout,
+        refreshUser,
         isLoading,
         isAuthenticated: !!currentUser,
       }}

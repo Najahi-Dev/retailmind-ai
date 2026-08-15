@@ -13,9 +13,10 @@ export default async function UserDetailPage({ params }: Props) {
 
   const resolvedParams = await params;
   const role = user.role;
+  const isSelf = user.id === resolvedParams.userId;
 
-  // Only Admin or Manager can view/edit user details
-  if (!["admin", "manager"].includes(role)) {
+  // Admin or Manager can manage any user. Non-admin users can manage their OWN profile (isSelf).
+  if (!["admin", "manager"].includes(role) && !isSelf) {
     redirect("/access-denied");
   }
 

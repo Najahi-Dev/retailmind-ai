@@ -17,18 +17,35 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { userId, name, imageUrl, role, plan, isActive } = body;
 
-    if (!userId || !name || !role || !plan || typeof isActive !== "boolean") {
+    if (!userId || !name) {
       return NextResponse.json({ error: "Missing required user fields" }, { status: 400 });
     }
+
+    const isSelf = caller.id === userId;
+    const isAdminOrManager = ["admin", "manager"].includes(caller.role);
+
+    if (!isAdminOrManager && !isSelf) {
+      return NextResponse.json({ error: "Access Denied: You cannot edit another user's profile" }, { status: 403 });
+    }
+
+    // Fetch existing user to preserve role/plan/isActive if non-admin is updating self
+    const existingUser = await convex.query(api.users.getUserById, { userId: userId as Id<"users"> });
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const finalRole = isAdminOrManager ? role : existingUser.role;
+    const finalPlan = isAdminOrManager ? plan : (existingUser.plan ?? "starter");
+    const finalIsActive = isAdminOrManager ? isActive : existingUser.isActive;
 
     // Update Convex Database Document
     await convex.mutation(api.users.updateUserFullDetail, {
       userId: userId as Id<"users">,
       name,
-      imageUrl,
-      role,
-      plan,
-      isActive,
+      imageUrl: imageUrl ?? existingUser.imageUrl,
+      role: finalRole,
+      plan: finalPlan,
+      isActive: finalIsActive,
     });
 
     return NextResponse.json({
