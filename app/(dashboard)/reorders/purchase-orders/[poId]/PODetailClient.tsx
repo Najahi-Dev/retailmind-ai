@@ -14,6 +14,16 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -41,7 +51,16 @@ import {
   PackageCheckIcon,
   ClockIcon,
   FileTextIcon,
-  PrinterIcon,
+  CreditCardIcon,
+  BanknoteIcon,
+  HandshakeIcon,
+  PlusCircleIcon,
+  ReceiptIcon,
+  CheckCircle2Icon,
+  CircleAlertIcon,
+  FileCheckIcon,
+  InfoIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
@@ -84,11 +103,26 @@ export default function PODetailClient({
   const [updating, setUpdating] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
+  // Payment state
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentRef, setPaymentRef] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [recordingPayment, setRecordingPayment] = useState(false);
+
   const po = useQuery(api.purchaseOrders.getPODetail, {
     poId: poId as Id<"purchaseOrders">,
     token: token ?? undefined,
   });
-  const updateStatus = useMutation(api.purchaseOrders.updatePOStatus);
+  const payments = useQuery(api.purchaseOrders.getPOPayments, {
+    poId: poId as Id<"purchaseOrders">,
+    token: token ?? undefined,
+  });
+  const updateStatus    = useMutation(api.purchaseOrders.updatePOStatus);
+  const recordPayment   = useMutation(api.purchaseOrders.recordPOPayment);
+  const setPayMethodMutation = useMutation(api.purchaseOrders.setPOPaymentMethod);
+  const updateChequeStatus = useMutation(api.purchaseOrders.updateChequeStatus);
+  const [updatingCheque, setUpdatingCheque] = useState(false);
 
   const isSupplier = role === "supplier";
   const canEdit = ["admin", "manager"].includes(role);
@@ -136,6 +170,31 @@ export default function PODetailClient({
       toast.error(err instanceof Error ? err.message : "Cancel failed");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleRecordPayment = async () => {
+    if (!paymentMethod) { toast.error("Select a payment method first."); return; }
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) { toast.error("Enter a valid payment amount."); return; }
+    setRecordingPayment(true);
+    try {
+      const res = await recordPayment({
+        token: token ?? undefined,
+        poId: poId as Id<"purchaseOrders">,
+        method: paymentMethod as any,
+        amount,
+        reference: paymentRef || undefined,
+        notes: paymentNotes || undefined,
+      });
+      toast.success(`Payment of ${formatCurrency(amount)} recorded. Status: ${res?.paymentStatus ?? "updated"}.`);
+      setPaymentAmount("");
+      setPaymentRef("");
+      setPaymentNotes("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to record payment");
+    } finally {
+      setRecordingPayment(false);
     }
   };
 
@@ -199,6 +258,33 @@ export default function PODetailClient({
                   {po.status === "cancelled" && <XCircleIcon className="w-3.5 h-3.5 mr-1" />}
                   {statusCfg.label}
                 </Badge>
+
+                {/* Payment status badge */}
+                {(po as any).paymentStatus && (() => {
+                  const ps = (po as any).paymentStatus as string;
+                  const psConfig: Record<string, { bg: string; color: string; border: string; label: string }> = {
+                    PAID:               { bg: "bg-emerald-500/10", color: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/20", label: "Paid" },
+                    PARTIALLY_PAID:     { bg: "bg-amber-500/10",  color: "text-amber-600 dark:text-amber-400",   border: "border-amber-500/20",  label: "Partial Payment" },
+                    DUE:                { bg: "bg-red-500/10",    color: "text-red-500",                          border: "border-red-500/20",    label: "DUE" },
+                    OVERDUE:            { bg: "bg-red-600/15",    color: "text-red-600 dark:text-red-400",       border: "border-red-600/30",    label: "OVERDUE" },
+                    CHEQUE_PENDING:     { bg: "bg-amber-500/10", color: "text-amber-600 dark:text-amber-400",    border: "border-amber-500/20",  label: "Cheque Pending" },
+                    PENDING_ON_DELIVERY:{ bg: "bg-slate-100 dark:bg-slate-800", color: "text-slate-600 dark:text-slate-300", border: "border-slate-300 dark:border-slate-700", label: "Pending on Delivery" },
+                    // Legacy
+                    paid:    { bg: "bg-emerald-500/10", color: "text-emerald-600", border: "border-emerald-500/20", label: "Paid" },
+                    partial: { bg: "bg-amber-500/10",  color: "text-amber-600",   border: "border-amber-500/20",  label: "Partial" },
+                    unpaid:  { bg: "bg-red-500/10",    color: "text-red-500",     border: "border-red-500/20",    label: "Unpaid" },
+                  };
+                  const cfg = psConfig[ps] ?? psConfig.unpaid;
+                  return (
+                    <Badge className={`text-xs font-bold px-2.5 py-0.5 border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                      {(ps === "PAID" || ps === "paid") && <CheckCircle2Icon className="w-3.5 h-3.5 mr-1" />}
+                      {(ps === "PARTIALLY_PAID" || ps === "partial") && <CircleAlertIcon className="w-3.5 h-3.5 mr-1" />}
+                      {(ps === "DUE" || ps === "OVERDUE" || ps === "unpaid") && <BanknoteIcon className="w-3.5 h-3.5 mr-1" />}
+                      {ps === "CHEQUE_PENDING" && <FileCheckIcon className="w-3.5 h-3.5 mr-1" />}
+                      {cfg.label}
+                    </Badge>
+                  );
+                })()}
               </div>
               <p className="text-xs text-slate-300 font-medium mt-0.5">
                 Supplier: <strong className="text-white">{po.supplierName}</strong> • Created {formatDate(po.createdAt)}
@@ -475,7 +561,7 @@ export default function PODetailClient({
         </div>
 
         {/* Right Column — Order Details Card */}
-        <div>
+        <div className="space-y-5">
           <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Order Details</CardTitle>
@@ -520,8 +606,343 @@ export default function PODetailClient({
               )}
             </CardContent>
           </Card>
+
+          {/* ── CHEQUE DETAILS CARD ── */}
+          {(po as any).paymentMethod === "CHEQUE" && (
+            <Card className="bg-white dark:bg-slate-900 border-amber-400/30 rounded-xl shadow-sm overflow-hidden">
+              <CardHeader className="border-b border-amber-100 dark:border-amber-900/30 pb-3 bg-amber-50/50 dark:bg-amber-950/20">
+                <CardTitle className="text-sm font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                  <FileCheckIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  Cheque Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-2.5">
+                {[
+                  { label: "Cheque #",  value: (po as any).chequeNumber ?? "—", mono: true },
+                  { label: "Bank",      value: (po as any).bankName ?? "—",      mono: false },
+                  { label: "Amount",    value: (po as any).chequeAmount ? formatCurrency((po as any).chequeAmount) : formatCurrency(po.totalValue), mono: false },
+                  { label: "Date",      value: (po as any).chequeDate ? formatDate((po as any).chequeDate) : "—",    mono: false },
+                ].map(row => (
+                  <div key={row.label} className="flex items-center justify-between text-xs border-b border-slate-100 dark:border-slate-800/60 last:border-0 py-1.5">
+                    <span className="text-slate-500 font-medium">{row.label}</span>
+                    <span className={`font-bold text-slate-900 dark:text-white ${row.mono ? "font-mono" : ""}`}>{row.value}</span>
+                  </div>
+                ))}
+
+                {/* Cheque Status + toggle */}
+                <div className="pt-1 flex items-center justify-between">
+                  <span className="text-xs font-medium text-slate-500">Cheque Status</span>
+                  <Badge className={`text-xs font-bold px-2.5 py-0.5 ${
+                    (po as any).chequeStatus === "CLEARED" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                    : (po as any).chequeStatus === "BOUNCED" ? "bg-red-500/10 text-red-600 border-red-500/20"
+                    : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                  }`}>
+                    {(po as any).chequeStatus ?? "ISSUED"}
+                  </Badge>
+                </div>
+
+                {canEdit && (po as any).chequeStatus !== "CLEARED" && (
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      disabled={updatingCheque}
+                      onClick={async () => {
+                        setUpdatingCheque(true);
+                        try {
+                          await updateChequeStatus({ token: token ?? undefined, poId: poId as Id<"purchaseOrders">, chequeStatus: "CLEARED" });
+                          toast.success("Cheque marked as Cleared — PO marked as Paid.");
+                        } catch (e: any) { toast.error(e?.message || "Failed to update cheque status"); }
+                        finally { setUpdatingCheque(false); }
+                      }}
+                      className="flex-1 h-8 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                    >
+                      {updatingCheque ? <RefreshCwIcon className="size-3.5 animate-spin" /> : <CheckCircleIcon className="size-3.5 mr-1.5" />}
+                      Mark Cheque as Cleared
+                    </Button>
+                    {(po as any).chequeStatus !== "BOUNCED" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingCheque}
+                        onClick={async () => {
+                          setUpdatingCheque(true);
+                          try {
+                            await updateChequeStatus({ token: token ?? undefined, poId: poId as Id<"purchaseOrders">, chequeStatus: "BOUNCED" });
+                            toast.warning("Cheque marked as Bounced — PO set to DUE.");
+                          } catch (e: any) { toast.error(e?.message || "Failed"); }
+                          finally { setUpdatingCheque(false); }
+                        }}
+                        className="h-8 text-xs font-bold rounded-lg border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 px-3"
+                      >
+                        Mark Bounced
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── CREDIT DUE BADGE CARD ── */}
+          {((po as any).paymentMethod === "CREDIT" || (po as any).paymentStatus === "DUE" || (po as any).paymentStatus === "OVERDUE") && (
+            <Card className="bg-white dark:bg-slate-900 border-blue-400/30 rounded-xl shadow-sm overflow-hidden">
+              <CardContent className="pt-4 pb-4 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <InfoIcon className="size-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-blue-800 dark:text-blue-300">Outstanding Payable Liability</p>
+                    <p className="text-xs text-slate-500 font-medium">This order is logged as an accounts payable balance.</p>
+                  </div>
+                </div>
+                {(po as any).dueDate && (() => {
+                  const daysLeft = Math.ceil(((po as any).dueDate - Date.now()) / 86400000);
+                  const isOverdue = daysLeft < 0;
+                  return (
+                    <div className={`flex items-center justify-between p-3 rounded-lg border text-xs font-bold ${
+                      isOverdue
+                        ? "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+                        : daysLeft <= 7
+                        ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                        : "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
+                    }`}>
+                      <span className="flex items-center gap-1.5">
+                        <ClockIcon className="size-3.5" />
+                        {isOverdue ? `Overdue by ${Math.abs(daysLeft)} day(s)` : `Due in ${daysLeft} day(s)`}
+                      </span>
+                      <span>{formatDate((po as any).dueDate)}</span>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+
+      {/* ── PAYMENT SECTION ── */}
+      {canEdit && (
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
+                <CreditCardIcon className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                  Payment
+                  {(po as any).paymentStatus && (
+                    <Badge className={`text-xs font-bold px-2.5 py-0.5 border ${
+                      (po as any).paymentStatus === "paid"
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                        : (po as any).paymentStatus === "partial"
+                        ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        : "bg-red-500/10 text-red-500 border-red-500/20"
+                    }`}>
+                      {(po as any).paymentStatus === "paid" ? "Fully Paid" : (po as any).paymentStatus === "partial" ? "Partial" : "Unpaid"}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                  Record payments and track payment history for this PO
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-4 sm:p-6 space-y-6">
+            {/* Payment Summary Bar */}
+            {(po as any).totalValue > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Total Value", value: formatCurrency(po.totalValue), color: "text-slate-900 dark:text-white" },
+                  { label: "Amount Paid", value: formatCurrency((po as any).amountPaid ?? 0), color: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Balance Due", value: formatCurrency(Math.max(0, po.totalValue - ((po as any).amountPaid ?? 0))), color: "text-red-600 dark:text-red-400" },
+                ].map((stat) => (
+                  <div key={stat.label} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-center">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">{stat.label}</p>
+                    <p className={`text-base font-extrabold tabular-nums ${stat.color}`}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Payment Status Badge if set */}
+            {(po as any).paymentStatus && (
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Status:</span>
+                <Badge className={`text-xs font-bold px-2.5 py-0.5 border ${
+                  (po as any).paymentStatus === "PAID" || (po as any).paymentStatus === "paid"
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                    : (po as any).paymentStatus === "CHEQUE_PENDING"
+                    ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                    : (po as any).paymentStatus === "DUE" || (po as any).paymentStatus === "OVERDUE"
+                    ? "bg-red-500/10 text-red-600 border-red-500/20"
+                    : (po as any).paymentStatus === "PARTIALLY_PAID" || (po as any).paymentStatus === "partial"
+                    ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                }`}>
+                  {(po as any).paymentStatus === "PAID" || (po as any).paymentStatus === "paid" ? "Fully Paid"
+                    : (po as any).paymentStatus === "CHEQUE_PENDING" ? "Cheque Pending"
+                    : (po as any).paymentStatus === "DUE" ? "DUE"
+                    : (po as any).paymentStatus === "OVERDUE" ? "OVERDUE"
+                    : (po as any).paymentStatus === "PARTIALLY_PAID" || (po as any).paymentStatus === "partial" ? "Partial"
+                    : (po as any).paymentStatus === "PENDING_ON_DELIVERY" ? "Pending on Delivery"
+                    : (po as any).paymentStatus}
+                </Badge>
+              </div>
+            )}
+
+            {/* Record New Payment Form */}
+            <div className="space-y-4">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Record New Payment</p>
+
+              {/* Payment Method Selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { value: "CASH_ON_DELIVERY", label: "Cash on Delivery", icon: BanknoteIcon,  color: "emerald" },
+                  { value: "CHEQUE",           label: "Cheque Payment",   icon: FileCheckIcon, color: "amber"   },
+                  { value: "CREDIT",           label: "Credit / AP",      icon: HandshakeIcon, color: "blue"    },
+                ].map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = paymentMethod === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPaymentMethod(opt.value)}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
+                        isSelected
+                          ? `border-${opt.color}-500 bg-${opt.color}-50 dark:bg-${opt.color}-950/30`
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      }`}
+                    >
+                      <div className={`p-2 rounded-lg ${
+                        isSelected
+                          ? `bg-${opt.color}-500 text-white`
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                      }`}>
+                        <Icon className="size-4" />
+                      </div>
+                      <span className={`text-xs font-bold ${
+                        isSelected ? `text-${opt.color}-700 dark:text-${opt.color}-300` : "text-slate-700 dark:text-slate-300"
+                      }`}>{opt.label}</span>
+                      {isSelected && <CheckCircle2Icon className={`size-4 ml-auto text-${opt.color}-500`} />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Amount + Reference + Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Payment Amount (LKR)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder={`e.g. ${po.totalValue}`}
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    className="h-10 text-sm rounded-xl border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Reference / Receipt No. <span className="text-slate-400 font-normal">(Optional)</span></Label>
+                  <Input
+                    placeholder="e.g. TXN-2024-001, RCPT-445"
+                    value={paymentRef}
+                    onChange={(e) => setPaymentRef(e.target.value)}
+                    className="h-10 text-sm rounded-xl border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Notes <span className="text-slate-400 font-normal">(Optional)</span></Label>
+                <Textarea
+                  placeholder="Add payment notes, card last 4 digits, bank transfer details..."
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  rows={2}
+                  className="text-xs rounded-xl border-slate-200 dark:border-slate-700 resize-none"
+                />
+              </div>
+
+              <Button
+                onClick={handleRecordPayment}
+                disabled={recordingPayment || !paymentMethod || !paymentAmount}
+                className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl gap-2"
+              >
+                {recordingPayment ? (
+                  <><RefreshCwIcon className="size-4 animate-spin" /> Recording...</>
+                ) : (
+                  <><PlusCircleIcon className="size-4" /> Record Payment</>
+                )}
+              </Button>
+            </div>
+
+            {/* Payment History Table */}
+            {payments && payments.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <ReceiptIcon className="size-3.5" /> Payment History ({payments.length})
+                </p>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-bold text-slate-600 dark:text-slate-300">Date</th>
+                        <th className="px-4 py-3 text-left font-bold text-slate-600 dark:text-slate-300">Method</th>
+                        <th className="px-4 py-3 text-left font-bold text-slate-600 dark:text-slate-300">Reference</th>
+                        <th className="px-4 py-3 text-right font-bold text-slate-600 dark:text-slate-300">Amount</th>
+                        <th className="px-4 py-3 text-left font-bold text-slate-600 dark:text-slate-300 hidden sm:table-cell">By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {payments.map((p) => (
+                        <tr key={p._id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 text-slate-500 tabular-nums">
+                            {new Date(p.paidAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge className={`text-[11px] font-bold px-2 py-0.5 ${
+                              p.method === "CASH_ON_DELIVERY" || p.method === "cash_on_delivery"
+                                ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                                : p.method === "CHEQUE"
+                                ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
+                                : p.method === "CREDIT" || p.method === "credit"
+                                ? "bg-blue-500/10 text-blue-700 border-blue-500/20"
+                                : "bg-violet-500/10 text-violet-700 border-violet-500/20"
+                            }`}>
+                              {p.method === "CASH_ON_DELIVERY" || p.method === "cash_on_delivery" ? "COD"
+                                : p.method === "CHEQUE" ? "Cheque"
+                                : (p.method === "CREDIT" || p.method === "credit") ? "Credit"
+                                : "Card"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 font-mono">{p.reference || "—"}</td>
+                          <td className="px-4 py-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            {formatCurrency(p.amount)}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 hidden sm:table-cell">{(p as any).recordedByName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-slate-50/80 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <td colSpan={3} className="px-4 py-3 text-right font-bold text-slate-600 dark:text-slate-300">Total Paid</td>
+                        <td className="px-4 py-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                          {formatCurrency(payments.reduce((s, p) => s + p.amount, 0))}
+                        </td>
+                        <td className="hidden sm:table-cell" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Invoice Modal */}
       {po && (

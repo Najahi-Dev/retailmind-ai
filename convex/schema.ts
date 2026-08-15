@@ -210,6 +210,37 @@ export default defineSchema({
       }),
     ),
     totalValue: v.number(),
+    paymentMethod: v.optional(v.union(
+      v.literal("CASH_ON_DELIVERY"),
+      v.literal("CHEQUE"),
+      v.literal("CREDIT"),
+      // Legacy: kept for backward compatibility with existing records
+      v.literal("cash_on_delivery"),
+      v.literal("credit"),
+      v.literal("card"),
+    )),
+    paymentStatus: v.optional(v.union(
+      v.literal("PAID"),
+      v.literal("DUE"),
+      v.literal("PARTIALLY_PAID"),
+      v.literal("CHEQUE_PENDING"),
+      v.literal("OVERDUE"),
+      v.literal("PENDING_ON_DELIVERY"),
+      // Legacy statuses
+      v.literal("unpaid"),
+      v.literal("partial"),
+      v.literal("paid"),
+    )),
+    amountPaid: v.optional(v.number()),
+    // ── Cheque payment details ──
+    chequeNumber: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    chequeAmount: v.optional(v.number()),
+    chequeDate: v.optional(v.number()),
+    chequeStatus: v.optional(v.string()), // "ISSUED" | "CLEARED" | "BOUNCED"
+    // ── Credit payment details ──
+    creditTermDays: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
     requestedDelivery: v.optional(v.number()),
     confirmedDelivery: v.optional(v.number()),
     trackingNumber: v.optional(v.string()),
@@ -220,6 +251,33 @@ export default defineSchema({
     .index("by_supplier", ["supplierId"])
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"])
+    .index("by_org", ["orgId"]),
+
+  // ── PO Payments (─────────────────────────────────────
+  poPayments: defineTable({
+    orgId: v.optional(v.id("organizations")),
+    poId: v.id("purchaseOrders"),
+    recordedBy: v.optional(v.id("users")),
+    method: v.union(
+      v.literal("CASH_ON_DELIVERY"),
+      v.literal("CHEQUE"),
+      v.literal("CREDIT"),
+      // Legacy
+      v.literal("cash_on_delivery"),
+      v.literal("credit"),
+      v.literal("card"),
+    ),
+    // Cheque-specific payment metadata
+    chequeNumber: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    chequeDate: v.optional(v.number()),
+    chequeStatus: v.optional(v.string()),
+    amount: v.number(),
+    reference: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    paidAt: v.number(),
+  })
+    .index("by_po", ["poId"])
     .index("by_org", ["orgId"]),
 
   // ── Reorder Suggestions ────────────────────────

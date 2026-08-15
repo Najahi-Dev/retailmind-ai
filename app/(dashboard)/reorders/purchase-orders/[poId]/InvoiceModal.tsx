@@ -54,6 +54,7 @@ interface InvoiceModalProps {
     supplierAddress?: string;
     totalValue: number;
     lineItems: LineItem[];
+    paymentStatus?: string;
   };
 }
 
@@ -272,6 +273,30 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                 Date: {invoiceDateStr} • PO Ref: {po.poNumber}
               </p>
+              {po.paymentStatus && (
+                <Badge className={`text-[10px] font-bold px-2 py-0.5 ${
+                  po.paymentStatus === "PAID" || po.paymentStatus === "paid"
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                    : po.paymentStatus === "CHEQUE_PENDING"
+                    ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                    : po.paymentStatus === "DUE" || po.paymentStatus === "OVERDUE"
+                    ? "bg-red-500/10 text-red-600 border-red-500/20"
+                    : po.paymentStatus === "PARTIALLY_PAID" || po.paymentStatus === "partial"
+                    ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                    : po.paymentStatus === "PENDING_ON_DELIVERY"
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                    : "bg-slate-100 text-slate-500 border-slate-200"
+                }`}
+                  >
+                  {po.paymentStatus === "PAID" || po.paymentStatus === "paid" ? "Paid"
+                    : po.paymentStatus === "CHEQUE_PENDING" ? "Cheque Pending"
+                    : po.paymentStatus === "DUE" ? "DUE"
+                    : po.paymentStatus === "OVERDUE" ? "OVERDUE"
+                    : po.paymentStatus === "PARTIALLY_PAID" || po.paymentStatus === "partial" ? "Partial"
+                    : po.paymentStatus === "PENDING_ON_DELIVERY" ? "Pending on Delivery"
+                    : po.paymentStatus}
+                </Badge>
+              )}
             </div>
           </div>
 

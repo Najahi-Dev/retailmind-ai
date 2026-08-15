@@ -340,6 +340,7 @@ export default function PurchaseOrdersClient({ role }: Props) {
                     <th className="px-5 py-3.5 font-bold">PO Number</th>
                     <th className="px-5 py-3.5 font-bold hidden sm:table-cell">Supplier</th>
                     <th className="px-5 py-3.5 font-bold">Status</th>
+                    <th className="px-5 py-3.5 font-bold hidden lg:table-cell">Payment</th>
                     <th className="px-5 py-3.5 font-bold text-right hidden md:table-cell">Items</th>
                     {canViewFinancials && (
                       <th className="px-5 py-3.5 font-bold text-right hidden lg:table-cell">Total Value</th>
@@ -381,6 +382,30 @@ export default function PurchaseOrdersClient({ role }: Props) {
                             <span>{statusCfg.label}</span>
                           </Badge>
                         </td>
+
+                        {/* Payment Status Badge (admin/manager only) */}
+                        {canViewFinancials && (
+                          <td className="px-5 py-3.5 hidden lg:table-cell">
+                            {(po as any).paymentStatus ? (() => {
+                              const ps = (po as any).paymentStatus as string;
+                              const pmCfg: Record<string, { cls: string; label: string }> = {
+                                PAID:                { cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", label: "Paid" },
+                                paid:                { cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", label: "Paid" },
+                                PARTIALLY_PAID:      { cls: "bg-amber-500/10 text-amber-600 border-amber-500/20",   label: "Partial" },
+                                partial:             { cls: "bg-amber-500/10 text-amber-600 border-amber-500/20",   label: "Partial" },
+                                DUE:                 { cls: "bg-red-500/10 text-red-600 border-red-500/20",        label: "DUE" },
+                                OVERDUE:             { cls: "bg-red-600/20 text-red-700 border-red-600/30",        label: "OVERDUE" },
+                                CHEQUE_PENDING:      { cls: "bg-amber-500/10 text-amber-700 border-amber-500/20",  label: "Cheque Pending" },
+                                PENDING_ON_DELIVERY: { cls: "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700", label: "Pending COD" },
+                                unpaid:              { cls: "bg-red-500/10 text-red-500 border-red-500/20",        label: "Unpaid" },
+                              };
+                              const cfg = pmCfg[ps];
+                              return cfg ? (
+                                <Badge className={`text-[10px] font-bold px-2 py-0.5 border ${cfg.cls}`}>{cfg.label}</Badge>
+                              ) : null;
+                            })() : <span className="text-xs text-slate-400">—</span>}
+                          </td>
+                        )}
 
                         {/* Item Count */}
                         <td className="px-5 py-3.5 text-right hidden md:table-cell text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -528,6 +553,7 @@ export default function PurchaseOrdersClient({ role }: Props) {
               unitCost: item.unitCost,
               lineTotal: item.lineTotal ?? item.unitCost * item.quantityOrdered,
             })),
+            paymentStatus: selectedInvoicePO.paymentStatus,
           }}
         />
       )}

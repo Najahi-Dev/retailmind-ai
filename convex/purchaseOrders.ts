@@ -159,6 +159,21 @@ export const createPurchaseOrder = mutation({
         unitCost: v.number(),
       }),
     ),
+    // Payment method
+    paymentMethod: v.optional(v.union(
+      v.literal("CASH_ON_DELIVERY"),
+      v.literal("CHEQUE"),
+      v.literal("CREDIT"),
+    )),
+    // Cheque details
+    chequeNumber: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    chequeAmount: v.optional(v.number()),
+    chequeDate: v.optional(v.number()),
+    chequeStatus: v.optional(v.string()),
+    // Credit details
+    creditTermDays: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
@@ -177,6 +192,11 @@ export const createPurchaseOrder = mutation({
 
     const totalValue = formattedLines.reduce((sum, line) => sum + line.lineTotal, 0);
 
+    let initialPaymentStatus: string | undefined;
+    if (args.paymentMethod === "CASH_ON_DELIVERY") initialPaymentStatus = "PENDING_ON_DELIVERY";
+    else if (args.paymentMethod === "CHEQUE") initialPaymentStatus = "CHEQUE_PENDING";
+    else if (args.paymentMethod === "CREDIT") initialPaymentStatus = "DUE";
+
     const poId = await ctx.db.insert("purchaseOrders", {
       orgId,
       supplierId: args.supplierId,
@@ -185,6 +205,16 @@ export const createPurchaseOrder = mutation({
       status: "draft",
       lineItems: formattedLines,
       totalValue,
+      paymentMethod: args.paymentMethod,
+      paymentStatus: initialPaymentStatus,
+      amountPaid: args.paymentMethod ? 0 : undefined,
+      chequeNumber: args.chequeNumber,
+      bankName: args.bankName,
+      chequeAmount: args.chequeAmount,
+      chequeDate: args.chequeDate,
+      chequeStatus: args.chequeStatus ?? (args.paymentMethod === "CHEQUE" ? "ISSUED" : undefined),
+      creditTermDays: args.creditTermDays,
+      dueDate: args.dueDate,
       requestedDelivery: args.requestedDelivery,
       notes: args.notes,
       createdAt: Date.now(),
@@ -302,6 +332,201 @@ export const getSupplierPOAlerts = query({
           ...po,
           placedBy: creator?.name ?? "Supermarket Manager",
           itemCount: po.lineItems.length,
+        };
+      })
+    );
+  },
+});
+
+// ── 7. SET PAYMENT METHOD ON A PO ──
+export const setPOPaymentMethod = mutation({
+  args: {
+    token: v.optional(v.string()),
+    poId: v.id("purchaseOrders"),
+    paymentMethod: v.union(
+      v.literal("CASH_ON_DELIVERY"),
+      v.literal("CHEQUE"),
+      v.literal("CREDIT"),
+    ),
+    // Cheque details
+    chequeNumber: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    chequeAmount: v.optional(v.number()),
+    chequeDate: v.optional(v.number()),
+    chequeStatus: v.optional(v.string()),
+    // Credit details
+    creditTermDays: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const po = await ctx.db.get(args.poId);
+    if (!po) throw new Error("Purchase order not found");
+    if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+
+    // Derive initial payment status based on method
+    let paymentStatus: string;
+    if (args.paymentMethod === "CASH_ON_DELIVERY") {
+      paymentStatus = "PENDING_ON_DELIVERY";
+    } else if (args.paymentMethod === "CHEQUE") {
+      paymentStatus = "CHEQUE_PENDING";
+    } else {
+      paymentStatus = "DUE";
+    }
+
+    await ctx.db.patch(args.poId, {
+      paymentMethod: args.paymentMethod,
+      paymentStatus,
+      // Cheque fields
+      chequeNumber: args.chequeNumber,
+      bankName: args.bankName,
+      chequeAmount: args.chequeAmount,
+      chequeDate: args.chequeDate,
+      chequeStatus: args.chequeStatus ?? (args.paymentMethod === "CHEQUE" ? "ISSUED" : undefined),
+      // Credit fields
+      creditTermDays: args.creditTermDays,
+      dueDate: args.dueDate,
+      updatedAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+// ── 8. RECORD A PAYMENT FOR A PO ──
+export const recordPOPayment = mutation({
+  args: {
+    token: v.optional(v.string()),
+    poId: v.id("purchaseOrders"),
+    method: v.union(
+      v.literal("CASH_ON_DELIVERY"),
+      v.literal("CHEQUE"),
+      v.literal("CREDIT"),
+      // Legacy
+      v.literal("cash_on_delivery"),
+      v.literal("credit"),
+      v.literal("card"),
+    ),
+    amount: v.number(),
+    reference: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    // Cheque-specific fields for payment record
+    chequeNumber: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    chequeDate: v.optional(v.number()),
+    chequeStatus: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const po = await ctx.db.get(args.poId);
+    if (!po) throw new Error("Purchase order not found");
+    if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+
+    // Insert payment record
+    await ctx.db.insert("poPayments", {
+      orgId,
+      poId: args.poId,
+      recordedBy: caller._id,
+      method: args.method,
+      amount: args.amount,
+      reference: args.reference,
+      notes: args.notes,
+      chequeNumber: args.chequeNumber,
+      bankName: args.bankName,
+      chequeDate: args.chequeDate,
+      chequeStatus: args.chequeStatus,
+      paidAt: Date.now(),
+    });
+
+    // Recalculate total paid
+    const allPayments = await ctx.db
+      .query("poPayments")
+      .withIndex("by_po", (q) => q.eq("poId", args.poId))
+      .collect();
+
+    const totalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    let paymentStatus: string;
+    if (totalPaid >= po.totalValue) {
+      paymentStatus = "PAID";
+    } else if (totalPaid > 0) {
+      paymentStatus = "PARTIALLY_PAID";
+    } else if (args.method === "CHEQUE") {
+      paymentStatus = "CHEQUE_PENDING";
+    } else if (args.method === "CREDIT" || args.method === "credit") {
+      paymentStatus = "DUE";
+    } else {
+      paymentStatus = "PENDING_ON_DELIVERY";
+    }
+
+    await ctx.db.patch(args.poId, {
+      amountPaid: totalPaid,
+      paymentStatus,
+      paymentMethod: args.method,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, totalPaid, paymentStatus };
+  },
+});
+
+// ── 8b. UPDATE CHEQUE STATUS (ISSUED → CLEARED | BOUNCED) ──
+export const updateChequeStatus = mutation({
+  args: {
+    token: v.optional(v.string()),
+    poId: v.id("purchaseOrders"),
+    chequeStatus: v.union(
+      v.literal("ISSUED"),
+      v.literal("CLEARED"),
+      v.literal("BOUNCED"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const po = await ctx.db.get(args.poId);
+    if (!po) throw new Error("Purchase order not found");
+    if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+
+    // When cheque clears, mark PO as PAID
+    const paymentStatus =
+      args.chequeStatus === "CLEARED" ? "PAID"
+      : args.chequeStatus === "BOUNCED" ? "DUE"
+      : "CHEQUE_PENDING";
+
+    await ctx.db.patch(args.poId, {
+      chequeStatus: args.chequeStatus,
+      paymentStatus,
+      amountPaid:
+        args.chequeStatus === "CLEARED"
+          ? (po.chequeAmount ?? po.totalValue)
+          : (po as any).amountPaid,
+      updatedAt: Date.now(),
+    });
+    return { success: true, paymentStatus };
+  },
+});
+
+// ── 9. GET PAYMENT HISTORY FOR A PO ──
+export const getPOPayments = query({
+  args: {
+    token: v.optional(v.string()),
+    poId: v.id("purchaseOrders"),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) return [];
+
+    const payments = await ctx.db
+      .query("poPayments")
+      .withIndex("by_po", (q) => q.eq("poId", args.poId))
+      .order("desc")
+      .collect();
+
+    return await Promise.all(
+      payments.map(async (p) => {
+        const recordedBy = p.recordedBy ? await ctx.db.get(p.recordedBy) : null;
+        return {
+          ...p,
+          recordedByName: recordedBy?.name ?? "System",
         };
       })
     );

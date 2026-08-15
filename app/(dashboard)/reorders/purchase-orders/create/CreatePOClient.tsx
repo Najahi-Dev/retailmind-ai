@@ -22,7 +22,9 @@ import {
 import {
   ChevronLeftIcon, PlusIcon, Trash2Icon,
   RefreshCwIcon, ShoppingCartIcon, Building2Icon,
-  SparklesIcon, PackageIcon, AlertCircleIcon
+  PackageIcon, AlertCircleIcon,
+  BanknoteIcon, HandshakeIcon, FileCheckIcon,
+  CheckCircle2Icon, AlertTriangleIcon, InfoIcon, ClockIcon,
 } from "lucide-react";
 
 interface LineItem {
@@ -35,6 +37,21 @@ interface LineItem {
 }
 
 import { useAuth } from "@/lib/auth-context";
+
+type PaymentMethod = "CASH_ON_DELIVERY" | "CHEQUE" | "CREDIT" | "";
+
+const BANK_OPTIONS = [
+  "Commercial Bank",
+  "Bank of Ceylon (BOC)",
+  "Hatton National Bank (HNB)",
+  "Sampath Bank",
+  "People's Bank",
+  "NSB (National Savings Bank)",
+  "Seylan Bank",
+  "DFCC Bank",
+  "Union Bank",
+  "Pan Asia Bank",
+];
 
 export default function CreatePOClient() {
   const router = useRouter();
@@ -51,6 +68,18 @@ export default function CreatePOClient() {
   const [notes,       setNotes]       = useState("");
   const [submitting,  setSubmitting]  = useState(false);
 
+  // ── Payment method state ──────────────────
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("");
+
+  // Cheque fields
+  const [chequeNumber,  setChequeNumber]  = useState("");
+  const [bankName,      setBankName]      = useState("");
+  const [chequeDate,    setChequeDate]    = useState("");
+  const [chequeStatus,  setChequeStatus]  = useState<"ISSUED" | "CLEARED" | "BOUNCED">("ISSUED");
+
+  // Credit fields
+  const [creditTermDays, setCreditTermDays] = useState<number>(30);
+
   // ── Add line item state ───────────────────
   const [addProductId, setAddProductId] = useState("");
   const [addQty,       setAddQty]       = useState("");
@@ -64,6 +93,10 @@ export default function CreatePOClient() {
     new Intl.NumberFormat("en-LK", {
       style: "currency", currency: "LKR", maximumFractionDigits: 0,
     }).format(val);
+
+  const isChequeValid = paymentMethod !== "CHEQUE" || (
+    chequeNumber.trim() !== "" && bankName !== "" && chequeDate !== ""
+  );
 
   // ── Add line item ─────────────────────────
   const handleAddLine = () => {
@@ -110,10 +143,19 @@ export default function CreatePOClient() {
   // ── Submit ────────────────────────────────
   const handleSubmit = async () => {
     if (!supplierId || lineItems.length === 0) return;
+    if (!isChequeValid) {
+      toast.error("Please fill in all required cheque details.");
+      return;
+    }
     setSubmitting(true);
 
     try {
+      const computedDueDate = paymentMethod === "CREDIT"
+        ? Date.now() + creditTermDays * 24 * 60 * 60 * 1000
+        : undefined;
+
       const result = await createPO({
+        token: token ?? undefined,
         supplierId: supplierId as Id<"suppliers">,
         lineItems:  lineItems.map(l => ({
           productId:       l.productId       as Id<"products">,
@@ -121,6 +163,15 @@ export default function CreatePOClient() {
           unitCost:        l.unitCost,
         })),
         notes: notes || undefined,
+        // Payment
+        paymentMethod: paymentMethod || undefined,
+        chequeNumber:  paymentMethod === "CHEQUE" ? chequeNumber : undefined,
+        bankName:      paymentMethod === "CHEQUE" ? bankName : undefined,
+        chequeAmount:  paymentMethod === "CHEQUE" ? totalValue : undefined,
+        chequeDate:    paymentMethod === "CHEQUE" && chequeDate ? new Date(chequeDate).getTime() : undefined,
+        chequeStatus:  paymentMethod === "CHEQUE" ? chequeStatus : undefined,
+        creditTermDays: paymentMethod === "CREDIT" ? creditTermDays : undefined,
+        dueDate:        computedDueDate,
       });
 
       toast.success(`Purchase Order ${result.poNumber} created successfully!`);
@@ -360,7 +411,184 @@ export default function CreatePOClient() {
             </CardContent>
           </Card>
 
-          {/* Card 3: Notes */}
+          {/* Card 3: Payment Method */}
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <BanknoteIcon className="w-4 h-4 text-emerald-500" />
+                Payment Method
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Select the payment method for this purchase order (optional)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Payment Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { value: "CASH_ON_DELIVERY" as PaymentMethod, label: "Cash on Delivery",          icon: BanknoteIcon,  color: "emerald" },
+                  { value: "CHEQUE"           as PaymentMethod, label: "Cheque Payment",             icon: FileCheckIcon, color: "amber"   },
+                  { value: "CREDIT"           as PaymentMethod, label: "Credit / Accounts Payable",  icon: HandshakeIcon, color: "blue"    },
+                ].map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = paymentMethod === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPaymentMethod(isSelected ? "" : opt.value)}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
+                        isSelected
+                          ? `border-${opt.color}-500 bg-${opt.color}-50 dark:bg-${opt.color}-950/30`
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900"
+                      }`}
+                    >
+                      <div className={`p-2 rounded-lg ${
+                        isSelected ? `bg-${opt.color}-500 text-white` : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                      }`}>
+                        <Icon className="size-4" />
+                      </div>
+                      <span className={`text-xs font-bold flex-1 ${
+                        isSelected ? `text-${opt.color}-700 dark:text-${opt.color}-300` : "text-slate-700 dark:text-slate-300"
+                      }`}>{opt.label}</span>
+                      {isSelected && <CheckCircle2Icon className={`size-4 shrink-0 text-${opt.color}-500`} />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* ── CHEQUE SUB-FORM ── */}
+              {paymentMethod === "CHEQUE" && (
+                <div className="rounded-xl border-2 border-amber-400/40 bg-amber-50/60 dark:bg-amber-950/20 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <p className="text-xs font-extrabold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
+                    <FileCheckIcon className="size-3.5" /> Cheque Details
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Cheque Number */}
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                        Cheque Number <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. CHQ-893041"
+                        value={chequeNumber}
+                        onChange={e => setChequeNumber(e.target.value)}
+                        className="h-8 text-xs rounded-lg border-amber-300/60 dark:border-amber-700/40 bg-white dark:bg-slate-900"
+                      />
+                    </div>
+
+                    {/* Bank Name */}
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                        Bank Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Select value={bankName} onValueChange={setBankName}>
+                        <SelectTrigger className="h-8 text-xs rounded-lg border-amber-300/60 dark:border-amber-700/40 bg-white dark:bg-slate-900">
+                          <SelectValue placeholder="Select bank..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BANK_OPTIONS.map(b => (
+                            <SelectItem key={b} value={b}>{b}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Cheque Amount */}
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                        Cheque Amount (LKR)
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={totalValue || ""}
+                        readOnly
+                        className="h-8 text-xs rounded-lg border-amber-300/60 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-950/30 text-slate-500 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Cheque Date */}
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                        Cheque Date <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        value={chequeDate}
+                        onChange={e => setChequeDate(e.target.value)}
+                        className="h-8 text-xs rounded-lg border-amber-300/60 dark:border-amber-700/40 bg-white dark:bg-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cheque Status */}
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Cheque Status</Label>
+                    <div className="flex gap-2">
+                      {(["ISSUED", "CLEARED", "BOUNCED"] as const).map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setChequeStatus(s)}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                            chequeStatus === s
+                              ? s === "ISSUED"  ? "bg-amber-500 text-white border-amber-500"
+                              : s === "CLEARED" ? "bg-emerald-500 text-white border-emerald-500"
+                              :                   "bg-red-500 text-white border-red-500"
+                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(!chequeNumber || !bankName || !chequeDate) && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1 font-medium">
+                      <AlertTriangleIcon className="size-3" /> Cheque number, bank name, and date are required.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ── CREDIT INFO BADGE ── */}
+              {paymentMethod === "CREDIT" && (
+                <div className="rounded-xl border-2 border-blue-400/40 bg-blue-50/60 dark:bg-blue-950/20 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-start gap-2.5">
+                    <InfoIcon className="size-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-blue-800 dark:text-blue-300 font-medium leading-relaxed">
+                      This order will be logged as an outstanding payable liability{" "}
+                      <span className="font-extrabold text-blue-700 dark:text-blue-200">(DUE)</span> in Payment History.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                      <ClockIcon className="size-3 text-blue-500" /> Credit Term Days
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={creditTermDays}
+                        onChange={e => setCreditTermDays(Number(e.target.value) || 30)}
+                        className="h-8 w-24 text-xs rounded-lg border-blue-300/60 dark:border-blue-700/40 bg-white dark:bg-slate-900"
+                      />
+                      <span className="text-xs text-slate-500 font-medium">days</span>
+                      <Badge className="ml-auto text-[10px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 px-2 py-0.5">
+                        Due: {new Date(Date.now() + creditTermDays * 86400000).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Card 4: Notes */}
           <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Fulfillment Notes</CardTitle>
@@ -403,6 +631,15 @@ export default function CreatePOClient() {
                     {lineItems.reduce((s, i) => s + i.quantityOrdered, 0)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-slate-500 font-medium">Payment Method</span>
+                  <span className="font-bold text-slate-900 dark:text-white text-right">
+                    {paymentMethod === "CASH_ON_DELIVERY" ? "Cash on Delivery"
+                      : paymentMethod === "CHEQUE" ? "Cheque"
+                      : paymentMethod === "CREDIT" ? "Credit / AP"
+                      : <span className="text-slate-400 font-normal">Not set</span>}
+                  </span>
+                </div>
               </div>
 
               {/* Total Value Box */}
@@ -422,7 +659,7 @@ export default function CreatePOClient() {
               </div>
 
               {/* Validation warnings */}
-              {(!supplierId || lineItems.length === 0) && (
+              {(!supplierId || lineItems.length === 0 || !isChequeValid) && (
                 <div className="space-y-1 pt-1">
                   {!supplierId && (
                     <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
@@ -434,6 +671,11 @@ export default function CreatePOClient() {
                       <AlertCircleIcon className="w-3 h-3" /> Add at least one line item product
                     </p>
                   )}
+                  {!isChequeValid && (
+                    <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <AlertCircleIcon className="w-3 h-3" /> Complete all cheque details
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -442,7 +684,7 @@ export default function CreatePOClient() {
                 <Button
                   className="w-full h-10 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 border-0 shadow-md transition-all"
                   onClick={handleSubmit}
-                  disabled={!supplierId || lineItems.length === 0 || submitting}
+                  disabled={!supplierId || lineItems.length === 0 || submitting || !isChequeValid}
                 >
                   {submitting ? (
                     <>

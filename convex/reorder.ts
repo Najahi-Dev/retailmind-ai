@@ -214,6 +214,20 @@ export const approveSuggestion = mutation({
     supplierId: v.id("suppliers"),
     quantity: v.number(),
     unitCost: v.number(),
+    paymentMethod: v.optional(v.union(
+      v.literal("CASH_ON_DELIVERY"),
+      v.literal("CHEQUE"),
+      v.literal("CREDIT"),
+    )),
+    // Cheque details
+    chequeNumber: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    chequeAmount: v.optional(v.number()),
+    chequeDate: v.optional(v.number()),
+    chequeStatus: v.optional(v.string()),
+    // Credit details
+    creditTermDays: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
@@ -224,6 +238,11 @@ export const approveSuggestion = mutation({
     if (orgId && suggestion.orgId && suggestion.orgId !== orgId) {
       throw new Error("Access Denied: Suggestion belongs to another workspace.");
     }
+
+    // Derive initial payment status
+    let paymentStatus: string = "PENDING_ON_DELIVERY";
+    if (args.paymentMethod === "CHEQUE") paymentStatus = "CHEQUE_PENDING";
+    else if (args.paymentMethod === "CREDIT") paymentStatus = "DUE";
 
     // Create draft PO
     const poNumber = `PO-${Date.now()}`;
@@ -245,6 +264,18 @@ export const approveSuggestion = mutation({
         },
       ],
       totalValue,
+      paymentMethod: args.paymentMethod,
+      paymentStatus,
+      amountPaid: 0,
+      // Cheque fields
+      chequeNumber: args.chequeNumber,
+      bankName: args.bankName,
+      chequeAmount: args.chequeAmount ?? totalValue,
+      chequeDate: args.chequeDate,
+      chequeStatus: args.chequeStatus ?? (args.paymentMethod === "CHEQUE" ? "ISSUED" : undefined),
+      // Credit fields
+      creditTermDays: args.creditTermDays,
+      dueDate: args.dueDate,
       requestedDelivery: Date.now() + 14 * 24 * 60 * 60 * 1000,
       createdAt: Date.now(),
       updatedAt: Date.now(),
