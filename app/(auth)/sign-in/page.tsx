@@ -54,6 +54,13 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [showSuspendedModal, setShowSuspendedModal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("suspended=true")) {
+      setShowSuspendedModal(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && currentUser) {
@@ -336,6 +343,42 @@ export default function SignInPage() {
             <Button
               onClick={() => setShowPendingModal(false)}
               className="w-full rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white border-0 py-2.5 shadow-md"
+            >
+              Understood
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── ACCOUNT SUSPENDED POPUP MODAL ── */}
+      <Dialog open={showSuspendedModal} onOpenChange={setShowSuspendedModal}>
+        <DialogContent className="rounded-2xl border-amber-200 dark:border-amber-900/50 max-w-md text-center p-6 space-y-4 shadow-2xl bg-white dark:bg-slate-900">
+          <div className="mx-auto size-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center">
+            <AlertCircleIcon className="w-7 h-7 animate-pulse text-amber-500" />
+          </div>
+
+          <div className="space-y-1">
+            <DialogTitle className="text-lg font-extrabold text-slate-900 dark:text-white">
+              Account Suspended
+            </DialogTitle>
+            <DialogDescription className="text-xs text-amber-600 dark:text-amber-400 font-bold pt-1">
+              Your account has been suspended by a system administrator.
+            </DialogDescription>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-amber-500/10 p-3.5 rounded-xl border border-amber-500/20">
+            For security reasons, your active session has been immediately invalidated and you have been logged out of RetailMind AI. Please contact your store manager or system administrator to resolve account access.
+          </p>
+
+          <DialogFooter className="pt-2 sm:justify-center">
+            <Button
+              onClick={() => {
+                setShowSuspendedModal(false);
+                if (typeof window !== "undefined") {
+                  window.history.replaceState({}, document.title, window.location.pathname);
+                }
+              }}
+              className="w-full rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border-0 py-2.5 shadow-md"
             >
               Understood
             </Button>

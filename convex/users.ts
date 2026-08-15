@@ -3,6 +3,35 @@ import { v } from "convex/values";
 import bcrypt from "bcryptjs";
 import { getSupplierForUser } from "./lib/roleGuard";
 
+// Live Reactive Current User Record for Session & Instant Suspension Monitoring
+export const getCurrentUserRecord = query({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.token) return null;
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token!))
+      .first();
+
+    if (!session || session.expiresAt < Date.now()) return null;
+
+    const user = await ctx.db.get(session.userId);
+    if (!user) return null;
+
+    return {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      plan: user.plan,
+      imageUrl: user.imageUrl,
+      isActive: user.isActive,
+    };
+  },
+});
+
 // Get all users for admin management
 export const getUsers = query({
   args: {

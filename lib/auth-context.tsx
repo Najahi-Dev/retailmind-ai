@@ -1,7 +1,7 @@
 "use client";
 "use strict";
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export type Role = "admin" | "manager" | "staff" | "supplier";
@@ -47,6 +47,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logoutUserAction = useAction(api.auth.logoutUser);
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  // ── REAL-TIME REACTIVE SUSPENSION & SESSION WATCHER ──
+  const liveUserRecord = useQuery(api.users.getCurrentUserRecord, {
+    token: token ?? undefined,
+  });
+
+  useEffect(() => {
+    if (!token) return;
+    if (liveUserRecord !== undefined) {
+      if (
+        liveUserRecord === null ||
+        liveUserRecord.isActive === false ||
+        liveUserRecord.role === "pending"
+      ) {
+        // Immediate forced logout when account is suspended or invalidated by Admin
+        localStorage.removeItem(TOKEN_KEY);
+        document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+        setToken(null);
+        setCurrentUser(null);
+        setIsLoading(false);
+        if (typeof window !== "undefined") {
+          window.location.href = "/sign-in?suspended=true";
+        }
+      } else if (liveUserRecord) {
+        setCurrentUser({
+          id: liveUserRecord._id,
+          _id: liveUserRecord._id,
+          email: liveUserRecord.email,
+          name: liveUserRecord.name,
+          role: liveUserRecord.role as Role,
+          plan: liveUserRecord.plan,
+          imageUrl: liveUserRecord.imageUrl,
+          isActive: liveUserRecord.isActive,
+        });
+      }
+    }
+  }, [liveUserRecord, token]);
 
   const refreshUser = async () => {
     if (!token) return;
