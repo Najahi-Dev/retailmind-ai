@@ -16,9 +16,9 @@ export const PLAN_CONFIG: Record<"STARTER" | "GROWTH" | "ENTERPRISE", PlanMetada
   STARTER: {
     displayName: "Starter Plan",
     tier: "STARTER",
-    price: "LKR 0",
-    priceSubtext: "Forever Free",
-    billingCycle: "Forever Free",
+    price: "LKR 2,500 / mo",
+    priceSubtext: "billed monthly",
+    billingCycle: "Monthly",
     productLimit: 100,
     skuLabel: "100 SKUs",
     features: [

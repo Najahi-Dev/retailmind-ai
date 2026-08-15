@@ -117,7 +117,7 @@ export default function SelectPlanPage() {
 
   const getPlanPrice = (planKey: string) => {
     if (planKey === "starter") {
-      return billingCycle === "annual" ? "LKR 1,990 / mo" : "LKR 2,490 / mo";
+      return billingCycle === "annual" ? "LKR 1,990 / mo" : "LKR 2,500 / mo";
     }
     if (planKey === "growth") {
       return billingCycle === "annual" ? "LKR 3,900 / mo" : "LKR 4,900 / mo";
@@ -202,7 +202,7 @@ export default function SelectPlanPage() {
               </div>
               <div className="flex items-baseline gap-1 pt-2">
                 <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                  {billingCycle === "annual" ? "LKR 1,990" : "LKR 2,490"}
+                  {billingCycle === "annual" ? "LKR 1,990" : "LKR 2,500"}
                 </span>
                 <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold">/ month</span>
               </div>

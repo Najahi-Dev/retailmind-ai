@@ -762,8 +762,8 @@ export default function Home() {
                   </CardDescription>
                 </div>
                 <div className="flex items-baseline gap-1 pt-2">
-                  <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">LKR 0</span>
-                  <span className="text-slate-500 dark:text-slate-400 text-xs">/ forever</span>
+                  <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">LKR 2,500</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-xs">/ month</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 flex-1 flex flex-col justify-between pt-2">
@@ -786,7 +786,7 @@ export default function Home() {
                   </li>
                 </ul>
                 <Button asChild variant="outline" className="w-full border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 mt-6 h-11 rounded-xl font-medium">
-                  <Link href="/sign-in">Get Started Free</Link>
+                  <Link href="/sign-in">Get Started</Link>
                 </Button>
               </CardContent>
             </Card>

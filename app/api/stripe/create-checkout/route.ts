@@ -65,7 +65,7 @@ export async function POST(req: Request) {
                 product_data: {
                   name: `${plan.toUpperCase()} Plan (RetailMind AI)`,
                 },
-                unit_amount: 490000,
+                unit_amount: plan === "starter" ? 250000 : 490000,
                 recurring: { interval: "month" },
               },
               quantity: 1,
