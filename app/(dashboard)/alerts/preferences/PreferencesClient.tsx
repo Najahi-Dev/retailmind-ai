@@ -30,10 +30,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function PreferencesClient() {
   const router = useRouter();
+  const { token } = useAuth();
 
-  const userPrefs = useQuery(api.alerts.getUserPreferences);
+  const userPrefs = useQuery(api.alerts.getUserPreferences, { token: token ?? undefined });
   const savePreferences = useMutation(api.alerts.saveNotificationPreferences);
 
   const [saving, setSaving] = useState(false);
@@ -70,11 +73,14 @@ export default function PreferencesClient() {
     setSaving(true);
     try {
       await savePreferences({
-        alertTypes,
-        channels,
-        thresholds: {
-          lowStockMultiplier: Number(thresholds.lowStockMultiplier) || 1.0,
-          criticalStockMultiplier: Number(thresholds.criticalStockMultiplier) || 1.0,
+        token: token ?? undefined,
+        preferences: {
+          alertTypes,
+          channels,
+          thresholds: {
+            lowStockMultiplier: Number(thresholds.lowStockMultiplier) || 1.0,
+            criticalStockMultiplier: Number(thresholds.criticalStockMultiplier) || 1.0,
+          },
         },
       });
       toast.success("Notification preferences saved successfully!");

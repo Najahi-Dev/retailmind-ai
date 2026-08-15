@@ -49,9 +49,12 @@ const REASONS = [
   "Other",
 ];
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function StockInClient({ role }: Props) {
   const router = useRouter();
-  const formData = useQuery(api.inventory.getStockInFormData);
+  const { token } = useAuth();
+  const formData = useQuery(api.inventory.getStockInFormData, { token: token ?? undefined });
   const recordStockIn = useMutation(api.inventory.recordStockIn);
 
   const [productId, setProductId] = useState("");

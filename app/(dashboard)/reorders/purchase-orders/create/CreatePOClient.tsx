@@ -34,12 +34,15 @@ interface LineItem {
   unitCost:        number;
 }
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function CreatePOClient() {
   const router = useRouter();
+  const { token } = useAuth();
 
   // ── Data ──────────────────────────────────
-  const suppliers = useQuery(api.suppliers.getActiveSuppliers);
-  const products  = useQuery(api.inventory.getStockOutFormData);
+  const suppliers = useQuery(api.suppliers.getActiveSuppliers, { token: token ?? undefined });
+  const products  = useQuery(api.inventory.getStockInFormData, { token: token ?? undefined });
   const createPO  = useMutation(api.purchaseOrders.createPurchaseOrder);
 
   // ── Form state ────────────────────────────

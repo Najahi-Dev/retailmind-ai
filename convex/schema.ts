@@ -2,8 +2,23 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // ── Multi-Tenant Organizations / Workspaces ──
+  organizations: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    inviteCode: v.string(),
+    plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
+    logoUrl: v.optional(v.string()),
+    ownerId: v.optional(v.id("users")),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_invite_code", ["inviteCode"]),
+
   // ── Users ──────────────────────────────────────
   users: defineTable({
+    orgId: v.optional(v.id("organizations")),
     email: v.string(),
     name: v.string(),
     phone: v.optional(v.string()),
@@ -23,18 +38,24 @@ export default defineSchema({
     isVipAccess: v.optional(v.boolean()),
     lastLogin: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_email", ["email"]),
+  })
+    .index("by_email", ["email"])
+    .index("by_org", ["orgId"]),
 
   // ── Sessions ───────────────────────────────────
   sessions: defineTable({
+    orgId: v.optional(v.id("organizations")),
     userId: v.id("users"),
     token: v.string(),
     expiresAt: v.number(),
     createdAt: v.number(),
-  }).index("by_token", ["token"]),
+  })
+    .index("by_token", ["token"])
+    .index("by_org", ["orgId"]),
 
   // ── Locations ──────────────────────────────────
   locations: defineTable({
+    orgId: v.optional(v.id("organizations")),
     name: v.string(),
     address: v.optional(v.string()),
     type: v.union(
@@ -45,17 +66,19 @@ export default defineSchema({
     ),
     isActive: v.boolean(),
     createdAt: v.number(),
-  }),
+  }).index("by_org", ["orgId"]),
 
   // ── Categories ─────────────────────────────────
   categories: defineTable({
+    orgId: v.optional(v.id("organizations")),
     name: v.string(),
     description: v.optional(v.string()),
     createdAt: v.number(),
-  }),
+  }).index("by_org", ["orgId"]),
 
   // ── Suppliers ──────────────────────────────────
   suppliers: defineTable({
+    orgId: v.optional(v.id("organizations")),
     name: v.string(),
     email: v.string(),
     phone: v.optional(v.string()),
@@ -70,10 +93,13 @@ export default defineSchema({
     reliabilityScore: v.optional(v.number()),
     isActive: v.boolean(),
     createdAt: v.number(),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    .index("by_org", ["orgId"]),
 
   // ── Products ───────────────────────────────────
   products: defineTable({
+    orgId: v.optional(v.id("organizations")),
     categoryId: v.optional(v.id("categories")),
     primarySupplierId: v.optional(v.id("suppliers")),
     sku: v.string(),
@@ -96,10 +122,12 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_sku", ["sku"])
-    .index("by_category", ["categoryId"]),
+    .index("by_category", ["categoryId"])
+    .index("by_org", ["orgId"]),
 
   // ── Inventory ──────────────────────────────────
   inventory: defineTable({
+    orgId: v.optional(v.id("organizations")),
     productId: v.id("products"),
     locationId: v.id("locations"),
     onHand: v.number(),
@@ -108,10 +136,12 @@ export default defineSchema({
     lastUpdated: v.number(),
   })
     .index("by_product", ["productId"])
-    .index("by_product_location", ["productId", "locationId"]),
+    .index("by_product_location", ["productId", "locationId"])
+    .index("by_org", ["orgId"]),
 
   // ── Stock Movements ────────────────────────────
   stockMovements: defineTable({
+    orgId: v.optional(v.id("organizations")),
     productId: v.id("products"),
     locationId: v.id("locations"),
     userId: v.optional(v.id("users")),
@@ -133,10 +163,12 @@ export default defineSchema({
   })
     .index("by_product", ["productId"])
     .index("by_created", ["createdAt"])
-    .index("by_product_date", ["productId", "createdAt"]),
+    .index("by_product_date", ["productId", "createdAt"])
+    .index("by_org", ["orgId"]),
 
   // ── Purchase Orders ────────────────────────────
   purchaseOrders: defineTable({
+    orgId: v.optional(v.id("organizations")),
     supplierId: v.id("suppliers"),
     createdBy: v.optional(v.id("users")),
     poNumber: v.string(),
@@ -154,9 +186,9 @@ export default defineSchema({
       v.object({
         productId: v.id("products"),
         quantityOrdered: v.number(),
-        quantityReceived: v.optional(v.number()), // ← make optional
+        quantityReceived: v.optional(v.number()),
         unitCost: v.number(),
-        lineTotal: v.optional(v.number()), // ← make optional
+        lineTotal: v.optional(v.number()),
       }),
     ),
     totalValue: v.number(),
@@ -169,10 +201,12 @@ export default defineSchema({
   })
     .index("by_supplier", ["supplierId"])
     .index("by_status", ["status"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_org", ["orgId"]),
 
   // ── Reorder Suggestions ────────────────────────
   reorderSuggestions: defineTable({
+    orgId: v.optional(v.id("organizations")),
     productId: v.id("products"),
     preferredSupplierId: v.optional(v.id("suppliers")),
     urgency: v.union(
@@ -195,10 +229,12 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_product", ["productId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_org", ["orgId"]),
 
   // ── Forecasts ──────────────────────────────────
   forecasts: defineTable({
+    orgId: v.optional(v.id("organizations")),
     productId: v.id("products"),
     forecastDate: v.number(),
     predictedDemand: v.number(),
@@ -209,27 +245,28 @@ export default defineSchema({
     generatedAt: v.number(),
   })
     .index("by_product", ["productId"])
-    .index("by_product_date", ["productId", "forecastDate"]),
+    .index("by_product_date", ["productId", "forecastDate"])
+    .index("by_org", ["orgId"]),
 
-  // priceSuggestions table
-
+  // ── Price Suggestions ──────────────────────────
   priceSuggestions: defineTable({
+    orgId: v.optional(v.id("organizations")),
     productId: v.id("products"),
     currentPrice: v.number(),
     suggestedPrice: v.number(),
-    priceChange: v.number(), // percentage change
+    priceChange: v.number(),
     changeDirection: v.union(
       v.literal("increase"),
       v.literal("decrease"),
       v.literal("maintain"),
     ),
-    reason: v.string(), // plain English explanation
-    confidence: v.number(), // 0.0 to 1.0
+    reason: v.string(),
+    confidence: v.number(),
     factors: v.object({
-      stockLevel: v.string(), // "critical" | "low" | "healthy" | "overstock"
-      demandTrend: v.string(), // "rising" | "falling" | "stable"
-      seasonality: v.string(), // "peak" | "off-peak" | "normal"
-      daysOfStock: v.number(), // estimated days until stockout
+      stockLevel: v.string(),
+      demandTrend: v.string(),
+      seasonality: v.string(),
+      daysOfStock: v.number(),
     }),
     status: v.union(
       v.literal("pending"),
@@ -240,10 +277,12 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_product", ["productId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_org", ["orgId"]),
 
   // ── Alerts ─────────────────────────────────────
   alerts: defineTable({
+    orgId: v.optional(v.id("organizations")),
     productId: v.optional(v.id("products")),
     type: v.union(
       v.literal("low_stock"),
@@ -266,10 +305,12 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_active", ["isDismissed"])
-    .index("by_product", ["productId"]),
+    .index("by_product", ["productId"])
+    .index("by_org", ["orgId"]),
 
   // ── Subscriptions ─────────────────────────────
   subscriptions: defineTable({
+    orgId: v.optional(v.id("organizations")),
     clerkId: v.string(),
     stripeCustomerId: v.string(),
     stripeSubscriptionId: v.string(),
@@ -292,10 +333,12 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_stripe_subscription_id", ["stripeSubscriptionId"])
-    .index("by_stripe_customer_id", ["stripeCustomerId"]),
+    .index("by_stripe_customer_id", ["stripeCustomerId"])
+    .index("by_org", ["orgId"]),
 
   // ── User Preferences ─────────────────────────
   userPreferences: defineTable({
+    orgId: v.optional(v.id("organizations")),
     clerkId: v.string(),
     alertTypes: v.object({
       lowStock: v.boolean(),
@@ -313,23 +356,28 @@ export default defineSchema({
       criticalStockMultiplier: v.number(),
     }),
     updatedAt: v.number(),
-  }).index("by_clerk_id", ["clerkId"]),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_org", ["orgId"]),
 
   // ── Security & Audit Logs ─────────────────────
   securityLogs: defineTable({
+    orgId: v.optional(v.id("organizations")),
     userId: v.optional(v.id("users")),
     email: v.optional(v.string()),
     role: v.optional(v.string()),
-    eventType: v.string(), // "SECURITY_WARNING" | "IDOR_ATTEMPT" | "UNAUTHORIZED_MUTATION"
+    eventType: v.string(),
     details: v.string(),
     targetId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])
-    .index("by_event_type", ["eventType"]),
+    .index("by_event_type", ["eventType"])
+    .index("by_org", ["orgId"]),
 
   // ── Support Tickets ───────────────────────────
   supportTickets: defineTable({
+    orgId: v.optional(v.id("organizations")),
     ticketId: v.string(),
     userId: v.id("users"),
     userName: v.string(),
@@ -348,5 +396,6 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_org", ["orgId"]),
 });

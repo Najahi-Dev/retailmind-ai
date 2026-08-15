@@ -24,9 +24,12 @@ interface Props {
   onOpenChange: (v: boolean) => void;
 }
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function CreateAlertDialog({ open, onOpenChange }: Props) {
+  const { token } = useAuth();
   const createAlert = useMutation(api.alerts.createAlert);
-  const formData = useQuery(api.inventory.getStockOutFormData);
+  const formData = useQuery(api.inventory.getStockOutFormData, { token: token ?? undefined });
 
   const [form, setForm] = useState({
     productId: "none",

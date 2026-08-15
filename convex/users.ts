@@ -32,14 +32,26 @@ export const getCurrentUserRecord = query({
   },
 });
 
-// Get all users for admin management
+// Get all users for admin management (scoped to caller's organization)
 export const getUsers = query({
   args: {
+    token: v.optional(v.string()),
     role: v.optional(v.string()),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const caller = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token ?? ""))
+      .first()
+      .then(async (s) => (s ? await ctx.db.get(s.userId) : null));
+
     let users = await ctx.db.query("users").collect();
+    if (caller && caller.orgId) {
+      users = users.filter((u) => u.orgId === caller.orgId);
+    } else {
+      return [];
+    }
 
     if (args.role && args.role !== "all") {
       users = users.filter((u) => u.role === args.role);
@@ -54,11 +66,34 @@ export const getUsers = query({
   },
 });
 
-// Get User Analytics & Role Stats
+// Get User Analytics & Role Stats (scoped to caller's organization)
 export const getUserStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token ?? ""))
+      .first()
+      .then(async (s) => (s ? await ctx.db.get(s.userId) : null));
+
+    if (!caller || !caller.orgId) {
+      return {
+        total: 0,
+        adminCount: 0,
+        managerCount: 0,
+        staffCount: 0,
+        supplierCount: 0,
+        pendingCount: 0,
+        activeCount: 0,
+        inactiveCount: 0,
+      };
+    }
+
+    const allUsers = await ctx.db.query("users").collect();
+    const users = allUsers.filter((u) => u.orgId === caller.orgId);
+
     const total = users.length;
     const adminCount = users.filter((u) => u.role === "admin").length;
     const managerCount = users.filter((u) => u.role === "manager").length;

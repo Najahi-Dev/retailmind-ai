@@ -16,6 +16,8 @@ import type * as authInternal from "../authInternal.js";
 import type * as crons from "../crons.js";
 import type * as inventory from "../inventory.js";
 import type * as lib_roleGuard from "../lib/roleGuard.js";
+import type * as migrations_multiTenantMigration from "../migrations/multiTenantMigration.js";
+import type * as organizations from "../organizations.js";
 import type * as pricing from "../pricing.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as reorder from "../reorder.js";
@@ -40,6 +42,8 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   inventory: typeof inventory;
   "lib/roleGuard": typeof lib_roleGuard;
+  "migrations/multiTenantMigration": typeof migrations_multiTenantMigration;
+  organizations: typeof organizations;
   pricing: typeof pricing;
   purchaseOrders: typeof purchaseOrders;
   reorder: typeof reorder;

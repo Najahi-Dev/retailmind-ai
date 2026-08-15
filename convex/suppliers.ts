@@ -1,13 +1,20 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getCallerUser, requireCallerOrg, verifyEntityOrgAccess } from "./lib/roleGuard";
 
 // ── Get all suppliers ─────────────────────────────
 export const getSuppliers = query({
   args: {
+    token: v.optional(v.string()),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const suppliers = await ctx.db.query("suppliers").collect();
+    const caller = await getCallerUser(ctx, args.token);
+    let suppliers = await ctx.db.query("suppliers").collect();
+
+    if (caller && caller.orgId) {
+      suppliers = suppliers.filter((s) => !s.orgId || s.orgId === caller.orgId);
+    }
 
     const filtered =
       args.status && args.status !== "all"
@@ -51,10 +58,18 @@ export const getSuppliers = query({
 
 // ── Get supplier detail ───────────────────────────
 export const getSupplierDetail = query({
-  args: { supplierId: v.id("suppliers") },
+  args: {
+    supplierId: v.id("suppliers"),
+    token: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
     const supplier = await ctx.db.get(args.supplierId);
     if (!supplier) return null;
+
+    if (caller && caller.orgId) {
+      verifyEntityOrgAccess(supplier, caller.orgId);
+    }
 
     // Recent POs
     const pos = await ctx.db
@@ -129,9 +144,17 @@ export const getSupplierDetail = query({
 
 // ── Get supplier stats for KPI cards ─────────────
 export const getSupplierStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const suppliers = await ctx.db.query("suppliers").collect();
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    let suppliers = await ctx.db.query("suppliers").collect();
+
+    if (caller && caller.orgId) {
+      suppliers = suppliers.filter((s) => !s.orgId || s.orgId === caller.orgId);
+    }
+
     return {
       total: suppliers.length,
       active: suppliers.filter((s) => s.status === "active").length,
@@ -144,6 +167,7 @@ export const getSupplierStats = query({
 // ── Create supplier ───────────────────────────────
 export const createSupplier = mutation({
   args: {
+    token: v.optional(v.string()),
     name: v.string(),
     email: v.string(),
     phone: v.optional(v.string()),
@@ -152,16 +176,26 @@ export const createSupplier = mutation({
     leadTimeDays: v.number(),
   },
   handler: async (ctx, args) => {
-    // Check duplicate email
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+
+    // Check duplicate email in organization
     const existing = await ctx.db
       .query("suppliers")
       .filter((q) => q.eq(q.field("email"), args.email))
       .first();
 
-    if (existing) throw new Error("Supplier with this email already exists");
+    if (existing && (!existing.orgId || existing.orgId === orgId)) {
+      throw new Error("Supplier with this email already exists in your workspace");
+    }
 
     return await ctx.db.insert("suppliers", {
-      ...args,
+      name: args.name,
+      email: args.email,
+      phone: args.phone,
+      address: args.address,
+      paymentTerms: args.paymentTerms,
+      leadTimeDays: args.leadTimeDays,
+      orgId,
       status: "active",
       isActive: true,
       createdAt: Date.now(),
@@ -172,6 +206,7 @@ export const createSupplier = mutation({
 // ── Update supplier ───────────────────────────────
 export const updateSupplier = mutation({
   args: {
+    token: v.optional(v.string()),
     supplierId: v.id("suppliers"),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -184,7 +219,15 @@ export const updateSupplier = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { supplierId, ...fields } = args;
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const supplier = await ctx.db.get(args.supplierId);
+    if (!supplier) throw new Error("Supplier not found");
+
+    if (orgId) {
+      verifyEntityOrgAccess(supplier, orgId);
+    }
+
+    const { supplierId, token, ...fields } = args;
     const updateFields = Object.fromEntries(
       Object.entries(fields).filter(([_, v]) => v !== undefined),
     );
@@ -194,11 +237,20 @@ export const updateSupplier = mutation({
 });
 
 export const getActiveSuppliers = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    let suppliers = await ctx.db
       .query("suppliers")
       .filter((q) => q.eq(q.field("status"), "active"))
       .collect();
+
+    if (caller && caller.orgId) {
+      suppliers = suppliers.filter((s) => !s.orgId || s.orgId === caller.orgId);
+    }
+
+    return suppliers;
   },
 });

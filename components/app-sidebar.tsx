@@ -37,12 +37,15 @@ import {
   ChartCandlestick,
 } from "lucide-react"
 import { useRole } from "@/hooks/useRole"
+import { useAuth } from "@/lib/auth-context"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import Link from "next/link"
 import { Logo } from "@/components/logo"
+import { WorkspaceSwitcher } from "@/components/workspace-switcher"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { token } = useAuth()
   const {
     isAdmin,
     isManager,
@@ -52,7 +55,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   } = useRole()
 
   // Alert count for badge
-  const alertStats = useQuery(api.alerts.getAlertStats);
+  const alertStats = useQuery(api.alerts.getAlertStats, { token: token ?? undefined });
   const unreadCount = alertStats?.unread ?? 0;
   const alertBadge = unreadCount === 0 ? undefined : unreadCount > 99 ? "99+" : String(unreadCount);
 
@@ -281,15 +284,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" className="border-none shadow-[4px_0_24px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.35)]" {...props}>
 
-      {/* ── Logo ──────────────────────────────── */}
-      <SidebarHeader className="h-16 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 p-0 px-4">
+      {/* ── Logo & Workspace Switcher ─────────── */}
+      <SidebarHeader className="flex flex-col border-b border-slate-200 dark:border-slate-800 p-3 gap-2">
         <SidebarMenu className="w-full">
           <SidebarMenuItem className="flex justify-center">
-            <div className="relative flex items-center justify-center w-full">
+            <div className="relative flex items-center justify-center w-full py-0.5">
               <Logo size="sm" href="/dashboard" layout="horizontal" />
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
+        <WorkspaceSwitcher />
       </SidebarHeader>
 
       {/* ── Nav content ───────────────────────── */}

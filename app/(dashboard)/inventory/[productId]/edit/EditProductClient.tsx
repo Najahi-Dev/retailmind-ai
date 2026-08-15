@@ -35,11 +35,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function EditProductClient({ productId, role }: { productId: string; role: string }) {
   const router = useRouter();
-  const detail = useQuery(api.inventory.getProductDetail, { productId: productId as Id<"products"> });
-  const categoriesQ = useQuery(api.inventory.getCategories);
-  const suppliersQ = useQuery(api.inventory.getSuppliers);
+  const { token } = useAuth();
+  const detail = useQuery(api.inventory.getProductDetail, { productId: productId as Id<"products">, token: token ?? undefined });
+  const categoriesQ = useQuery(api.inventory.getCategories, { token: token ?? undefined });
+  const suppliersQ = useQuery(api.inventory.getSuppliers, { token: token ?? undefined });
   const edit = useMutation(api.inventory.editProduct);
   const del = useMutation(api.inventory.deleteProduct);
 
@@ -79,7 +82,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
         sku,
         name,
         description,
-        unit,
+        unit: unit as any,
         categoryId: categoryId ? (categoryId as any) : undefined,
         primarySupplierId: primarySupplierId ? (primarySupplierId as any) : undefined,
         costPrice: Number(costPrice),

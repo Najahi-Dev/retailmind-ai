@@ -47,21 +47,24 @@ export const getSessionByToken = query({
     const user = await ctx.db.get(session.userId);
     if (!user) return null;
 
-    return {
-      session,
-      user,
-    };
+    return { session, user };
   },
 });
 
-// Create new user
+// Create user record
 export const createUserRecord = mutation({
   args: {
     email: v.string(),
-    passwordHash: v.string(),
+    passwordHash: v.optional(v.string()),
     name: v.string(),
     phone: v.optional(v.string()),
-    role: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("manager"),
+      v.literal("staff"),
+      v.literal("supplier"),
+      v.literal("pending"),
+    ),
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -74,39 +77,53 @@ export const createUserRecord = mutation({
       throw new Error("User with this email already exists");
     }
 
+    // Default org fallback
+    const defaultOrg = await ctx.db.query("organizations").first();
+
     const userId = await ctx.db.insert("users", {
+      orgId: defaultOrg?._id,
       email: args.email,
-      passwordHash: args.passwordHash,
       name: args.name,
       phone: args.phone,
-      role: args.role as any,
+      passwordHash: args.passwordHash,
+      role: args.role,
       imageUrl: args.imageUrl,
-      plan: "starter",
       isActive: true,
       createdAt: Date.now(),
     });
 
     if (args.role === "supplier") {
-      const supplierId = await ctx.db.insert("suppliers", {
-        name: args.name,
-        email: args.email,
-        phone: args.phone || "+94 77 123 4567",
-        address: "Registered Vendor Facilities, Sri Lanka",
-        leadTimeDays: 3,
-        paymentTerms: "Net 30",
-        status: "active",
-        reliabilityScore: 95,
-        isActive: true,
-        createdAt: Date.now(),
-      });
-      await ctx.db.patch(userId, { supplierId });
+      const cleanEmail = args.email.toLowerCase().trim();
+      const allSuppliers = await ctx.db.query("suppliers").collect();
+      const existingSupplier = allSuppliers.find(
+        (s) => s.email && s.email.toLowerCase().trim() === cleanEmail
+      );
+
+      if (existingSupplier) {
+        await ctx.db.patch(userId, { supplierId: existingSupplier._id });
+        if (!existingSupplier.isActive) {
+          await ctx.db.patch(existingSupplier._id, { isActive: true, status: "active" });
+        }
+      } else {
+        const supplierId = await ctx.db.insert("suppliers", {
+          orgId: defaultOrg?._id,
+          name: args.name,
+          email: args.email,
+          phone: args.phone,
+          leadTimeDays: 3,
+          status: "active",
+          isActive: true,
+          createdAt: Date.now(),
+        });
+        await ctx.db.patch(userId, { supplierId });
+      }
     }
 
     return userId;
   },
 });
 
-// Create new session token record
+// Create session token record
 export const createSessionRecord = mutation({
   args: {
     userId: v.id("users"),
@@ -165,5 +182,54 @@ export const updateUserStatus = mutation({
     await ctx.db.patch(args.userId, {
       isActive: args.isActive,
     });
+  },
+});
+
+// Create Organization & Owner User Record
+export const createWorkspaceAndOwnerRecord = mutation({
+  args: {
+    companyName: v.string(),
+    slug: v.string(),
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    passwordHash: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const cleanEmail = args.email.toLowerCase().trim();
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", cleanEmail))
+      .first();
+
+    if (existingUser) {
+      throw new Error("An account with this email address already exists. Please sign in instead.");
+    }
+
+    const inviteCode = `INV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const orgId = await ctx.db.insert("organizations", {
+      name: args.companyName,
+      slug: args.slug,
+      inviteCode,
+      plan: "starter",
+      isActive: true,
+      createdAt: Date.now(),
+    });
+
+    const userId = await ctx.db.insert("users", {
+      orgId,
+      email: cleanEmail,
+      name: args.name,
+      phone: args.phone,
+      passwordHash: args.passwordHash,
+      role: "admin",
+      isActive: true,
+      createdAt: Date.now(),
+      lastLogin: Date.now(),
+    });
+
+    await ctx.db.patch(orgId, { ownerId: userId });
+
+    return { userId, orgId, inviteCode };
   },
 });

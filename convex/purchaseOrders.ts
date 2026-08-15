@@ -1,7 +1,7 @@
 // convex/purchaseOrders.ts
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getCallerUser, getSupplierForUser, requireRole } from "./lib/roleGuard";
+import { requireCallerOrg, getCallerUser, getSupplierForUser, requireRole, verifyEntityOrgAccess } from "./lib/roleGuard";
 
 export const getPurchaseOrders = query({
   args: {
@@ -26,6 +26,11 @@ export const getPurchaseOrders = query({
           .order("desc")
           .collect()
       : await ctx.db.query("purchaseOrders").order("desc").collect();
+
+    // ── MULTI-TENANT WORKSPACE ISOLATION ──
+    if (caller && caller.orgId) {
+      orders = orders.filter((po) => !po.orgId || po.orgId === caller.orgId);
+    }
 
     // ── MULTI-TENANT SUPPLIER ROW-LEVEL DATA ISOLATION (RLS) ──
     if (caller && caller.role === "supplier") {
@@ -63,6 +68,10 @@ export const getPOStats = query({
     const caller = await getCallerUser(ctx, args.token);
     let all = await ctx.db.query("purchaseOrders").collect();
 
+    if (caller && caller.orgId) {
+      all = all.filter((p) => !p.orgId || p.orgId === caller.orgId);
+    }
+
     // ── SCOPE METRICS FOR SUPPLIERS ──
     if (caller && caller.role === "supplier") {
       const userSupplier = await getSupplierForUser(ctx, caller);
@@ -97,6 +106,10 @@ export const getPODetail = query({
     const caller = await getCallerUser(ctx, args.token);
     const po = await ctx.db.get(args.poId);
     if (!po) return null;
+
+    if (caller && caller.orgId) {
+      verifyEntityOrgAccess(po, caller.orgId);
+    }
 
     // ── SINGLE-OBJECT IDOR AUTHORIZATION GUARD ──
     if (caller && caller.role === "supplier") {
@@ -152,11 +165,16 @@ export const updatePOStatus = mutation({
     const po = await ctx.db.get(args.poId);
     if (!po) throw new Error("PO not found");
 
+    if (caller.orgId) {
+      verifyEntityOrgAccess(po, caller.orgId);
+    }
+
     // ── SUPPLIER MUTATION PERMISSION GUARD ──
     if (caller.role === "supplier") {
       const userSupplier = await getSupplierForUser(ctx, caller);
       if (!userSupplier || po.supplierId !== userSupplier._id) {
         await ctx.db.insert("securityLogs", {
+          orgId: caller.orgId,
           userId: caller._id,
           email: caller.email,
           role: caller.role,
@@ -178,49 +196,44 @@ export const updatePOStatus = mutation({
     // Update inventory onHand for each line item
     if (args.status === "delivered" && po.status !== "delivered") {
       for (const line of po.lineItems) {
-        const inv = await ctx.db
+        const invList = await ctx.db
           .query("inventory")
           .withIndex("by_product", (q) => q.eq("productId", line.productId))
-          .first();
+          .collect();
 
-        if (inv) {
+        if (invList.length > 0) {
+          const inv = invList[0];
           const newOnHand = inv.onHand + line.quantityOrdered;
-          const newAvailable = newOnHand - inv.reserved;
-
           await ctx.db.patch(inv._id, {
             onHand: newOnHand,
-            available: newAvailable,
+            available: newOnHand - inv.reserved,
             lastUpdated: Date.now(),
           });
 
-          // Create stock_in movement record
           await ctx.db.insert("stockMovements", {
+            orgId: caller.orgId,
             productId: line.productId,
             locationId: inv.locationId,
+            userId: caller._id,
             type: "stock_in",
-            reason: "Purchase Order Delivery",
+            reason: `PO Delivered: ${po.poNumber}`,
             quantity: line.quantityOrdered,
             reference: po.poNumber,
-            notes: `Received via ${po.poNumber}`,
             createdAt: Date.now(),
           });
         }
       }
     }
 
-    // ── Safety check when cancelling ─
-    if (args.status === "cancelled" && po.status === "delivered") {
-      throw new Error("Cannot cancel a delivered PO");
-    }
-
-    // ── Update PO status and fulfillment fields ─────────────────────────
-    await ctx.db.patch(args.poId, {
+    const updates: Partial<typeof po> = {
       status: args.status,
-      trackingNumber: args.trackingNumber ?? po.trackingNumber,
-      notes: args.notes ? `${po.notes ?? ''}\n[Supplier Note]: ${args.notes}`.trim() : po.notes,
-      confirmedDelivery: args.confirmedDelivery ?? po.confirmedDelivery,
       updatedAt: Date.now(),
-    });
+    };
+    if (args.trackingNumber !== undefined) updates.trackingNumber = args.trackingNumber;
+    if (args.notes !== undefined) updates.notes = args.notes;
+    if (args.confirmedDelivery !== undefined) updates.confirmedDelivery = args.confirmedDelivery;
+
+    await ctx.db.patch(args.poId, updates);
 
     return { success: true };
   },
@@ -242,7 +255,7 @@ export const createPurchaseOrder = mutation({
   },
   handler: async (ctx, args) => {
     // ── REJECT SUPPLIER CREATION ATTEMPTS ──
-    const caller = await requireRole(ctx, args.token, ["admin", "manager"]);
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
 
     // ── Generate PO number ───────────────────
     const count = await ctx.db.query("purchaseOrders").collect();
@@ -255,6 +268,7 @@ export const createPurchaseOrder = mutation({
     );
     // ── Insert PO ───────────────────────────
     const poId = await ctx.db.insert("purchaseOrders", {
+      orgId,
       supplierId: args.supplierId,
       createdBy: caller._id,
       poNumber,

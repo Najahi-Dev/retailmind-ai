@@ -3,16 +3,17 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
 
 // ── Stock Status Helper ───────────────────────────
 function calcStatus(
-  onHand:       number,
+  onHand: number,
   reorderPoint: number,
-  safetyStock:  number
+  safetyStock: number
 ): "critical" | "low" | "healthy" | "overstock" {
-  if (onHand <= safetyStock)        return "critical";
-  if (onHand <= reorderPoint)       return "low";
-  if (onHand >= reorderPoint * 3)   return "overstock";
+  if (onHand <= safetyStock) return "critical";
+  if (onHand <= reorderPoint) return "low";
+  if (onHand >= reorderPoint * 3) return "overstock";
   return "healthy";
 }
 
@@ -22,19 +23,30 @@ function calcStockPct(onHand: number, reorderPoint: number): number {
   return Math.min(100, Math.max(0, Math.round((onHand / targetOptimalStock) * 100)));
 }
 
-// Get all products
+// Get all products scoped by organization
 export const getProducts = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("products").collect();
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    const products = await ctx.db.query("products").collect();
+    if (!caller || !caller.orgId) return [];
+    return products.filter((p) => p.orgId === caller.orgId);
   },
 });
 
 // ── Inventory Overview ────────────────────────────
 export const getInventoryOverview = query({
-  args: {},
-  handler: async (ctx) => {
-    const [inventoryRecords, products, categories, locations] =
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return [];
+    const orgId = caller.orgId;
+
+    const [allInventory, allProducts, allCategories, allLocations] =
       await Promise.all([
         ctx.db.query("inventory").collect(),
         ctx.db.query("products").collect(),
@@ -42,9 +54,14 @@ export const getInventoryOverview = query({
         ctx.db.query("locations").collect(),
       ]);
 
-    const productMap  = new Map(products.map(p  => [p._id, p]));
-    const categoryMap = new Map(categories.map(c => [c._id, c]));
-    const locationMap = new Map(locations.map(l  => [l._id, l]));
+    const inventoryRecords = allInventory.filter((i) => i.orgId === orgId);
+    const products = allProducts.filter((p) => p.orgId === orgId);
+    const categories = allCategories.filter((c) => c.orgId === orgId);
+    const locations = allLocations.filter((l) => l.orgId === orgId);
+
+    const productMap = new Map(products.map((p) => [p._id, p]));
+    const categoryMap = new Map(categories.map((c) => [c._id, c]));
+    const locationMap = new Map(locations.map((l) => [l._id, l]));
 
     return inventoryRecords
       .map((inv) => {
@@ -56,35 +73,32 @@ export const getInventoryOverview = query({
           : null;
         const location = locationMap.get(inv.locationId);
 
-        const status   = calcStatus(
+        const status = calcStatus(
           inv.onHand,
           product.reorderPoint,
           product.safetyStock
         );
-        const stockPct = calcStockPct(
-          inv.onHand,
-          product.reorderPoint
-        );
+        const stockPct = calcStockPct(inv.onHand, product.reorderPoint);
 
         return {
-          inventoryId:  inv._id,
-          productId:    product._id,
-          sku:          product.sku,
-          name:         product.name,
-          category:     category?.name  ?? "Uncategorized",
-          location:     location?.name  ?? "Unknown",
-          unit:         product.unit,
-          onHand:       inv.onHand,
-          reserved:     inv.reserved,
-          available:    inv.available,
+          inventoryId: inv._id,
+          productId: product._id,
+          sku: product.sku,
+          name: product.name,
+          category: category?.name ?? "Uncategorized",
+          location: location?.name ?? "Unknown",
+          unit: product.unit,
+          onHand: inv.onHand,
+          reserved: inv.reserved,
+          available: inv.available,
           reorderPoint: product.reorderPoint,
-          safetyStock:  product.safetyStock,
-          costPrice:    product.costPrice,
+          safetyStock: product.safetyStock,
+          costPrice: product.costPrice,
           sellingPrice: product.sellingPrice,
-          stockValue:   inv.onHand * product.costPrice,
+          stockValue: inv.onHand * product.costPrice,
           stockPct,
           status,
-          lastUpdated:  inv.lastUpdated,
+          lastUpdated: inv.lastUpdated,
         };
       })
       .filter(Boolean);
@@ -92,19 +106,30 @@ export const getInventoryOverview = query({
 });
 
 export const getStockInFormData = query({
-  args: {},
-  handler: async (ctx) => {
-    const [products, categories, inventories, locations] = await Promise.all([
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return { products: [], locations: [] };
+    const orgId = caller.orgId;
+
+    const [allProducts, allCategories, allInventories, allLocations] = await Promise.all([
       ctx.db.query("products").collect(),
       ctx.db.query("categories").collect(),
       ctx.db.query("inventory").collect(),
       ctx.db.query("locations").collect(),
     ]);
 
+    const products = allProducts.filter((p) => p.orgId === orgId);
+    const categories = allCategories.filter((c) => c.orgId === orgId);
+    const inventories = allInventories.filter((i) => i.orgId === orgId);
+    const locations = allLocations.filter((l) => l.orgId === orgId);
+
     const categoryMap = new Map(categories.map((category) => [category._id, category]));
     const totalsByProduct = new Map<
       string,
-      { onHand: number; reserved: number; available: number }
+      { onHand: number; reserved: number; available: number; locationId?: Id<"locations"> }
     >();
 
     for (const inventory of inventories) {
@@ -112,6 +137,7 @@ export const getStockInFormData = query({
         onHand: 0,
         reserved: 0,
         available: 0,
+        locationId: inventory.locationId,
       };
 
       current.onHand += inventory.onHand;
@@ -150,6 +176,7 @@ export const getStockInFormData = query({
             available: totals.available,
             status,
             stockPct: calcStockPct(totals.onHand, product.reorderPoint),
+            locationId: totals.locationId,
           };
         })
         .sort((left, right) => left.name.localeCompare(right.name)),
@@ -167,48 +194,59 @@ export const getStockInFormData = query({
 });
 
 export const getCategories = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("categories")
-      .collect()
-      .then((categories) =>
-        categories
-          .map((category) => ({
-            _id: category._id,
-            name: category.name,
-          }))
-          .sort((left, right) => left.name.localeCompare(right.name)),
-      );
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return [];
+    const categories = await ctx.db.query("categories").collect();
+    return categories
+      .filter((c) => c.orgId === caller.orgId)
+      .map((c) => ({
+        _id: c._id,
+        name: c.name,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 
 export const getSuppliers = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("suppliers")
-      .collect()
-      .then((suppliers) =>
-        suppliers
-          .filter((supplier) => supplier.isActive)
-          .map((supplier) => ({
-            _id: supplier._id,
-            name: supplier.name,
-          }))
-          .sort((left, right) => left.name.localeCompare(right.name)),
-      );
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return [];
+    const suppliers = await ctx.db.query("suppliers").collect();
+    return suppliers
+      .filter((s) => s.orgId === caller.orgId && s.isActive)
+      .map((s) => ({
+        _id: s._id,
+        name: s.name,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 
 export const getStockControlFormData = query({
-  args: {},
-  handler: async (ctx) => {
-    const [products, locations, inventory] = await Promise.all([
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return { products: [], locations: [], inventory: [] };
+    const orgId = caller.orgId;
+
+    const [allProducts, allLocations, allInventory] = await Promise.all([
       ctx.db.query("products").collect(),
       ctx.db.query("locations").collect(),
       ctx.db.query("inventory").collect(),
     ]);
+
+    const products = allProducts.filter((p) => p.orgId === orgId);
+    const locations = allLocations.filter((l) => l.orgId === orgId);
+    const inventory = allInventory.filter((i) => i.orgId === orgId);
 
     return {
       products: products
@@ -244,11 +282,15 @@ export const getStockControlFormData = query({
   },
 });
 
-// Return next SKU based on existing products with format PREFIX-NUM (e.g. SKU-1500)
 export const getNextSku = query({
-  args: {},
-  handler: async (ctx) => {
-    const products = await ctx.db.query("products").collect();
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    const allProducts = await ctx.db.query("products").collect();
+    const products = caller && caller.orgId ? allProducts.filter((p) => p.orgId === caller.orgId) : allProducts;
+
     let max = 0;
     for (const p of products) {
       if (!p.sku) continue;
@@ -262,22 +304,39 @@ export const getNextSku = query({
   },
 });
 
-// getInventoryStats — same fix
 export const getInventoryStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const [inventoryRecords, products] = await Promise.all([
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) {
+      return {
+        totalProducts: 0,
+        totalValue: 0,
+        criticalCount: 0,
+        lowCount: 0,
+        overstockCount: 0,
+        healthyCount: 0,
+      };
+    }
+    const orgId = caller.orgId;
+
+    const [allInventory, allProducts] = await Promise.all([
       ctx.db.query("inventory").collect(),
       ctx.db.query("products").collect(),
     ]);
 
-    const productMap = new Map(products.map(p => [p._id, p]));
+    const inventoryRecords = allInventory.filter((i) => i.orgId === orgId);
+    const products = allProducts.filter((p) => p.orgId === orgId);
 
-    let totalValue     = 0;
-    let criticalCount  = 0;
-    let lowCount       = 0;
+    const productMap = new Map(products.map((p) => [p._id, p]));
+
+    let totalValue = 0;
+    let criticalCount = 0;
+    let lowCount = 0;
     let overstockCount = 0;
-    let healthyCount   = 0;
+    let healthyCount = 0;
 
     for (const inv of inventoryRecords) {
       const product = productMap.get(inv.productId);
@@ -291,15 +350,15 @@ export const getInventoryStats = query({
         product.safetyStock
       );
 
-      if (status === "critical")  criticalCount++;
-      if (status === "low")       lowCount++;
+      if (status === "critical") criticalCount++;
+      if (status === "low") lowCount++;
       if (status === "overstock") overstockCount++;
-      if (status === "healthy")   healthyCount++;
+      if (status === "healthy") healthyCount++;
     }
 
     return {
-      totalProducts: products.filter(p => p.isActive).length,
-      totalValue:    Math.round(totalValue * 100) / 100,
+      totalProducts: products.filter((p) => p.isActive).length,
+      totalValue: Math.round(totalValue * 100) / 100,
       criticalCount,
       lowCount,
       overstockCount,
@@ -308,12 +367,19 @@ export const getInventoryStats = query({
   },
 });
 
-// getProductDetail — same fix
 export const getProductDetail = query({
-  args: { productId: v.id("products") },
+  args: {
+    productId: v.id("products"),
+    token: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
     const product = await ctx.db.get(args.productId);
     if (!product) return null;
+
+    if (caller && caller.orgId && product.orgId && product.orgId !== caller.orgId) {
+      throw new Error("Access Denied: Product belongs to another workspace.");
+    }
 
     const category = product.categoryId
       ? await ctx.db.get(product.categoryId)
@@ -323,9 +389,7 @@ export const getProductDetail = query({
       : null;
     const inventory = await ctx.db
       .query("inventory")
-      .withIndex("by_product", q =>
-        q.eq("productId", args.productId)
-      )
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
       .first();
     const location = inventory?.locationId
       ? await ctx.db.get(inventory.locationId)
@@ -337,308 +401,45 @@ export const getProductDetail = query({
           product.reorderPoint,
           product.safetyStock
         )
-      : "healthy" as const;
+      : ("healthy" as const);
 
     return { product, category, supplier, inventory, location, status };
   },
 });
 
-// getStockHistory — same fix
 export const getStockHistory = query({
-  args: { productId: v.id("products") },
+  args: {
+    productId: v.id("products"),
+    token: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
     const movements = await ctx.db
       .query("stockMovements")
-      .withIndex("by_product_date", q =>
-        q.eq("productId", args.productId)
-      )
+      .withIndex("by_product_date", (q) => q.eq("productId", args.productId))
       .order("desc")
       .take(100);
 
+    const filtered = caller && caller.orgId ? movements.filter((m) => m.orgId === caller.orgId) : movements;
+
     return await Promise.all(
-      movements.map(async (m) => {
+      filtered.map(async (m) => {
         const location = await ctx.db.get(m.locationId);
-        const user     = m.userId
-          ? await ctx.db.get(m.userId)
-          : null;
+        const user = m.userId ? await ctx.db.get(m.userId) : null;
         return {
           ...m,
           locationName: location?.name,
-          userName:     user?.name,
+          userName: user?.name,
         };
       })
     );
   },
 });
 
-// getProductPurchaseOrders — same fix
-export const getProductPurchaseOrders = query({
-  args: { productId: v.id("products") },
-  handler: async (ctx, args) => {
-    const allPOs = await ctx.db
-      .query("purchaseOrders")
-      .order("desc")
-      .take(200);
-
-    const related = allPOs.filter(po =>
-      po.lineItems.some(line => line.productId === args.productId)
-    );
-
-    return await Promise.all(
-      related.slice(0, 20).map(async (po) => {
-        const supplier = await ctx.db.get(po.supplierId);
-        const line     = po.lineItems.find(
-          l => l.productId === args.productId
-        );
-        return {
-          ...po,
-          supplierName: supplier?.name ?? "Unknown",
-          lineQty:      line?.quantityOrdered ?? 0,
-          lineUnitCost: line?.unitCost        ?? 0,
-        };
-      })
-    );
-  },
-});
-
-// getProductForecasts — same fix
-export const getProductForecasts = query({
-  args: { productId: v.id("products") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("forecasts")
-      .withIndex("by_product", q =>
-        q.eq("productId", args.productId)
-      )
-      .order("asc")
-      .take(30);
-  },
-});
-
-export const updateProduct = mutation({
-  args: {
-    productId:    v.id("products"),
-    reorderPoint: v.optional(v.number()),
-    safetyStock:  v.optional(v.number()),
-    costPrice:    v.optional(v.number()),
-    sellingPrice: v.optional(v.number()),
-    trackBatches: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const { productId, ...updates } = args;
-
-    // Remove undefined fields
-    const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined)
-    );
-
-    await ctx.db.patch(productId, cleanUpdates);
-
-    return { success: true };
-  },
-});
-
-// Full product update for the edit page (admin/manager)
-export const editProduct = mutation({
-  args: {
-    productId: v.id("products"),
-    sku: v.optional(v.string()),
-    name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    unit: v.optional(v.string()),
-    costPrice: v.optional(v.number()),
-    sellingPrice: v.optional(v.number()),
-    reorderPoint: v.optional(v.number()),
-    safetyStock: v.optional(v.number()),
-    categoryId: v.optional(v.id("categories")),
-    primarySupplierId: v.optional(v.id("suppliers")),
-    trackBatches: v.optional(v.boolean()),
-    isActive: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const { productId, ...updates } = args;
-    const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined)
-    );
-
-    await ctx.db.patch(productId, cleanUpdates);
-
-    return { success: true };
-  },
-});
-
-// Delete product and related inventory/movements (admin/manager)
-export const deleteProduct = mutation({
-  args: { productId: v.id("products") },
-  handler: async (ctx, args) => {
-
-    // Remove inventory records
-    const inventories = await ctx.db
-      .query("inventory")
-      .withIndex("by_product", q => q.eq("productId", args.productId))
-      .collect();
-
-    for (const inv of inventories) {
-      await ctx.db.delete(inv._id);
-    }
-
-    // Remove stock movements
-    const movements = await ctx.db
-      .query("stockMovements")
-      .withIndex("by_product_date", q => q.eq("productId", args.productId))
-      .collect();
-
-    for (const m of movements) {
-      await ctx.db.delete(m._id);
-    }
-
-    // Finally remove product
-    await ctx.db.delete(args.productId);
-
-    return { success: true };
-  },
-});
-
-// ── Single Product Inventory ──────────────────────
-export const getProductInventory = query({
-  args: { productId: v.id("products") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const inv = await ctx.db
-      .query("inventory")
-      .withIndex("by_product", q =>
-        q.eq("productId", args.productId)
-      )
-      .first();
-
-    if (!inv) return null;
-
-    const [product, location] = await Promise.all([
-      ctx.db.get(inv.productId),
-      ctx.db.get(inv.locationId),
-    ]);
-
-    const category = product?.categoryId
-      ? await ctx.db.get(product.categoryId)
-      : null;
-
-    const supplier = product?.primarySupplierId
-      ? await ctx.db.get(product.primarySupplierId)
-      : null;
-
-    if (!product) return null;
-
-    const status   = calcStatus(
-      inv.onHand,
-      product.reorderPoint,
-      product.safetyStock
-    );
-    const stockPct = calcStockPct(
-      inv.onHand,
-      product.reorderPoint
-    );
-
-    return {
-      inventoryId:  inv._id,
-      productId:    product._id,
-      sku:          product.sku,
-      name:         product.name,
-      description:  product.description,
-      unit:         product.unit,
-      category:     category?.name  ?? "Uncategorized",
-      categoryId:   category?._id,
-      supplier:     supplier?.name  ?? "Unknown",
-      supplierId:   supplier?._id,
-      location:     location?.name  ?? "Unknown",
-      locationId:   location?._id,
-      onHand:       inv.onHand,
-      reserved:     inv.reserved,
-      available:    inv.available,
-      reorderPoint: product.reorderPoint,
-      safetyStock:  product.safetyStock,
-      costPrice:    product.costPrice,
-      sellingPrice: product.sellingPrice,
-      stockValue:   inv.onHand * product.costPrice,
-      stockPct,
-      status,
-      lastUpdated:  inv.lastUpdated,
-      trackBatches: product.trackBatches,
-    };
-  },
-});
-
-// ── Record Stock-In ───────────────────────────────
-export const recordStockIn = mutation({
-  args: {
-    productId:  v.id("products"),
-    locationId: v.id("locations"),
-    quantity:   v.number(),
-    reason:     v.optional(v.string()),
-    lotNumber:  v.optional(v.string()),
-    reference:  v.optional(v.string()),
-    notes:      v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    if (args.quantity <= 0) {
-      throw new Error("Quantity must be greater than zero.");
-    }
-
-    const inv = await ctx.db
-      .query("inventory")
-      .withIndex("by_product_location", (q) =>
-        q
-          .eq("productId", args.productId)
-          .eq("locationId", args.locationId),
-      )
-      .first();
-
-    const newOnHand = (inv?.onHand ?? 0) + args.quantity;
-
-    if (inv) {
-      await ctx.db.patch(inv._id, {
-        onHand: newOnHand,
-        available: newOnHand - inv.reserved,
-        lastUpdated: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("inventory", {
-        productId: args.productId,
-        locationId: args.locationId,
-        onHand: newOnHand,
-        reserved: 0,
-        available: newOnHand,
-        lastUpdated: Date.now(),
-      });
-    }
-
-    // Audit log
-    await ctx.db.insert("stockMovements", {
-      productId:  args.productId,
-      locationId: args.locationId,
-      type:       "stock_in",
-      reason:     args.reason ?? "Restock",
-      quantity:   args.quantity,
-      lotNumber:  args.lotNumber,
-      reference:  args.reference,
-      notes:      args.notes,
-      createdAt:  Date.now(),
-    });
-
-    // Real-time Stock Alert Generator Trigger
-    await ctx.scheduler.runAfter(0, internal.alerts.generateStockAlerts, {});
-
-    return { success: true, newOnHand };
-  },
-});
-
-// ── Create Product (admin/manager) ─────────────────────────
+// ── createProduct mutation ──
 export const createProduct = mutation({
   args: {
+    token: v.optional(v.string()),
     sku: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
@@ -649,14 +450,22 @@ export const createProduct = mutation({
     safetyStock: v.number(),
     categoryId: v.optional(v.id("categories")),
     primarySupplierId: v.optional(v.id("suppliers")),
-    trackBatches: v.optional(v.boolean()),
+    trackBatches: v.boolean(),
     initialLocationId: v.optional(v.id("locations")),
     initialQuantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const product = {
-      categoryId: args.categoryId,
-      primarySupplierId: args.primarySupplierId,
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "staff"]);
+
+    // Check SKU duplicate
+    const allProducts = await ctx.db.query("products").collect();
+    const existing = allProducts.find((p) => p.sku === args.sku && (!p.orgId || p.orgId === orgId));
+    if (existing) {
+      throw new Error(`Product with SKU '${args.sku}' already exists in your workspace.`);
+    }
+
+    const productId = await ctx.db.insert("products", {
+      orgId,
       sku: args.sku,
       name: args.name,
       description: args.description,
@@ -665,301 +474,269 @@ export const createProduct = mutation({
       sellingPrice: args.sellingPrice,
       reorderPoint: args.reorderPoint,
       safetyStock: args.safetyStock,
-      trackBatches: args.trackBatches ?? false,
+      categoryId: args.categoryId,
+      primarySupplierId: args.primarySupplierId,
+      trackBatches: args.trackBatches,
       isActive: true,
       createdAt: Date.now(),
-    };
+    });
 
-    const id = await ctx.db.insert("products", product);
-
-    // Optionally create initial inventory record (inline logic copied from recordStockIn)
     if (args.initialLocationId && args.initialQuantity && args.initialQuantity > 0) {
-      const inv = await ctx.db
-        .query("inventory")
-        .withIndex("by_product_location", (q) =>
-          q.eq("productId", id).eq("locationId", args.initialLocationId!),
-        )
-        .first();
-
-      const newOnHand = (inv?.onHand ?? 0) + args.initialQuantity;
-
-      if (inv) {
-        await ctx.db.patch(inv._id, {
-          onHand: newOnHand,
-          available: newOnHand - inv.reserved,
-          lastUpdated: Date.now(),
-        });
-      } else {
-        await ctx.db.insert("inventory", {
-          productId: id,
-          locationId: args.initialLocationId!,
-          onHand: newOnHand,
-          reserved: 0,
-          available: newOnHand,
-          lastUpdated: Date.now(),
-        });
-      }
+      await ctx.db.insert("inventory", {
+        orgId,
+        productId,
+        locationId: args.initialLocationId,
+        onHand: args.initialQuantity,
+        reserved: 0,
+        available: args.initialQuantity,
+        lastUpdated: Date.now(),
+      });
 
       await ctx.db.insert("stockMovements", {
-        productId: id,
-        locationId: args.initialLocationId!,
+        orgId,
+        productId,
+        locationId: args.initialLocationId,
+        userId: caller._id,
         type: "stock_in",
-        reason: "Initial stock",
+        reason: "Initial Stocking",
         quantity: args.initialQuantity,
         createdAt: Date.now(),
       });
     }
 
-    return id;
+    return productId;
   },
 });
 
-// ── Record Stock-Out ──────────────────────────────
-export const recordStockOut = mutation({
+// ── updateProduct mutation ──
+export const updateProduct = mutation({
   args: {
-    productId:  v.id("products"),
-    locationId: v.id("locations"),
-    quantity:   v.number(),
-    reason:     v.optional(v.string()),
-    reference:  v.optional(v.string()),
-    notes:      v.optional(v.string()),
+    token: v.optional(v.string()),
+    productId: v.id("products"),
+    sku: v.optional(v.string()),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    unit: v.optional(v.union(v.literal("pcs"), v.literal("kg"), v.literal("litre"), v.literal("box"), v.literal("ml"))),
+    costPrice: v.optional(v.number()),
+    sellingPrice: v.optional(v.number()),
+    reorderPoint: v.optional(v.number()),
+    safetyStock: v.optional(v.number()),
+    categoryId: v.optional(v.id("categories")),
+    primarySupplierId: v.optional(v.id("suppliers")),
+    trackBatches: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    if (args.quantity <= 0) {
-      throw new Error("Quantity must be greater than zero.");
-    }
-
-    const inv = await ctx.db
-      .query("inventory")
-      .withIndex("by_product", q =>
-        q.eq("productId", args.productId)
-      )
-      .first();
-
-    if (!inv) throw new Error("Inventory record not found.");
-
-    if (inv.available < args.quantity) {
-      throw new Error(
-        `Insufficient stock. Available: ${inv.available} units.`
-      );
-    }
-
-    const newOnHand = inv.onHand - args.quantity;
-
-    // Update inventory
-    await ctx.db.patch(inv._id, {
-      onHand:      newOnHand,
-      available:   newOnHand - inv.reserved,
-      lastUpdated: Date.now(),
-    });
-
-    // Audit log
-    await ctx.db.insert("stockMovements", {
-      productId:  args.productId,
-      locationId: args.locationId,
-      type:       "stock_out",
-      reason:     args.reason ?? "Sale",
-      quantity:   -args.quantity,
-      reference:  args.reference,
-      notes:      args.notes,
-      createdAt:  Date.now(),
-    });
-
-    // Real-time Stock Alert Generator Trigger
-    await ctx.scheduler.runAfter(0, internal.alerts.generateStockAlerts, {});
-
-    // ── AUTO REORDER CHECK ──────────────────────
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
     const product = await ctx.db.get(args.productId);
+    if (!product) throw new Error("Product not found");
 
-    if (product && newOnHand < product.reorderPoint) {
-      const existing = await ctx.db
-        .query("reorderSuggestions")
-        .withIndex("by_product", q =>
-          q.eq("productId", args.productId)
-        )
-        .filter(q => q.eq(q.field("status"), "pending"))
-        .first();
-
-      if (!existing) {
-        let urgency: "critical" | "high" | "medium" | "low";
-        let rationale = "";
-
-        if (newOnHand <= product.safetyStock) {
-          urgency   = "critical";
-          rationale = `Stock (${newOnHand} units) dropped below safety stock (${product.safetyStock} units). Immediate reorder required.`;
-        } else if (newOnHand <= product.reorderPoint * 0.5) {
-          urgency   = "high";
-          rationale = `Stock (${newOnHand} units) is below 50% of reorder point (${product.reorderPoint} units). Reorder urgently.`;
-        } else {
-          urgency   = "medium";
-          rationale = `Stock (${newOnHand} units) fell below reorder point (${product.reorderPoint} units). Schedule a reorder.`;
-        }
-
-        const suggestedQty  = Math.max(
-          product.reorderPoint * 3 - newOnHand,
-          product.reorderPoint
-        );
-
-        const orderByDate = Date.now() + (
-          urgency === "critical" ? 1 :
-          urgency === "high"     ? 3 : 7
-        ) * 24 * 60 * 60 * 1000;
-
-        await ctx.db.insert("reorderSuggestions", {
-          productId:           args.productId,
-          preferredSupplierId: product.primarySupplierId,
-          urgency,
-          suggestedQuantity:   suggestedQty,
-          estimatedCost:       suggestedQty * product.costPrice,
-          orderByDate,
-          rationale,
-          status:              "pending",
-          aiGenerated:         false,
-          createdAt:           Date.now(),
-        });
-
-        await ctx.db.insert("alerts", {
-          productId:   args.productId,
-          type:        urgency === "critical" ? "critical_stock" : "low_stock",
-          priority:    urgency,
-          message:     `${product.name} — ${rationale}`,
-          isRead:      false,
-          isDismissed: false,
-          createdAt:   Date.now(),
-        });
-      }
+    if (orgId && product.orgId && product.orgId !== orgId) {
+      throw new Error("Access Denied: Product belongs to another workspace.");
     }
 
-    return { success: true, newOnHand };
+    const { productId, token, ...updates } = args;
+    const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([_, val]) => val !== undefined));
+    await ctx.db.patch(productId, cleanUpdates);
+    return { success: true };
   },
 });
 
-export const getStockOutFormData = query({
-  args: {},
-  handler: async (ctx) => {
-    const allInventory = await ctx.db
-      .query("inventory")
-      .collect();
+export const editProduct = updateProduct;
 
-    const locations = await ctx.db
-      .query("locations")
-      .collect();
-
-    const productMap = new Map<
-      string,
-      {
-        _id: Id<"products">;
-        sku: string;
-        name: string;
-        unit: string;
-        onHand: number;
-        reserved: number;
-        available: number;
-        locationId?: string;
-      }
-    >();
-
-    for (const inv of allInventory) {
-      const product = await ctx.db.get(inv.productId);
-      if (!product || !product.isActive) continue;
-
-      const key = product._id;
-      const existing = productMap.get(key);
-      if (existing) {
-        existing.onHand += inv.onHand;
-        existing.reserved += inv.reserved;
-        existing.available += inv.available;
-      } else {
-        productMap.set(key, {
-          _id: product._id,
-          sku: product.sku,
-          name: product.name,
-          unit: product.unit,
-          onHand: inv.onHand,
-          reserved: inv.reserved,
-          available: inv.available,
-          locationId: inv.locationId,
-        });
-      }
-    }
-
-    const filtered = Array.from(productMap.values())
-      .filter((p) => p.onHand > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return {
-      products: filtered,
-      locations: locations.filter((l) => l.isActive),
-    };
-  },
-});
-
-export const recordStockAdjustment = mutation({
+// ── deleteProduct mutation ──
+export const deleteProduct = mutation({
   args: {
+    token: v.optional(v.string()),
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const product = await ctx.db.get(args.productId);
+    if (!product) throw new Error("Product not found");
+
+    if (orgId && product.orgId && product.orgId !== orgId) {
+      throw new Error("Access Denied: Product belongs to another workspace.");
+    }
+
+    await ctx.db.patch(args.productId, { isActive: false });
+    return { success: true };
+  },
+});
+
+// ── recordStockIn mutation ──
+export const recordStockIn = mutation({
+  args: {
+    token: v.optional(v.string()),
     productId: v.id("products"),
     locationId: v.id("locations"),
-    adjustedOnHand: v.number(),
+    quantity: v.number(),
     reason: v.optional(v.string()),
-    reference: v.optional(v.string()),
+    lotNumber: v.optional(v.string()),
+    expiryDate: v.optional(v.string()),
     notes: v.optional(v.string()),
+    reference: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.adjustedOnHand < 0) {
-      throw new Error("Adjusted stock cannot be negative.");
-    }
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "staff"]);
+    if (args.quantity <= 0) throw new Error("Quantity must be positive.");
 
-    const inv = await ctx.db
+    const invList = await ctx.db
       .query("inventory")
-      .withIndex("by_product_location", (q) =>
-        q.eq("productId", args.productId).eq("locationId", args.locationId),
-      )
-      .first();
+      .withIndex("by_product_location", (q) => q.eq("productId", args.productId).eq("locationId", args.locationId))
+      .collect();
 
-    const currentOnHand = inv?.onHand ?? 0;
-    const delta = args.adjustedOnHand - currentOnHand;
-    if (delta === 0) {
-      throw new Error("No adjustment detected. Current and adjusted stock are the same.");
-    }
+    const inv = invList.length > 0 ? invList[0] : null;
 
     if (inv) {
+      const newOnHand = inv.onHand + args.quantity;
       await ctx.db.patch(inv._id, {
-        onHand: args.adjustedOnHand,
-        available: args.adjustedOnHand - inv.reserved,
+        onHand: newOnHand,
+        available: newOnHand - inv.reserved,
         lastUpdated: Date.now(),
       });
     } else {
       await ctx.db.insert("inventory", {
+        orgId,
         productId: args.productId,
         locationId: args.locationId,
-        onHand: args.adjustedOnHand,
+        onHand: args.quantity,
         reserved: 0,
-        available: args.adjustedOnHand,
+        available: args.quantity,
         lastUpdated: Date.now(),
       });
     }
 
     await ctx.db.insert("stockMovements", {
+      orgId,
       productId: args.productId,
       locationId: args.locationId,
-      type: "adjustment",
-      reason: args.reason ?? "Manual stock adjustment",
-      quantity: delta,
-      reference: args.reference,
+      userId: caller._id,
+      type: "stock_in",
+      reason: args.reason ?? args.reference ?? "Stock Receipt",
+      quantity: args.quantity,
+      lotNumber: args.lotNumber,
+      expiryDate: args.expiryDate,
       notes: args.notes,
       createdAt: Date.now(),
     });
 
-    return {
-      success: true,
-      previousOnHand: currentOnHand,
-      adjustedOnHand: args.adjustedOnHand,
-      delta,
-    };
+    return { success: true };
   },
 });
 
+// ── recordStockOut mutation ──
+export const recordStockOut = mutation({
+  args: {
+    token: v.optional(v.string()),
+    productId: v.id("products"),
+    locationId: v.id("locations"),
+    quantity: v.number(),
+    reason: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    reference: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "staff"]);
+    if (args.quantity <= 0) throw new Error("Quantity must be positive.");
+
+    const invList = await ctx.db
+      .query("inventory")
+      .withIndex("by_product_location", (q) => q.eq("productId", args.productId).eq("locationId", args.locationId))
+      .collect();
+
+    const inv = invList.length > 0 ? invList[0] : null;
+    if (!inv || inv.available < args.quantity) {
+      throw new Error(`Insufficient available stock (${inv?.available ?? 0} available).`);
+    }
+
+    const newOnHand = inv.onHand - args.quantity;
+    await ctx.db.patch(inv._id, {
+      onHand: newOnHand,
+      available: newOnHand - inv.reserved,
+      lastUpdated: Date.now(),
+    });
+
+    await ctx.db.insert("stockMovements", {
+      orgId,
+      productId: args.productId,
+      locationId: args.locationId,
+      userId: caller._id,
+      type: "stock_out",
+      reason: args.reason ?? args.reference ?? "Sales / Dispatch",
+      quantity: args.quantity,
+      notes: args.notes,
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ── recordStockAdjustment mutation ──
+export const recordStockAdjustment = mutation({
+  args: {
+    token: v.optional(v.string()),
+    productId: v.id("products"),
+    locationId: v.id("locations"),
+    newOnHand: v.optional(v.number()),
+    adjustedOnHand: v.optional(v.number()),
+    reason: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    reference: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const targetOnHand = args.newOnHand ?? args.adjustedOnHand ?? 0;
+    if (targetOnHand < 0) throw new Error("New stock cannot be negative.");
+
+    const invList = await ctx.db
+      .query("inventory")
+      .withIndex("by_product_location", (q) => q.eq("productId", args.productId).eq("locationId", args.locationId))
+      .collect();
+
+    const inv = invList.length > 0 ? invList[0] : null;
+    const currentOnHand = inv ? inv.onHand : 0;
+    const diff = targetOnHand - currentOnHand;
+
+    if (inv) {
+      await ctx.db.patch(inv._id, {
+        onHand: targetOnHand,
+        available: targetOnHand - inv.reserved,
+        lastUpdated: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("inventory", {
+        orgId,
+        productId: args.productId,
+        locationId: args.locationId,
+        onHand: targetOnHand,
+        reserved: 0,
+        available: targetOnHand,
+        lastUpdated: Date.now(),
+      });
+    }
+
+    await ctx.db.insert("stockMovements", {
+      orgId,
+      productId: args.productId,
+      locationId: args.locationId,
+      userId: caller._id,
+      type: "adjustment",
+      reason: args.reason ?? args.reference ?? "Manual Count Adjustment",
+      quantity: diff,
+      notes: args.notes,
+      createdAt: Date.now(),
+    });
+
+    return { success: true, delta: diff };
+  },
+});
+
+// ── transferStockBetweenLocations mutation ──
 export const transferStockBetweenLocations = mutation({
   args: {
+    token: v.optional(v.string()),
     productId: v.id("products"),
     fromLocationId: v.id("locations"),
     toLocationId: v.id("locations"),
@@ -969,223 +746,174 @@ export const transferStockBetweenLocations = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.fromLocationId === args.toLocationId) {
-      throw new Error("Source and destination locations must be different.");
-    }
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    if (args.quantity <= 0) throw new Error("Quantity must be positive.");
+    if (args.fromLocationId === args.toLocationId) throw new Error("Source and target locations must be different.");
 
-    if (args.quantity <= 0) {
-      throw new Error("Transfer quantity must be greater than zero.");
-    }
-
-    const sourceInventory = await ctx.db
+    // Source inventory check
+    const fromList = await ctx.db
       .query("inventory")
-      .withIndex("by_product_location", (q) =>
-        q.eq("productId", args.productId).eq("locationId", args.fromLocationId),
-      )
-      .first();
+      .withIndex("by_product_location", (q) => q.eq("productId", args.productId).eq("locationId", args.fromLocationId))
+      .collect();
 
-    if (!sourceInventory) {
-      throw new Error("Source inventory record not found.");
+    const fromInv = fromList.length > 0 ? fromList[0] : null;
+    if (!fromInv || fromInv.available < args.quantity) {
+      throw new Error(`Insufficient stock at source location (${fromInv?.available ?? 0} available).`);
     }
 
-    if (sourceInventory.available < args.quantity) {
-      throw new Error(
-        `Insufficient stock at source. Available: ${sourceInventory.available} units.`,
-      );
-    }
-
-    const destinationInventory = await ctx.db
-      .query("inventory")
-      .withIndex("by_product_location", (q) =>
-        q.eq("productId", args.productId).eq("locationId", args.toLocationId),
-      )
-      .first();
-
-    const sourceNewOnHand = sourceInventory.onHand - args.quantity;
-    await ctx.db.patch(sourceInventory._id, {
-      onHand: sourceNewOnHand,
-      available: sourceNewOnHand - sourceInventory.reserved,
+    // Deduct source
+    const newFromOnHand = fromInv.onHand - args.quantity;
+    await ctx.db.patch(fromInv._id, {
+      onHand: newFromOnHand,
+      available: newFromOnHand - fromInv.reserved,
       lastUpdated: Date.now(),
     });
 
-    let destinationNewOnHand = args.quantity;
-    if (destinationInventory) {
-      destinationNewOnHand = destinationInventory.onHand + args.quantity;
-      await ctx.db.patch(destinationInventory._id, {
-        onHand: destinationNewOnHand,
-        available: destinationNewOnHand - destinationInventory.reserved,
+    // Add target
+    const toList = await ctx.db
+      .query("inventory")
+      .withIndex("by_product_location", (q) => q.eq("productId", args.productId).eq("locationId", args.toLocationId))
+      .collect();
+
+    const toInv = toList.length > 0 ? toList[0] : null;
+    if (toInv) {
+      const newToOnHand = toInv.onHand + args.quantity;
+      await ctx.db.patch(toInv._id, {
+        onHand: newToOnHand,
+        available: newToOnHand - toInv.reserved,
         lastUpdated: Date.now(),
       });
     } else {
       await ctx.db.insert("inventory", {
+        orgId,
         productId: args.productId,
         locationId: args.toLocationId,
-        onHand: destinationNewOnHand,
+        onHand: args.quantity,
         reserved: 0,
-        available: destinationNewOnHand,
+        available: args.quantity,
         lastUpdated: Date.now(),
       });
     }
 
-    const reason = args.reason ?? "Stock transfer";
-
+    // Record stock movements
     await ctx.db.insert("stockMovements", {
+      orgId,
       productId: args.productId,
       locationId: args.fromLocationId,
+      userId: caller._id,
       type: "transfer_out",
-      reason,
+      reason: args.reason ?? args.reference ?? "Inter-Store Transfer Out",
       quantity: -args.quantity,
-      reference: args.reference,
-      notes: args.notes,
       createdAt: Date.now(),
     });
 
     await ctx.db.insert("stockMovements", {
+      orgId,
       productId: args.productId,
       locationId: args.toLocationId,
+      userId: caller._id,
       type: "transfer_in",
-      reason,
+      reason: args.reason ?? args.reference ?? "Inter-Store Transfer In",
       quantity: args.quantity,
-      reference: args.reference,
-      notes: args.notes,
       createdAt: Date.now(),
     });
 
-    return {
-      success: true,
-      sourceNewOnHand,
-      destinationNewOnHand,
-    };
+    return { success: true };
   },
 });
 
-// ── Batch Import Products from CSV ─────────────────────────
+// ── batchImportProducts mutation ──
 export const batchImportProducts = mutation({
   args: {
+    token: v.optional(v.string()),
     products: v.array(
       v.object({
         sku: v.string(),
         name: v.string(),
-        description: v.optional(v.string()),
-        categoryName: v.optional(v.string()),
-        unit: v.union(
-          v.literal("pcs"),
-          v.literal("kg"),
-          v.literal("litre"),
-          v.literal("box"),
-          v.literal("ml")
-        ),
+        unit: v.union(v.literal("pcs"), v.literal("kg"), v.literal("litre"), v.literal("box"), v.literal("ml")),
         costPrice: v.number(),
         sellingPrice: v.number(),
         reorderPoint: v.number(),
         safetyStock: v.number(),
-        initialStock: v.optional(v.number()),
+        trackBatches: v.optional(v.boolean()),
       })
     ),
   },
   handler: async (ctx, args) => {
-    let defaultLocation = await ctx.db.query("locations").first();
-    let defaultLocationId: Id<"locations">;
-    if (!defaultLocation) {
-      defaultLocationId = await ctx.db.insert("locations", {
-        name: "Main Warehouse",
-        type: "warehouse",
-        isActive: true,
-        createdAt: Date.now(),
-      });
-    } else {
-      defaultLocationId = defaultLocation._id;
-    }
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    let imported = 0;
 
-    let importedCount = 0;
-    let skippedCount = 0;
-
-    const allCategories = await ctx.db.query("categories").collect();
-    const categoryMap = new Map<string, Id<"categories">>();
-    for (const cat of allCategories) {
-      categoryMap.set(cat.name.toLowerCase().trim(), cat._id);
-    }
-
-    for (const p of args.products) {
-      const skuClean = p.sku.trim().toUpperCase();
-      if (!skuClean || !p.name.trim()) {
-        skippedCount++;
-        continue;
-      }
-
-      const existingProduct = await ctx.db
-        .query("products")
-        .withIndex("by_sku", (q) => q.eq("sku", skuClean))
-        .first();
-
-      if (existingProduct) {
-        skippedCount++;
-        continue;
-      }
-
-      let categoryId: Id<"categories"> | undefined = undefined;
-      if (p.categoryName && p.categoryName.trim()) {
-        const catKey = p.categoryName.trim().toLowerCase();
-        if (categoryMap.has(catKey)) {
-          categoryId = categoryMap.get(catKey);
-        } else {
-          const newCatId = await ctx.db.insert("categories", {
-            name: p.categoryName.trim(),
-            description: "Auto-created during CSV product import",
-            createdAt: Date.now(),
-          });
-          categoryMap.set(catKey, newCatId);
-          categoryId = newCatId;
-        }
-      }
-
-      const productId = await ctx.db.insert("products", {
-        sku: skuClean,
-        name: p.name.trim(),
-        description: p.description?.trim(),
-        categoryId,
-        unit: p.unit,
-        costPrice: Math.max(0, p.costPrice),
-        sellingPrice: Math.max(0, p.sellingPrice),
-        reorderPoint: Math.max(0, p.reorderPoint),
-        safetyStock: Math.max(0, p.safetyStock),
-        trackBatches: false,
-        isActive: true,
-        createdAt: Date.now(),
-      });
-
-      const initQty = Math.max(0, p.initialStock ?? 0);
-      await ctx.db.insert("inventory", {
-        productId,
-        locationId: defaultLocationId,
-        onHand: initQty,
-        reserved: 0,
-        available: initQty,
-        lastUpdated: Date.now(),
-      });
-
-      if (initQty > 0) {
-        await ctx.db.insert("stockMovements", {
-          productId,
-          locationId: defaultLocationId,
-          type: "stock_in",
-          reason: "Initial CSV Import Stock",
-          quantity: initQty,
-          notes: `Batch imported from CSV`,
+    for (const item of args.products) {
+      const allProducts = await ctx.db.query("products").collect();
+      const existing = allProducts.find((p) => p.sku === item.sku && (!p.orgId || p.orgId === orgId));
+      if (!existing) {
+        await ctx.db.insert("products", {
+          orgId,
+          sku: item.sku,
+          name: item.name,
+          unit: item.unit,
+          costPrice: item.costPrice,
+          sellingPrice: item.sellingPrice,
+          reorderPoint: item.reorderPoint,
+          safetyStock: item.safetyStock,
+          trackBatches: item.trackBatches ?? false,
+          isActive: true,
           createdAt: Date.now(),
         });
+        imported++;
       }
-
-      importedCount++;
     }
 
-    await ctx.scheduler.runAfter(0, internal.alerts.generateStockAlerts, {});
+    return { imported, importedCount: imported, skippedCount: args.products.length - imported };
+  },
+});
 
-    return {
-      success: true,
-      importedCount,
-      skippedCount,
-      totalProcessed: args.products.length,
-    };
+// ── getStockOutFormData alias ──
+export const getStockOutFormData = getStockInFormData;
+
+// ── getProductPurchaseOrders query ──
+export const getProductPurchaseOrders = query({
+  args: {
+    productId: v.id("products"),
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    const allPOs = await ctx.db.query("purchaseOrders").order("desc").collect();
+    const pos = caller && caller.orgId ? allPOs.filter((po) => po.orgId === caller.orgId) : allPOs;
+
+    const matching = pos.filter((po) => po.lineItems.some((line) => line.productId === args.productId));
+    return await Promise.all(
+      matching.map(async (po) => {
+        const supplier = await ctx.db.get(po.supplierId);
+        const line = po.lineItems.find((l) => l.productId === args.productId);
+        return {
+          ...po,
+          supplierName: supplier?.name ?? "Unknown",
+          lineQty: line?.quantityOrdered ?? 0,
+          lineUnitCost: line?.unitCost ?? 0,
+        };
+      })
+    );
+  },
+});
+
+// ── getProductForecasts query ──
+export const getProductForecasts = query({
+  args: {
+    productId: v.id("products"),
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    const forecasts = await ctx.db
+      .query("forecasts")
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .collect();
+
+    if (caller && caller.orgId) {
+      return forecasts.filter((f) => !f.orgId || f.orgId === caller.orgId);
+    }
+    return forecasts;
   },
 });

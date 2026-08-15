@@ -152,7 +152,7 @@ export default function Home() {
                   <Link href="/sign-in">Sign In</Link>
                 </Button>
                 <Button asChild className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 font-medium px-5">
-                  <Link href="/sign-in">Get Started</Link>
+                  <Link href="/create-workspace">Start Free Trial</Link>
                 </Button>
               </>
             )}
@@ -214,7 +214,7 @@ export default function Home() {
                 <Link href="/sign-in">Sign In</Link>
               </Button>
               <Button asChild className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30">
-                <Link href="/sign-in">Get Started</Link>
+                <Link href="/create-workspace">Start Free Trial</Link>
               </Button>
             </div>
           </motion.div>
@@ -278,8 +278,8 @@ export default function Home() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
             >
               <Button asChild size="lg" className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-lg shadow-indigo-600/30 px-8 h-12 text-base rounded-xl group">
-                <Link href="/sign-in">
-                  Get Started Free
+                <Link href="/create-workspace">
+                  Start Free Trial
                   <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
@@ -906,7 +906,7 @@ export default function Home() {
               </p>
               <div className="pt-4">
                 <Button asChild size="lg" className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-xl shadow-indigo-600/40 px-10 h-14 text-lg rounded-xl">
-                  <Link href="/sign-in">Get Started Free</Link>
+                  <Link href="/create-workspace">Start Free Trial</Link>
                 </Button>
               </div>
             </div>

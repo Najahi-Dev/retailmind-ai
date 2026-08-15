@@ -38,13 +38,16 @@ import {
 } from "lucide-react";
 import ImportProductsDialog from "../ImportProductsDialog";
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function AddProductClient() {
   const router = useRouter();
+  const { token } = useAuth();
   const createProduct = useMutation(api.inventory.createProduct);
-  const locationsQ = useQuery(api.inventory.getStockInFormData);
-  const categoriesQ = useQuery(api.inventory.getCategories);
-  const suppliersQ = useQuery(api.inventory.getSuppliers);
-  const nextSku = useQuery(api.inventory.getNextSku);
+  const locationsQ = useQuery(api.inventory.getStockInFormData, { token: token ?? undefined });
+  const categoriesQ = useQuery(api.inventory.getCategories, { token: token ?? undefined });
+  const suppliersQ = useQuery(api.inventory.getSuppliers, { token: token ?? undefined });
+  const nextSku = useQuery(api.inventory.getNextSku, { token: token ?? undefined });
 
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");

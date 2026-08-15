@@ -40,6 +40,42 @@ export async function getCallerUser(
   return await ctx.db.get(session.userId);
 }
 
+export async function requireCallerOrg(
+  ctx: GenericMutationCtx<any> | GenericQueryCtx<any>,
+  token?: string,
+  allowedRoles?: string[]
+) {
+  const user = await requireRole(ctx, token, allowedRoles);
+  
+  let orgId = user.orgId;
+  let organization = orgId ? await ctx.db.get(orgId) : null;
+
+  if (!organization) {
+    // Default workspace fallback
+    const defaultOrg = await ctx.db.query("organizations").first();
+    if (defaultOrg) {
+      orgId = defaultOrg._id;
+      organization = defaultOrg;
+    } else {
+      throw new Error("Unauthorized: User is not assigned to an active organization.");
+    }
+  }
+
+  if (organization && !organization.isActive) {
+    throw new Error("Forbidden: Active organization membership required.");
+  }
+
+  return { user, orgId, organization };
+}
+
+export function verifyEntityOrgAccess(entity: any, callerOrgId?: string) {
+  if (!entity) return;
+  if (!callerOrgId) return;
+  if (entity.orgId && entity.orgId !== callerOrgId) {
+    throw new Error("Access Denied: Resource belongs to another organization.");
+  }
+}
+
 export async function getSupplierForUser(
   ctx: GenericMutationCtx<any> | GenericQueryCtx<any>,
   user: any

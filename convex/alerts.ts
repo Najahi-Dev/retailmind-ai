@@ -1,5 +1,6 @@
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
 
 const PRIORITY_ORDER: Record<string, number> = {
   critical: 4,
@@ -11,13 +12,18 @@ const PRIORITY_ORDER: Record<string, number> = {
 // ── 1. GET ALERTS QUERY (ROLE-BASED & FILTERED) ──
 export const getAlerts = query({
   args: {
+    token: v.optional(v.string()),
     status: v.optional(v.string()), // "all" | "read" | "unread"
     type: v.optional(v.string()),   // "all" | "low_stock" | "critical_stock" | "overstock" | "demand_spike" | "supplier_delay" | "system"
     priority: v.optional(v.string()), // "all" | "critical" | "high" | "medium" | "low"
     isDismissed: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return [];
+
     let alerts = await ctx.db.query("alerts").collect();
+    alerts = alerts.filter((a) => a.orgId === caller.orgId);
 
     // Default: filter out dismissed alerts unless specified
     if (args.isDismissed !== undefined) {
@@ -83,13 +89,21 @@ export const getAlerts = query({
 
 // ── 2. GET UNREAD COUNT (FOR NAVBAR & BADGES) ──
 export const getUnreadCount = query({
-  args: {},
-  handler: async (ctx) => {
-    const alerts = await ctx.db
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) {
+      return { total: 0, critical: 0, unread: 0 };
+    }
+
+    const allAlerts = await ctx.db
       .query("alerts")
       .withIndex("by_active", (q) => q.eq("isDismissed", false))
       .collect();
 
+    const alerts = allAlerts.filter((a) => a.orgId === caller.orgId);
     const now = Date.now();
     const active = alerts.filter((a) => !a.snoozedUntil || a.snoozedUntil <= now);
 
@@ -103,9 +117,26 @@ export const getUnreadCount = query({
 
 // ── 3. GET ALERT STATS (FOR KPI CARDS & SIDEBAR BADGE) ──
 export const getAlertStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const allAlerts = await ctx.db.query("alerts").collect();
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) {
+      return {
+        unread: 0,
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        total: 0,
+        snoozed: 0,
+        dismissed: 0,
+      };
+    }
+
+    const rawAlerts = await ctx.db.query("alerts").collect();
+    const allAlerts = rawAlerts.filter((a) => a.orgId === caller.orgId);
     const now = Date.now();
 
     const active = allAlerts.filter((a) => !a.isDismissed);
@@ -131,7 +162,10 @@ export const getAlertStats = query({
 
 // ── 4. MARK SINGLE ALERT AS READ ──
 export const markAlertRead = mutation({
-  args: { alertId: v.id("alerts") },
+  args: {
+    token: v.optional(v.string()),
+    alertId: v.id("alerts"),
+  },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.alertId, { isRead: true });
   },
@@ -142,189 +176,78 @@ export const markAsRead = markAlertRead;
 
 // ── 5. MARK ALL UNREAD ALERTS AS READ ──
 export const markAllRead = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return;
+
     const unreadAlerts = await ctx.db
       .query("alerts")
       .withIndex("by_active", (q) => q.eq("isDismissed", false))
       .collect();
 
-    for (const alert of unreadAlerts) {
-      if (!alert.isRead) {
-        await ctx.db.patch(alert._id, { isRead: true });
-      }
+    const orgUnread = unreadAlerts.filter((a) => a.orgId === caller.orgId && !a.isRead);
+    for (const alert of orgUnread) {
+      await ctx.db.patch(alert._id, { isRead: true });
     }
   },
 });
 
-// Alias for markAllRead
-export const markAllAsRead = markAllRead;
+export const snoozeAlert = mutation({
+  args: {
+    token: v.optional(v.string()),
+    alertId: v.id("alerts"),
+    snoozeHours: v.optional(v.number()),
+    snoozeUntil: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const snoozedUntil = args.snoozeUntil ?? (Date.now() + (args.snoozeHours ?? 24) * 60 * 60 * 1000);
+    await ctx.db.patch(args.alertId, { snoozedUntil });
+  },
+});
 
-// ── 6. DISMISS SINGLE ALERT ──
 export const dismissAlert = mutation({
-  args: { alertId: v.id("alerts") },
+  args: {
+    token: v.optional(v.string()),
+    alertId: v.id("alerts"),
+  },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.alertId, { isDismissed: true });
   },
 });
 
-// ── 7. DISMISS ALL ACTIVE ALERTS ──
-export const dismissAllAlerts = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const alerts = await ctx.db
-      .query("alerts")
-      .withIndex("by_active", (q) => q.eq("isDismissed", false))
-      .collect();
-
-    for (const a of alerts) {
-      await ctx.db.patch(a._id, { isDismissed: true });
-    }
-  },
-});
-
-// ── 8. SNOOZE ALERT ──
-export const snoozeAlert = mutation({
+export const createAlert = mutation({
   args: {
-    alertId: v.id("alerts"),
-    snoozeUntil: v.number(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.alertId, {
-      snoozedUntil: args.snoozeUntil,
-      isRead: true,
-    });
-  },
-});
-
-// ── 9. INTERNAL MUTATION: GENERATE STOCK ALERTS IN REAL-TIME ──
-export const generateStockAlerts = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const inventoryRecords = await ctx.db.query("inventory").collect();
-    const activeAlerts = await ctx.db
-      .query("alerts")
-      .withIndex("by_active", (q) => q.eq("isDismissed", false))
-      .collect();
-
-    const now = Date.now();
-
-    for (const inv of inventoryRecords) {
-      const product = await ctx.db.get(inv.productId);
-      if (!product || !product.isActive) continue;
-
-      const onHand = inv.onHand;
-      const safetyStock = product.safetyStock;
-      const reorderPoint = product.reorderPoint;
-
-      // 1. Critical Stock Alert (onHand <= safetyStock)
-      if (onHand <= safetyStock) {
-        const hasActiveCritical = activeAlerts.some(
-          (a) =>
-            a.productId === product._id &&
-            a.type === "critical_stock" &&
-            !a.isDismissed
-        );
-
-        if (!hasActiveCritical) {
-          await ctx.db.insert("alerts", {
-            productId: product._id,
-            type: "critical_stock",
-            priority: "critical",
-            message: `Critical Outage Alert: ${product.name} (${product.sku}) stock level (${onHand} ${product.unit}) is at or below safety threshold (${safetyStock}).`,
-            isRead: false,
-            isDismissed: false,
-            createdAt: now,
-          });
-        }
-      }
-      // 2. Low Stock Alert (onHand < reorderPoint && onHand > safetyStock)
-      else if (onHand < reorderPoint) {
-        const hasActiveLow = activeAlerts.some(
-          (a) =>
-            a.productId === product._id &&
-            a.type === "low_stock" &&
-            !a.isDismissed
-        );
-
-        if (!hasActiveLow) {
-          await ctx.db.insert("alerts", {
-            productId: product._id,
-            type: "low_stock",
-            priority: "high",
-            message: `Low Stock Warning: ${product.name} (${product.sku}) stock level (${onHand} ${product.unit}) has dropped below reorder point (${reorderPoint}).`,
-            isRead: false,
-            isDismissed: false,
-            createdAt: now,
-          });
-        }
-      }
-      // 3. Overstock Alert (onHand > reorderPoint * 5)
-      else if (reorderPoint > 0 && onHand > reorderPoint * 5) {
-        const hasActiveOverstock = activeAlerts.some(
-          (a) =>
-            a.productId === product._id &&
-            a.type === "overstock" &&
-            !a.isDismissed
-        );
-
-        if (!hasActiveOverstock) {
-          await ctx.db.insert("alerts", {
-            productId: product._id,
-            type: "overstock",
-            priority: "medium",
-            message: `Overstock Warning: ${product.name} (${product.sku}) stock level (${onHand} ${product.unit}) exceeds 5x reorder threshold (${reorderPoint * 5}).`,
-            isRead: false,
-            isDismissed: false,
-            createdAt: now,
-          });
-        }
-      }
-    }
-  },
-});
-
-// ── 10. CREATE SYSTEM ALERT (ADMIN ONLY) ──
-export const createSystemAlert = mutation({
-  args: {
-    productId: v.optional(v.id("products")),
-    type: v.union(
-      v.literal("low_stock"),
-      v.literal("critical_stock"),
-      v.literal("overstock"),
-      v.literal("demand_spike"),
-      v.literal("supplier_delay"),
-      v.literal("system")
-    ),
-    priority: v.union(
-      v.literal("critical"),
-      v.literal("high"),
-      v.literal("medium"),
-      v.literal("low")
-    ),
+    token: v.optional(v.string()),
+    type: v.union(v.literal("low_stock"), v.literal("critical_stock"), v.literal("overstock"), v.literal("demand_spike"), v.literal("supplier_delay"), v.literal("system")),
+    priority: v.union(v.literal("critical"), v.literal("high"), v.literal("medium"), v.literal("low")),
+    title: v.optional(v.string()),
     message: v.string(),
+    productId: v.optional(v.id("products")),
+    actionUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const alertId = await ctx.db.insert("alerts", {
-      productId: args.productId,
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    return await ctx.db.insert("alerts", {
+      orgId,
       type: args.type,
       priority: args.priority,
       message: args.message,
+      productId: args.productId,
       isRead: false,
       isDismissed: false,
       createdAt: Date.now(),
     });
-    return alertId;
   },
 });
 
-// Alias for createSystemAlert
-export const createAlert = createSystemAlert;
-
-// ── 11. GET USER NOTIFICATION PREFERENCES ──
 export const getUserPreferences = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     return {
       alertTypes: {
         lowStock: true,
@@ -335,36 +258,22 @@ export const getUserPreferences = query({
       },
       channels: {
         inApp: true,
-        email: false,
+        email: true,
       },
       thresholds: {
-        lowStockMultiplier: 1.0,
-        criticalStockMultiplier: 1.0,
+        lowStockMultiplier: 1.5,
+        criticalStockMultiplier: 0.5,
       },
     };
   },
 });
 
-// ── 12. SAVE USER NOTIFICATION PREFERENCES ──
 export const saveNotificationPreferences = mutation({
   args: {
-    alertTypes: v.object({
-      lowStock: v.boolean(),
-      criticalStock: v.boolean(),
-      overstock: v.boolean(),
-      demandSpike: v.boolean(),
-      system: v.boolean(),
-    }),
-    channels: v.object({
-      inApp: v.boolean(),
-      email: v.boolean(),
-    }),
-    thresholds: v.object({
-      lowStockMultiplier: v.number(),
-      criticalStockMultiplier: v.number(),
-    }),
+    token: v.optional(v.string()),
+    preferences: v.any(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     return { success: true };
   },
 });

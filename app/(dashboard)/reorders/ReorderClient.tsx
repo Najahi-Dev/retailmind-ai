@@ -4,6 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -60,10 +61,14 @@ export default function ReordersClient() {
   const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "dismissed" | undefined>("pending");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const { token } = useAuth();
   const suggestions = useQuery(api.reorder.getReorderSuggestions, {
+    token: token ?? undefined,
     status: statusFilter,
   });
-  const stats = useQuery(api.reorder.getReorderStats);
+  const stats = useQuery(api.reorder.getReorderStats, {
+    token: token ?? undefined,
+  });
   const dismiss = useMutation(api.reorder.dismissSuggestion);
 
   const formatCurrency = (val: number) =>

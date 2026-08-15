@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   Card,
   CardContent,
@@ -66,10 +67,14 @@ export default function SuppliersClient() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
 
+  const { token } = useAuth();
   const suppliers = useQuery(api.suppliers.getSuppliers, {
+    token: token ?? undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
   });
-  const stats = useQuery(api.suppliers.getSupplierStats);
+  const stats = useQuery(api.suppliers.getSupplierStats, {
+    token: token ?? undefined,
+  });
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-LK", {

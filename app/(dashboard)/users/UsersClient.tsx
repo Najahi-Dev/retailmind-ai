@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   Card,
   CardContent,
@@ -105,11 +106,15 @@ export default function UsersClient({ role: currentRole }: Props) {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  const { token } = useAuth();
   const users = useQuery(api.users.getUsers, {
+    token: token ?? undefined,
     role: roleFilter === "all" ? undefined : roleFilter,
     status: statusFilter === "all" ? undefined : statusFilter,
   });
-  const stats = useQuery(api.users.getUserStats);
+  const stats = useQuery(api.users.getUserStats, {
+    token: token ?? undefined,
+  });
 
   const updateUserFullDetail = useMutation(api.users.updateUserFullDetail);
 

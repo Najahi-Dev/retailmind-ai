@@ -22,6 +22,7 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithToken: (newToken: string, user: AuthUser) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   isLoading: boolean;
@@ -189,6 +190,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithToken = (newToken: string, user: AuthUser) => {
+    localStorage.setItem(TOKEN_KEY, newToken);
+    document.cookie = `${TOKEN_KEY}=${newToken}; path=/; max-age=604800; SameSite=Lax`;
+    setToken(newToken);
+    setCurrentUser(user);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -196,6 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: currentUser,
         token,
         login,
+        loginWithToken,
         logout,
         refreshUser,
         isLoading,

@@ -36,10 +36,13 @@ import {
 } from "lucide-react";
 import { ChartAreaInventory } from "./ChartAreaInventory";
 
+import { useAuth } from "@/lib/auth-context";
+
 export function DashboardClient() {
-  const stats = useQuery(api.inventory.getInventoryStats);
-  const reorders = useQuery(api.reorder.getReorderSuggestions, { status: "pending" });
-  const pricingSuggestions = useQuery(api.pricing.getPriceSuggestions, { status: "pending" });
+  const { token } = useAuth();
+  const stats = useQuery(api.inventory.getInventoryStats, { token: token ?? undefined });
+  const reorders = useQuery(api.reorder.getReorderSuggestions, { token: token ?? undefined, status: "pending" });
+  const pricingSuggestions = useQuery(api.pricing.getPriceSuggestions, { token: token ?? undefined, status: "pending" });
   const approvePricing = useMutation(api.pricing.approvePriceSuggestion);
 
   const [processingId, setProcessingId] = useState<string | null>(null);

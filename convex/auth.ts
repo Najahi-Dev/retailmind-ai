@@ -61,7 +61,6 @@ export const loginUser = action({
     }
 
     if (!user.passwordHash) {
-      // Auto-set password to admin123 if user was imported without passwordHash
       const defaultHash = bcrypt.hashSync(args.password, 10);
       await ctx.runMutation(api.authInternal.updateUserPassword, {
         userId: user._id,
@@ -116,7 +115,6 @@ export const registerUser = action({
   },
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
-    // Newly registered users receive 'pending' role awaiting admin approval
     const role = "pending";
 
     const passwordHash = bcrypt.hashSync(args.password, 10);
@@ -141,7 +139,62 @@ export const registerUser = action({
   },
 });
 
-// ── 3. VALIDATE SESSION ──
+// ── 3. REGISTER WORKSPACE & ADMIN OWNER ──
+export const registerWorkspaceAndOwner = action({
+  args: {
+    companyName: v.string(),
+    slug: v.string(),
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    password: v.string(),
+  },
+  handler: async (ctx, args): Promise<any> => {
+    const passwordHash = bcrypt.hashSync(args.password, 10);
+    const { userId, orgId, inviteCode } = await ctx.runMutation(
+      api.authInternal.createWorkspaceAndOwnerRecord,
+      {
+        companyName: args.companyName.trim(),
+        slug: args.slug.toLowerCase().trim(),
+        name: args.name.trim(),
+        email: args.email.toLowerCase().trim(),
+        phone: args.phone?.trim() || undefined,
+        passwordHash,
+      }
+    );
+
+    const expiresAt = Date.now() + SESSION_DURATION;
+    const token = jwt.sign(
+      {
+        userId,
+        orgId,
+        email: args.email.toLowerCase().trim(),
+        name: args.name.trim(),
+        role: "admin",
+        exp: Math.floor(expiresAt / 1000),
+      },
+      JWT_SECRET
+    );
+
+    await ctx.runMutation(api.authInternal.createSessionRecord, {
+      userId,
+      token,
+      expiresAt,
+    });
+
+    return {
+      token,
+      userId,
+      orgId,
+      inviteCode,
+      email: args.email.toLowerCase().trim(),
+      name: args.name.trim(),
+      role: "admin",
+    };
+  },
+});
+
+// ── 4. VALIDATE SESSION ──
 export const validateSession = action({
   args: { token: v.string() },
   handler: async (ctx, args) => {
@@ -171,7 +224,7 @@ export const validateSession = action({
   },
 });
 
-// ── 4. LOGOUT USER ──
+// ── 5. LOGOUT USER ──
 export const logoutUser = action({
   args: { token: v.string() },
   handler: async (ctx, args) => {
@@ -179,68 +232,5 @@ export const logoutUser = action({
       token: args.token,
     });
     return { success: true };
-  },
-});
-
-// ── 5. CHANGE PASSWORD ──
-export const changePassword = action({
-  args: {
-    token: v.string(),
-    oldPassword: v.string(),
-    newPassword: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const res: any = await ctx.runQuery(api.authInternal.getSessionByToken, {
-      token: args.token,
-    });
-
-    if (!res || !res.user) {
-      throw new Error("Unauthorized");
-    }
-
-    if (!res.user.passwordHash) {
-      throw new Error("Invalid current password");
-    }
-
-    const isValidPassword = bcrypt.compareSync(args.oldPassword, res.user.passwordHash);
-    if (!isValidPassword) {
-      throw new Error("Current password is incorrect");
-    }
-
-    const newPasswordHash = bcrypt.hashSync(args.newPassword, 10);
-    await ctx.runMutation(api.authInternal.updateUserPassword, {
-      userId: res.user._id,
-      passwordHash: newPasswordHash,
-    });
-
-    return { success: true };
-  },
-});
-
-// ── 6. SEED / REPAIR ALL USER PASSWORDS ──
-export const seedAllUserPasswords = action({
-  args: { defaultPassword: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    const defaultPassword = args.defaultPassword || "admin123";
-    const passwordHash = bcrypt.hashSync(defaultPassword, 10);
-
-    const users: any[] = await ctx.runQuery(api.authInternal.getAllUsers, {});
-    let updatedCount = 0;
-
-    for (const u of users) {
-      if (!u.passwordHash) {
-        await ctx.runMutation(api.authInternal.updateUserPassword, {
-          userId: u._id,
-          passwordHash,
-        });
-        updatedCount++;
-      }
-    }
-
-    return {
-      success: true,
-      message: `Updated ${updatedCount} users with default password '${defaultPassword}'`,
-      totalUsers: users.length,
-    };
   },
 });

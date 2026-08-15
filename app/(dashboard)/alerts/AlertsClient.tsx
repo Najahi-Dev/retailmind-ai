@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 import {
   Card,
@@ -76,12 +77,14 @@ export default function AlertsClient({ role }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
 
   // Queries
+  const { token } = useAuth();
   const alerts = useQuery(api.alerts.getAlerts, {
+    token: token ?? undefined,
     status: statusFilter,
     priority: priorityFilter,
     type: typeFilter,
   });
-  const stats = useQuery(api.alerts.getAlertStats);
+  const stats = useQuery(api.alerts.getAlertStats, { token: token ?? undefined });
 
   // Mutations
   const markAlertRead = useMutation(api.alerts.markAlertRead);
@@ -100,7 +103,7 @@ export default function AlertsClient({ role }: Props) {
 
   const handleMarkAllRead = async () => {
     try {
-      await markAllRead();
+      await markAllRead({ token: token ?? undefined });
       toast.success("All unread alerts marked as read");
     } catch (err) {
       toast.error("Failed to mark all alerts as read");

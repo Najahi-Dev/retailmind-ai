@@ -30,9 +30,12 @@ interface Props {
   role?: string;
 }
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function StockAdjustmentClient({ role = "admin" }: Props) {
   const router = useRouter();
-  const data = useQuery(api.inventory.getStockControlFormData);
+  const { token } = useAuth();
+  const data = useQuery(api.inventory.getStockControlFormData, { token: token ?? undefined });
   const adjustStock = useMutation(api.inventory.recordStockAdjustment);
 
   const [productId, setProductId] = useState("");

@@ -103,6 +103,7 @@ export const generatePriceSuggestions = internalMutation({
 // ── Get all price suggestions ─────────────────
 export const getPriceSuggestions = query({
   args: {
+    token: v.optional(v.string()),
     status: v.optional(v.union(
       v.literal("pending"),
       v.literal("approved"),
@@ -110,7 +111,7 @@ export const getPriceSuggestions = query({
     )),
   },
   handler: async (ctx, args) => {
-    const suggestions = args.status
+    let suggestions = args.status
       ? await ctx.db
           .query("priceSuggestions")
           .withIndex("by_status", q => q.eq("status", args.status!))
@@ -120,6 +121,19 @@ export const getPriceSuggestions = query({
           .query("priceSuggestions")
           .order("desc")
           .collect();
+
+    if (args.token) {
+      const session = await ctx.db
+        .query("sessions")
+        .withIndex("by_token", (q) => q.eq("token", args.token!))
+        .first();
+      if (session) {
+        const user = await ctx.db.get(session.userId);
+        if (user && user.orgId) {
+          suggestions = suggestions.filter((s) => !s.orgId || s.orgId === user.orgId);
+        }
+      }
+    }
 
     if (suggestions.length === 0) return [];
 

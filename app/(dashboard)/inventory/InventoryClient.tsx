@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import {
   Table,
@@ -88,8 +89,9 @@ const STATUS_CONFIG = {
 
 export default function InventoryClient({ role }: Props) {
   const router = useRouter();
-  const inventory = useQuery(api.inventory.getInventoryOverview);
-  const stats = useQuery(api.inventory.getInventoryStats);
+  const { token } = useAuth();
+  const inventory = useQuery(api.inventory.getInventoryOverview, { token: token ?? undefined });
+  const stats = useQuery(api.inventory.getInventoryStats, { token: token ?? undefined });
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");

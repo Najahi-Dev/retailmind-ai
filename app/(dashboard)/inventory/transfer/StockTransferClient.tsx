@@ -29,9 +29,12 @@ interface Props {
   role?: string;
 }
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function StockTransferClient({ role = "admin" }: Props) {
   const router = useRouter();
-  const data = useQuery(api.inventory.getStockControlFormData);
+  const { token } = useAuth();
+  const data = useQuery(api.inventory.getStockControlFormData, { token: token ?? undefined });
   const transferStock = useMutation(api.inventory.transferStockBetweenLocations);
 
   const [productId, setProductId] = useState("");

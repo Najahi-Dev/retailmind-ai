@@ -52,9 +52,12 @@ const REASONS = [
   "Other",
 ];
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function StockOutClient({ role }: Props) {
   const router = useRouter();
-  const formData = useQuery(api.inventory.getStockOutFormData);
+  const { token } = useAuth();
+  const formData = useQuery(api.inventory.getStockOutFormData, { token: token ?? undefined });
   const recordStockOut = useMutation(api.inventory.recordStockOut);
 
   const [productId, setProductId] = useState("");
