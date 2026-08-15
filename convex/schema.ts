@@ -358,16 +358,11 @@ export default defineSchema({
   userPreferences: defineTable({
     orgId: v.optional(v.id("organizations")),
     clerkId: v.string(),
-    alertTypes: v.object({
-      lowStock: v.boolean(),
-      criticalStock: v.boolean(),
-      overstock: v.boolean(),
-      demandSpike: v.boolean(),
-      system: v.boolean(),
-    }),
+    alertTypes: v.any(),
     channels: v.object({
       inApp: v.boolean(),
       email: v.boolean(),
+      push: v.optional(v.boolean()),
     }),
     thresholds: v.object({
       lowStockMultiplier: v.number(),

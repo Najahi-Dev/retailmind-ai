@@ -248,6 +248,26 @@ export const getUserPreferences = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (caller && caller.orgId) {
+      const existing = await ctx.db
+        .query("userPreferences")
+        .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+        .first();
+
+      if (existing) {
+        return {
+          alertTypes: existing.alertTypes,
+          channels: {
+            inApp: existing.channels.inApp,
+            email: existing.channels.email,
+            push: (existing.channels as any).push ?? true,
+          },
+          thresholds: existing.thresholds,
+        };
+      }
+    }
+
     return {
       alertTypes: {
         lowStock: true,
@@ -255,10 +275,13 @@ export const getUserPreferences = query({
         overstock: true,
         demandSpike: true,
         system: true,
+        reorders: true,
+        pricing: true,
       },
       channels: {
         inApp: true,
-        email: true,
+        email: false,
+        push: true,
       },
       thresholds: {
         lowStockMultiplier: 1.5,
@@ -273,7 +296,43 @@ export const saveNotificationPreferences = mutation({
     token: v.optional(v.string()),
     preferences: v.any(),
   },
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) return { success: false };
+
+    const existing = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+      .first();
+
+    const data = {
+      orgId: caller.orgId,
+      clerkId: caller._id,
+      alertTypes: args.preferences.alertTypes || {
+        lowStock: true,
+        criticalStock: true,
+        overstock: true,
+        demandSpike: true,
+        system: true,
+      },
+      channels: {
+        inApp: Boolean(args.preferences.channels?.inApp ?? true),
+        email: Boolean(args.preferences.channels?.email ?? false),
+        push: Boolean(args.preferences.channels?.push ?? true),
+      },
+      thresholds: args.preferences.thresholds || {
+        lowStockMultiplier: 1.5,
+        criticalStockMultiplier: 0.5,
+      },
+      updatedAt: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, data);
+    } else {
+      await ctx.db.insert("userPreferences", data as any);
+    }
+
     return { success: true };
   },
 });

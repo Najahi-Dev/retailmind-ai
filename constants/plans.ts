@@ -39,7 +39,7 @@ export const PLAN_CONFIG: Record<"STARTER" | "GROWTH" | "ENTERPRISE", PlanMetada
     features: [
       "Real-time Stock Discrepancy Tracking",
       "AI SKU Demand Forecasting (Enabled)",
-      "Automated Purchase Orders (Enabled)",
+      "Automated Reorder Suggestions (Enabled)",
       "Dynamic Margin Pricing Engine (Enabled)",
       "Priority 24/7 Support",
     ],
