@@ -70,15 +70,18 @@ const DIRECTION_CONFIG = {
   },
 };
 
+import { useAuth } from "@/lib/auth-context";
+
 type SuggestionStatus = "pending" | "approved" | "rejected" | undefined;
 
 export default function PricingClient() {
+  const { token } = useAuth();
   const [statusFilter, setStatusFilter] = useState<SuggestionStatus>("pending");
   const [searchQuery, setSearchQuery] = useState("");
 
   const access = useQuery(api.subscriptions.checkFeatureAccess);
-  const suggestions = useQuery(api.pricing.getPriceSuggestions, { status: statusFilter });
-  const stats = useQuery(api.pricing.getPricingStats);
+  const suggestions = useQuery(api.pricing.getPriceSuggestions, { token: token ?? undefined, status: statusFilter });
+  const stats = useQuery(api.pricing.getPricingStats, { token: token ?? undefined });
   const approve = useMutation(api.pricing.approvePriceSuggestion);
   const reject = useMutation(api.pricing.rejectPriceSuggestion);
 

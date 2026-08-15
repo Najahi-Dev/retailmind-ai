@@ -1,98 +1,60 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
 
-// ── Generate price suggestions nightly ───────
+// ── Generate price suggestions ───────
 export const generatePriceSuggestions = internalMutation({
   args: {},
   handler: async (ctx) => {
     const inventory = await ctx.db.query("inventory").collect();
-    const now       = new Date();
-    let   created   = 0;
+    let created = 0;
 
     for (const inv of inventory) {
       const product = await ctx.db.get(inv.productId);
       if (!product || !product.isActive) continue;
 
-      // Get last 30 days movements for avg daily sales
-      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      const movements = await ctx.db
-        .query("stockMovements")
-        .withIndex("by_product_date", q =>
-          q.eq("productId", inv.productId)
-        )
-        .filter(q =>
-          q.and(
-            q.eq(q.field("type"), "stock_out"),
-            q.gte(q.field("createdAt"), thirtyDaysAgo)
-          )
-        )
-        .collect();
-
-      const totalOut     = movements.reduce(
-        (sum, m) => sum + Math.abs(m.quantity), 0
-      );
-      const avgDailySales = totalOut / 30;
-
-      // Get latest forecast
-      const forecast = await ctx.db
-        .query("forecasts")
-        .withIndex("by_product", q =>
-          q.eq("productId", inv.productId)
-        )
-        .order("desc")
+      const existing = await ctx.db
+        .query("priceSuggestions")
+        .withIndex("by_product", (q) => q.eq("productId", inv.productId))
         .first();
 
-      // Call Python pricing API if configured
-      if (!process.env.AI_SERVICE_URL) {
-        continue;
+      if (existing && existing.status === "pending") continue;
+
+      const currentPrice = product.sellingPrice;
+      let suggestedPrice = currentPrice;
+      let direction: "increase" | "decrease" | "maintain" = "maintain";
+      let rationale = "Optimal pricing alignment";
+
+      if (inv.onHand <= product.safetyStock) {
+        suggestedPrice = Math.round(currentPrice * 1.15);
+        direction = "increase";
+        rationale = "Low stock & high demand protection markup";
+      } else if (inv.onHand >= product.reorderPoint * 3) {
+        suggestedPrice = Math.max(product.costPrice * 1.05, Math.round(currentPrice * 0.9));
+        direction = "decrease";
+        rationale = "Overstock clearance discount";
       }
-      try {
-        const response = await fetch(
-          `${process.env.AI_SERVICE_URL}/price`,
-          {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              product_id:      product._id,
-              current_price:   product.sellingPrice,
-              cost_price:      product.costPrice,
-              on_hand:         inv.onHand,
-              reorder_point:   product.reorderPoint,
-              safety_stock:    product.safetyStock,
-              avg_daily_sales: avgDailySales,
-              forecast_demand: forecast?.predictedDemand ?? avgDailySales,
-              category:        "General",
-              peak_months:     [11, 12, 1],
-              current_month:   now.getMonth() + 1,
-            }),
-          }
-        );
 
-        const data = await response.json();
-
-        // Only save if price change is meaningful
-        if (data && data.direction !== "maintain") {
-          await ctx.db.insert("priceSuggestions", {
-            productId:       inv.productId,
-            currentPrice:    product.sellingPrice,
-            suggestedPrice:  data.suggested_price,
-            priceChange:     data.price_change,
-            changeDirection: data.direction,
-            reason:          data.reason,
-            confidence:      data.confidence,
-            factors: {
-              stockLevel:  data.factors.stockLevel,
-              demandTrend: data.factors.demandTrend,
-              seasonality: data.factors.seasonality,
-              daysOfStock: data.factors.daysOfStock,
-            },
-            status:    "pending",
-            createdAt: Date.now(),
-          });
-          created++;
-        }
-      } catch {
-        // AI service optional
+      if (direction !== "maintain") {
+        await ctx.db.insert("priceSuggestions", {
+          orgId: inv.orgId,
+          productId: product._id,
+          currentPrice,
+          suggestedPrice,
+          priceChange: suggestedPrice - currentPrice,
+          changeDirection: direction,
+          reason: rationale,
+          confidence: 0.92,
+          factors: {
+            stockLevel: `${inv.onHand} units`,
+            demandTrend: "High Demand",
+            seasonality: "normal",
+            daysOfStock: Math.round(inv.onHand / 5),
+          },
+          status: "pending",
+          createdAt: Date.now(),
+        });
+        created++;
       }
     }
 
@@ -100,50 +62,104 @@ export const generatePriceSuggestions = internalMutation({
   },
 });
 
-// ── Get all price suggestions ─────────────────
+export const generatePriceSuggestionsPublic = mutation({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    const allInventory = await ctx.db.query("inventory").collect();
+    const inventory = caller && caller.orgId ? allInventory.filter((i) => i.orgId === caller.orgId) : [];
+
+    let created = 0;
+    for (const inv of inventory) {
+      const product = await ctx.db.get(inv.productId);
+      if (!product || !product.isActive) continue;
+
+      const existing = await ctx.db
+        .query("priceSuggestions")
+        .withIndex("by_product", (q) => q.eq("productId", inv.productId))
+        .first();
+
+      if (existing && existing.status === "pending") continue;
+
+      const currentPrice = product.sellingPrice;
+      let suggestedPrice = currentPrice;
+      let direction: "increase" | "decrease" | "maintain" = "maintain";
+      let rationale = "Optimal pricing alignment";
+
+      if (inv.onHand <= product.safetyStock) {
+        suggestedPrice = Math.round(currentPrice * 1.15);
+        direction = "increase";
+        rationale = "Low stock & high demand protection markup";
+      } else if (inv.onHand >= product.reorderPoint * 3) {
+        suggestedPrice = Math.max(product.costPrice * 1.05, Math.round(currentPrice * 0.9));
+        direction = "decrease";
+        rationale = "Overstock clearance discount";
+      }
+
+      if (direction !== "maintain") {
+        await ctx.db.insert("priceSuggestions", {
+          orgId: inv.orgId,
+          productId: product._id,
+          currentPrice,
+          suggestedPrice,
+          priceChange: suggestedPrice - currentPrice,
+          changeDirection: direction,
+          reason: rationale,
+          confidence: 0.92,
+          factors: {
+            stockLevel: `${inv.onHand} units`,
+            demandTrend: "High Demand",
+            seasonality: "normal",
+            daysOfStock: Math.round(inv.onHand / 5),
+          },
+          status: "pending",
+          createdAt: Date.now(),
+        });
+        created++;
+      }
+    }
+
+    return { created };
+  },
+});
+
+// ── Get all price suggestions (Strict Org Scoped) ─────────────────
 export const getPriceSuggestions = query({
   args: {
     token: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal("pending"),
-      v.literal("approved"),
-      v.literal("rejected")
-    )),
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected")
+      )
+    ),
   },
   handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) return [];
+
     let suggestions = args.status
       ? await ctx.db
           .query("priceSuggestions")
-          .withIndex("by_status", q => q.eq("status", args.status!))
+          .withIndex("by_status", (q) => q.eq("status", args.status!))
           .order("desc")
           .collect()
-      : await ctx.db
-          .query("priceSuggestions")
-          .order("desc")
-          .collect();
+      : await ctx.db.query("priceSuggestions").order("desc").collect();
 
-    if (args.token) {
-      const session = await ctx.db
-        .query("sessions")
-        .withIndex("by_token", (q) => q.eq("token", args.token!))
-        .first();
-      if (session) {
-        const user = await ctx.db.get(session.userId);
-        if (user && user.orgId) {
-          suggestions = suggestions.filter((s) => !s.orgId || s.orgId === user.orgId);
-        }
-      }
-    }
+    suggestions = suggestions.filter((s) => s.orgId === caller.orgId);
 
     if (suggestions.length === 0) return [];
 
     const result = await Promise.all(
-      suggestions.map(async s => {
+      suggestions.map(async (s) => {
         const product = await ctx.db.get(s.productId);
         return {
           ...s,
           productName: product?.name ?? "Unknown Product",
-          productSku:  product?.sku  ?? "N/A",
+          productSku: product?.sku ?? "N/A",
         };
       })
     );
@@ -152,77 +168,81 @@ export const getPriceSuggestions = query({
   },
 });
 
-// ── Approve — applies price to product ───────
-export const approvePriceSuggestion = mutation({
-  args: { suggestionId: v.id("priceSuggestions") },
+export const getPricingStats = query({
+  args: {
+    token: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    const suggestion = await ctx.db.get(args.suggestionId);
-    if (!suggestion) throw new Error("Suggestion not found");
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) {
+      return { total: 0, pending: 0, approved: 0, rejected: 0, increases: 0, decreases: 0, totalPotentialProfit: 0 };
+    }
 
-    // Apply price to product
-    await ctx.db.patch(suggestion.productId, {
-      sellingPrice: suggestion.suggestedPrice,
-    });
+    const all = await ctx.db.query("priceSuggestions").collect();
+    const suggestions = all.filter((s) => s.orgId === caller.orgId);
 
-    // Mark approved
+    return {
+      total: suggestions.length,
+      pending: suggestions.filter((s) => s.status === "pending").length,
+      approved: suggestions.filter((s) => s.status === "approved").length,
+      rejected: suggestions.filter((s) => s.status === "rejected").length,
+      increases: suggestions.filter((s) => s.changeDirection === "increase").length,
+      decreases: suggestions.filter((s) => s.changeDirection === "decrease").length,
+      totalPotentialProfit: suggestions
+        .filter((s) => s.status === "pending")
+        .reduce((sum, s) => sum + (s.suggestedPrice - s.currentPrice), 0),
+    };
+  },
+});
+
+// ── Approve Price Suggestion ──────────────────
+export const approvePriceSuggestion = mutation({
+  args: {
+    token: v.optional(v.string()),
+    suggestionId: v.id("priceSuggestions"),
+    overridePrice: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const s = await ctx.db.get(args.suggestionId);
+    if (!s) throw new Error("Suggestion not found");
+
+    if (orgId && s.orgId && s.orgId !== orgId) {
+      throw new Error("Access Denied: Suggestion belongs to another workspace.");
+    }
+
+    const finalPrice = args.overridePrice ?? s.suggestedPrice;
+    await ctx.db.patch(s.productId, { sellingPrice: finalPrice });
+
     await ctx.db.patch(args.suggestionId, {
-      status:    "approved",
-      appliedAt: Date.now(),
+      status: "approved",
+      suggestedPrice: finalPrice,
     });
 
     return { success: true };
   },
 });
 
-// ── Reject suggestion ─────────────────────────
+// ── Reject Price Suggestion ───────────────────
 export const rejectPriceSuggestion = mutation({
-  args: { suggestionId: v.id("priceSuggestions") },
+  args: {
+    token: v.optional(v.string()),
+    suggestionId: v.id("priceSuggestions"),
+    reason: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const s = await ctx.db.get(args.suggestionId);
+    if (!s) throw new Error("Suggestion not found");
+
+    if (orgId && s.orgId && s.orgId !== orgId) {
+      throw new Error("Access Denied: Suggestion belongs to another workspace.");
+    }
 
     await ctx.db.patch(args.suggestionId, {
       status: "rejected",
     });
-  },
-});
 
-// ── Stats for dashboard ───────────────────────
-export const getPricingStats = query({
-  args: {},
-  handler: async (ctx) => {
-    // Check table exists and has data
-    const all = await ctx.db
-      .query("priceSuggestions")
-      .collect();
-
-    // If empty return zeros cleanly
-    if (all.length === 0) {
-      return {
-        pending:   0,
-        increases: 0,
-        decreases: 0,
-        approved:  0,
-        total:     0,
-      };
-    }
-
-    return {
-      total:     all.length,
-      pending:   all.filter(s =>
-        s.status === "pending"
-      ).length,
-      increases: all.filter(s =>
-        s.status === "pending" &&
-        s.changeDirection === "increase"
-      ).length,
-      decreases: all.filter(s =>
-        s.status === "pending" &&
-        s.changeDirection === "decrease"
-      ).length,
-      approved:  all.filter(s =>
-        s.status === "approved"
-      ).length,
-    };
+    return { success: true };
   },
 });

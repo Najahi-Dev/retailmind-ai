@@ -19,6 +19,8 @@ export const getPurchaseOrders = query({
   },
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) return [];
+
     let orders = args.status
       ? await ctx.db
           .query("purchaseOrders")
@@ -27,13 +29,11 @@ export const getPurchaseOrders = query({
           .collect()
       : await ctx.db.query("purchaseOrders").order("desc").collect();
 
-    // ── MULTI-TENANT WORKSPACE ISOLATION ──
-    if (caller && caller.orgId) {
-      orders = orders.filter((po) => !po.orgId || po.orgId === caller.orgId);
-    }
+    // ── STRICT MULTI-TENANT WORKSPACE ISOLATION ──
+    orders = orders.filter((po) => po.orgId === caller.orgId);
 
     // ── MULTI-TENANT SUPPLIER ROW-LEVEL DATA ISOLATION (RLS) ──
-    if (caller && caller.role === "supplier") {
+    if (caller.role === "supplier") {
       const userSupplier = await getSupplierForUser(ctx, caller);
       if (userSupplier) {
         orders = orders.filter((po) => po.supplierId === userSupplier._id);
@@ -66,14 +66,24 @@ export const getPOStats = query({
   },
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args.token);
-    let all = await ctx.db.query("purchaseOrders").collect();
-
-    if (caller && caller.orgId) {
-      all = all.filter((p) => !p.orgId || p.orgId === caller.orgId);
+    if (!caller || !caller.orgId) {
+      return {
+        total: 0,
+        draft: 0,
+        sent: 0,
+        confirmed: 0,
+        shipped: 0,
+        delivered: 0,
+        cancelled: 0,
+        totalValue: 0,
+      };
     }
 
+    let all = await ctx.db.query("purchaseOrders").collect();
+    all = all.filter((p) => p.orgId === caller.orgId);
+
     // ── SCOPE METRICS FOR SUPPLIERS ──
-    if (caller && caller.role === "supplier") {
+    if (caller.role === "supplier") {
       const userSupplier = await getSupplierForUser(ctx, caller);
       if (userSupplier) {
         all = all.filter((p) => p.supplierId === userSupplier._id);
@@ -111,43 +121,84 @@ export const getPODetail = query({
       verifyEntityOrgAccess(po, caller.orgId);
     }
 
-    // ── SINGLE-OBJECT IDOR AUTHORIZATION GUARD ──
-    if (caller && caller.role === "supplier") {
-      const userSupplier = await getSupplierForUser(ctx, caller);
-      if (!userSupplier || po.supplierId !== userSupplier._id) {
-        throw new Error("Access Denied: You are not authorized to view this purchase order.");
-      }
-    }
-
     const supplier = await ctx.db.get(po.supplierId);
+    const createdBy = po.createdBy ? await ctx.db.get(po.createdBy) : null;
 
-    // Attach product name + sku to each line item
-    const lineItems = await Promise.all(
+    const lineItemsWithDetails = await Promise.all(
       po.lineItems.map(async (line) => {
         const product = await ctx.db.get(line.productId);
         return {
           ...line,
           productName: product?.name ?? "Unknown",
           productSku: product?.sku ?? "",
+          unit: product?.unit ?? "pcs",
         };
       }),
     );
 
     return {
       ...po,
+      supplier,
       supplierName: supplier?.name ?? "Unknown",
-      supplierEmail: supplier?.email ?? "",
-      supplierPhone: supplier?.phone ?? "",
-      supplierAddress: supplier?.address ?? "",
-      lineItems,
+      createdByName: createdBy?.name ?? "System",
+      lineItems: lineItemsWithDetails,
     };
+  },
+});
+
+export const createPurchaseOrder = mutation({
+  args: {
+    token: v.optional(v.string()),
+    supplierId: v.id("suppliers"),
+    requestedDelivery: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    lineItems: v.array(
+      v.object({
+        productId: v.id("products"),
+        quantityOrdered: v.number(),
+        unitCost: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    if (args.lineItems.length === 0) {
+      throw new Error("Purchase order must contain at least one item.");
+    }
+
+    const poNumber = `PO-${Date.now()}`;
+    const formattedLines = args.lineItems.map((line) => ({
+      productId: line.productId,
+      quantityOrdered: line.quantityOrdered,
+      quantityReceived: 0,
+      unitCost: line.unitCost,
+      lineTotal: line.quantityOrdered * line.unitCost,
+    }));
+
+    const totalValue = formattedLines.reduce((sum, line) => sum + line.lineTotal, 0);
+
+    const poId = await ctx.db.insert("purchaseOrders", {
+      orgId,
+      supplierId: args.supplierId,
+      createdBy: caller._id,
+      poNumber,
+      status: "draft",
+      lineItems: formattedLines,
+      totalValue,
+      requestedDelivery: args.requestedDelivery,
+      notes: args.notes,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { poId, poNumber };
   },
 });
 
 export const updatePOStatus = mutation({
   args: {
-    poId: v.id("purchaseOrders"),
     token: v.optional(v.string()),
+    poId: v.id("purchaseOrders"),
     status: v.union(
       v.literal("draft"),
       v.literal("sent"),
@@ -156,174 +207,101 @@ export const updatePOStatus = mutation({
       v.literal("delivered"),
       v.literal("cancelled"),
     ),
-    trackingNumber: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    confirmedDelivery: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const caller = await requireRole(ctx, args.token);
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "supplier"]);
     const po = await ctx.db.get(args.poId);
-    if (!po) throw new Error("PO not found");
+    if (!po) throw new Error("Purchase order not found");
 
-    if (caller.orgId) {
-      verifyEntityOrgAccess(po, caller.orgId);
+    if (orgId && po.orgId && po.orgId !== orgId) {
+      throw new Error("Access Denied: PO belongs to another workspace.");
     }
 
-    // ── SUPPLIER MUTATION PERMISSION GUARD ──
-    if (caller.role === "supplier") {
-      const userSupplier = await getSupplierForUser(ctx, caller);
-      if (!userSupplier || po.supplierId !== userSupplier._id) {
-        await ctx.db.insert("securityLogs", {
-          orgId: caller.orgId,
-          userId: caller._id,
-          email: caller.email,
-          role: caller.role,
-          eventType: "UNAUTHORIZED_MUTATION",
-          details: `Supplier user ${caller.email} attempted unauthorized status mutation on PO ${po.poNumber}`,
-          targetId: args.poId,
-          createdAt: Date.now(),
-        });
-        throw new Error("Access Denied: You are not authorized to update this purchase order.");
-      }
-
-      // Restrict allowed supplier status transitions (confirmed, shipped, delivered)
-      if (!["confirmed", "shipped", "delivered"].includes(args.status)) {
-        throw new Error("Access Denied: Suppliers can only confirm, ship, or mark delivery on purchase orders.");
-      }
-    }
-
-    // ── When status changes TO delivered ────────
-    // Update inventory onHand for each line item
+    // If status is delivered, auto-stock in the received items
     if (args.status === "delivered" && po.status !== "delivered") {
-      for (const line of po.lineItems) {
-        const invList = await ctx.db
-          .query("inventory")
-          .withIndex("by_product", (q) => q.eq("productId", line.productId))
-          .collect();
+      const locations = await ctx.db.query("locations").collect();
+      const defaultLoc = locations.find((l) => !l.orgId || l.orgId === orgId) ?? (locations.length > 0 ? locations[0] : null);
 
-        if (invList.length > 0) {
-          const inv = invList[0];
-          const newOnHand = inv.onHand + line.quantityOrdered;
-          await ctx.db.patch(inv._id, {
-            onHand: newOnHand,
-            available: newOnHand - inv.reserved,
-            lastUpdated: Date.now(),
-          });
+      if (defaultLoc) {
+        for (const line of po.lineItems) {
+          const invList = await ctx.db
+            .query("inventory")
+            .withIndex("by_product_location", (q) =>
+              q.eq("productId", line.productId).eq("locationId", defaultLoc._id),
+            )
+            .collect();
 
-          await ctx.db.insert("stockMovements", {
-            orgId: caller.orgId,
-            productId: line.productId,
-            locationId: inv.locationId,
-            userId: caller._id,
-            type: "stock_in",
-            reason: `PO Delivered: ${po.poNumber}`,
-            quantity: line.quantityOrdered,
-            reference: po.poNumber,
-            createdAt: Date.now(),
-          });
+          const inv = invList.length > 0 ? invList[0] : null;
+          const qty = line.quantityOrdered - (line.quantityReceived ?? 0);
+          if (qty > 0) {
+            if (inv) {
+              const newOnHand = inv.onHand + qty;
+              await ctx.db.patch(inv._id, {
+                onHand: newOnHand,
+                available: newOnHand - inv.reserved,
+                lastUpdated: Date.now(),
+              });
+            } else {
+              await ctx.db.insert("inventory", {
+                orgId,
+                productId: line.productId,
+                locationId: defaultLoc._id,
+                onHand: qty,
+                reserved: 0,
+                available: qty,
+                lastUpdated: Date.now(),
+              });
+            }
+
+            await ctx.db.insert("stockMovements", {
+              orgId,
+              productId: line.productId,
+              locationId: defaultLoc._id,
+              userId: caller._id,
+              type: "stock_in",
+              reason: `PO Delivered: ${po.poNumber}`,
+              quantity: qty,
+              createdAt: Date.now(),
+            });
+          }
         }
       }
     }
 
-    const updates: Partial<typeof po> = {
+    await ctx.db.patch(args.poId, {
       status: args.status,
       updatedAt: Date.now(),
-    };
-    if (args.trackingNumber !== undefined) updates.trackingNumber = args.trackingNumber;
-    if (args.notes !== undefined) updates.notes = args.notes;
-    if (args.confirmedDelivery !== undefined) updates.confirmedDelivery = args.confirmedDelivery;
-
-    await ctx.db.patch(args.poId, updates);
+    });
 
     return { success: true };
   },
 });
 
-export const createPurchaseOrder = mutation({
-  args: {
-    token: v.optional(v.string()),
-    supplierId: v.id("suppliers"),
-    lineItems: v.array(
-      v.object({
-        productId: v.id("products"),
-        quantityOrdered: v.number(),
-        unitCost: v.number(),
-      }),
-    ),
-    requestedDelivery: v.optional(v.number()),
-    notes: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // ── REJECT SUPPLIER CREATION ATTEMPTS ──
-    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-
-    // ── Generate PO number ───────────────────
-    const count = await ctx.db.query("purchaseOrders").collect();
-    const poNumber = `PO-${Date.now()}-${count.length + 1}`;
-
-    // ── Calculate total ──────────────────────
-    const totalValue = args.lineItems.reduce(
-      (sum, item) => sum + item.quantityOrdered * item.unitCost,
-      0,
-    );
-    // ── Insert PO ───────────────────────────
-    const poId = await ctx.db.insert("purchaseOrders", {
-      orgId,
-      supplierId: args.supplierId,
-      createdBy: caller._id,
-      poNumber,
-      status: "draft",
-      lineItems: args.lineItems.map((item) => ({
-        productId: item.productId,
-        quantityOrdered: item.quantityOrdered,
-        quantityReceived: 0,
-        unitCost: item.unitCost,
-        lineTotal: item.quantityOrdered * item.unitCost,
-      })),
-      totalValue: Math.round(totalValue * 100) / 100,
-      requestedDelivery: args.requestedDelivery,
-      notes: args.notes,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-    return { poId, poNumber, totalValue };
-  },
-});
-
-// ── SUPPLIER ALERTS FOR PLACED POs ───────────────────────
 export const getSupplierPOAlerts = query({
   args: {
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args.token);
-    if (!caller || caller.role !== "supplier") return [];
+    if (!caller || caller.role !== "supplier" || !caller.orgId) return [];
 
     const userSupplier = await getSupplierForUser(ctx, caller);
     if (!userSupplier) return [];
 
-    const supplierPOs = await ctx.db
+    const pos = await ctx.db
       .query("purchaseOrders")
       .withIndex("by_supplier", (q) => q.eq("supplierId", userSupplier._id))
-      .order("desc")
       .collect();
 
-    // Active placed POs awaiting confirmation/fulfillment
-    const placedPOs = supplierPOs.filter((po) => po.status === "sent");
+    const orgPOs = pos.filter((po) => po.orgId === caller.orgId && po.status === "sent");
 
     return await Promise.all(
-      placedPOs.map(async (po) => {
+      orgPOs.map(async (po) => {
         const creator = po.createdBy ? await ctx.db.get(po.createdBy) : null;
         return {
-          _id: po._id,
-          poNumber: po.poNumber,
-          status: po.status,
-          totalValue: po.totalValue,
+          ...po,
+          placedBy: creator?.name ?? "Supermarket Manager",
           itemCount: po.lineItems.length,
-          createdAt: po.createdAt,
-          placedBy: creator?.name ?? "Store Management",
-          requestedDelivery: po.requestedDelivery,
-          notes: po.notes,
         };
       })
     );

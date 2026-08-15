@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCallerUser, requireCallerOrg, verifyEntityOrgAccess } from "./lib/roleGuard";
 
-// ── Get all suppliers ─────────────────────────────
+// ── Get all suppliers (Strict Org Scoped) ─────────────────────────────
 export const getSuppliers = query({
   args: {
     token: v.optional(v.string()),
@@ -10,11 +10,10 @@ export const getSuppliers = query({
   },
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args.token);
-    let suppliers = await ctx.db.query("suppliers").collect();
+    if (!caller || !caller.orgId) return [];
 
-    if (caller && caller.orgId) {
-      suppliers = suppliers.filter((s) => !s.orgId || s.orgId === caller.orgId);
-    }
+    let suppliers = await ctx.db.query("suppliers").collect();
+    suppliers = suppliers.filter((s) => s.orgId === caller.orgId);
 
     const filtered =
       args.status && args.status !== "all"
@@ -29,12 +28,14 @@ export const getSuppliers = query({
           .withIndex("by_supplier", (q) => q.eq("supplierId", s._id))
           .collect();
 
-        const totalOrders = pos.length;
-        const totalValue = pos.reduce((sum, po) => sum + po.totalValue, 0);
-        const deliveredOrders = pos.filter(
+        const orgPOs = pos.filter((po) => po.orgId === caller.orgId);
+
+        const totalOrders = orgPOs.length;
+        const totalValue = orgPOs.reduce((sum, po) => sum + po.totalValue, 0);
+        const deliveredOrders = orgPOs.filter(
           (po) => po.status === "delivered",
         ).length;
-        const pendingOrders = pos.filter((po) =>
+        const pendingOrders = orgPOs.filter((po) =>
           ["sent", "confirmed", "shipped"].includes(po.status),
         ).length;
 
@@ -78,8 +79,10 @@ export const getSupplierDetail = query({
       .order("desc")
       .take(10);
 
+    const orgPOs = caller && caller.orgId ? pos.filter((po) => po.orgId === caller.orgId) : pos;
+
     const posWithDetails = await Promise.all(
-      pos.map(async (po) => {
+      orgPOs.map(async (po) => {
         const lineItems = await Promise.all(
           po.lineItems.map(async (line) => {
             const product = await ctx.db.get(line.productId);
@@ -96,8 +99,10 @@ export const getSupplierDetail = query({
       .filter((q) => q.eq(q.field("primarySupplierId"), args.supplierId))
       .collect();
 
+    const orgProducts = caller && caller.orgId ? products.filter((p) => p.orgId === caller.orgId) : products;
+
     const productsWithInventory = await Promise.all(
-      products.map(async (p) => {
+      orgProducts.map(async (p) => {
         const inv = await ctx.db
           .query("inventory")
           .withIndex("by_product", (q) => q.eq("productId", p._id))
@@ -111,15 +116,16 @@ export const getSupplierDetail = query({
       }),
     );
 
-    // Stats
     const allPos = await ctx.db
       .query("purchaseOrders")
       .withIndex("by_supplier", (q) => q.eq("supplierId", args.supplierId))
       .collect();
 
-    const totalValue = allPos.reduce((sum, po) => sum + po.totalValue, 0);
-    const delivered = allPos.filter((p) => p.status === "delivered").length;
-    const pending = allPos.filter((p) =>
+    const filteredAllPOs = caller && caller.orgId ? allPos.filter((po) => po.orgId === caller.orgId) : allPos;
+
+    const totalValue = filteredAllPOs.reduce((sum, po) => sum + po.totalValue, 0);
+    const delivered = filteredAllPOs.filter((p) => p.status === "delivered").length;
+    const pending = filteredAllPOs.filter((p) =>
       ["sent", "confirmed", "shipped"].includes(p.status),
     ).length;
 
@@ -128,15 +134,15 @@ export const getSupplierDetail = query({
       recentPOs: posWithDetails,
       products: productsWithInventory,
       stats: {
-        totalOrders: allPos.length,
+        totalOrders: filteredAllPOs.length,
         totalValue,
         deliveredOrders: delivered,
         pendingOrders: pending,
         onTimeRate:
-          allPos.length > 0
-            ? Math.round((delivered / allPos.length) * 100)
+          filteredAllPOs.length > 0
+            ? Math.round((delivered / filteredAllPOs.length) * 100)
             : null,
-        totalProducts: products.length,
+        totalProducts: orgProducts.length,
       },
     };
   },
@@ -149,11 +155,12 @@ export const getSupplierStats = query({
   },
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args.token);
-    let suppliers = await ctx.db.query("suppliers").collect();
-
-    if (caller && caller.orgId) {
-      suppliers = suppliers.filter((s) => !s.orgId || s.orgId === caller.orgId);
+    if (!caller || !caller.orgId) {
+      return { total: 0, active: 0, inactive: 0, onHold: 0 };
     }
+
+    const allSuppliers = await ctx.db.query("suppliers").collect();
+    const suppliers = allSuppliers.filter((s) => s.orgId === caller.orgId);
 
     return {
       total: suppliers.length,
@@ -178,28 +185,21 @@ export const createSupplier = mutation({
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
 
-    // Check duplicate email in organization
-    const existing = await ctx.db
-      .query("suppliers")
-      .filter((q) => q.eq(q.field("email"), args.email))
-      .first();
-
-    if (existing && (!existing.orgId || existing.orgId === orgId)) {
-      throw new Error("Supplier with this email already exists in your workspace");
-    }
-
-    return await ctx.db.insert("suppliers", {
-      name: args.name,
-      email: args.email,
+    const supplierId = await ctx.db.insert("suppliers", {
+      orgId,
+      name: args.name.trim(),
+      email: args.email.trim().toLowerCase(),
       phone: args.phone,
       address: args.address,
-      paymentTerms: args.paymentTerms,
+      paymentTerms: args.paymentTerms ?? "Net 30",
       leadTimeDays: args.leadTimeDays,
-      orgId,
       status: "active",
+      reliabilityScore: 90,
       isActive: true,
       createdAt: Date.now(),
     });
+
+    return supplierId;
   },
 });
 
@@ -215,16 +215,20 @@ export const updateSupplier = mutation({
     paymentTerms: v.optional(v.string()),
     leadTimeDays: v.optional(v.number()),
     status: v.optional(
-      v.union(v.literal("active"), v.literal("inactive"), v.literal("on_hold")),
+      v.union(
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("on_hold"),
+      ),
     ),
   },
   handler: async (ctx, args) => {
-    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
     const supplier = await ctx.db.get(args.supplierId);
     if (!supplier) throw new Error("Supplier not found");
 
-    if (orgId) {
-      verifyEntityOrgAccess(supplier, orgId);
+    if (orgId && supplier.orgId && supplier.orgId !== orgId) {
+      throw new Error("Access Denied: Supplier belongs to another workspace.");
     }
 
     const { supplierId, token, ...fields } = args;
@@ -242,15 +246,13 @@ export const getActiveSuppliers = query({
   },
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args.token);
-    let suppliers = await ctx.db
+    if (!caller || !caller.orgId) return [];
+
+    const suppliers = await ctx.db
       .query("suppliers")
       .filter((q) => q.eq(q.field("status"), "active"))
       .collect();
 
-    if (caller && caller.orgId) {
-      suppliers = suppliers.filter((s) => !s.orgId || s.orgId === caller.orgId);
-    }
-
-    return suppliers;
+    return suppliers.filter((s) => s.orgId === caller.orgId);
   },
 });
