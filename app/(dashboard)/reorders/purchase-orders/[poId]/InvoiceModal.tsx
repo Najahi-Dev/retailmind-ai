@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,11 +22,13 @@ import {
   Building2Icon,
   SendIcon,
   RefreshCwIcon,
+  XIcon,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
+import { printElement, printPOInvoiceSampleFormat } from "@/lib/print-helper";
 
 interface LineItem {
   productId: string;
@@ -62,9 +65,19 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const { currentUser } = useAuth();
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
-  const [recipientEmail, setRecipientEmail] = useState(
-    po.supplierEmail || currentUser?.email || "mohamedashan070@gmail.com"
-  );
+
+  const supplierDefaultEmail =
+    po.supplierEmail && po.supplierEmail.trim()
+      ? po.supplierEmail.trim()
+      : po.supplierName
+        ? `orders@${po.supplierName.toLowerCase().replace(/[^a-z0-9]/g, "")}.lk`
+        : "supplier@vendor.com";
+
+  const [recipientEmail, setRecipientEmail] = useState(supplierDefaultEmail);
+
+  React.useEffect(() => {
+    setRecipientEmail(supplierDefaultEmail);
+  }, [po.supplierEmail, po.supplierName, open]);
 
   const autoInvoiceNumber = po.invoiceNumber || `INV-${po.poNumber.replace(/^PO-/, "")}`;
   const invoiceDateStr = new Date(po.createdAt).toLocaleDateString("en-US", {
@@ -81,9 +94,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     }).format(amount);
 
   const handlePrint = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
+    printPOInvoiceSampleFormat({
+      poNumber: po.poNumber,
+      invoiceNumber: autoInvoiceNumber,
+      createdAt: po.createdAt,
+      supplierName: po.supplierName,
+      supplierEmail: po.supplierEmail,
+      supplierPhone: po.supplierPhone,
+      supplierAddress: po.supplierAddress,
+      salesPersonName: currentUser?.name || "Najahi",
+      totalValue: po.totalValue,
+      lineItems: po.lineItems,
+    });
   };
 
   const handleDispatchEmail = async (e: React.FormEvent) => {
@@ -104,6 +126,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           invoiceNumber: autoInvoiceNumber,
           poNumber: po.poNumber,
           supplierName: po.supplierName,
+          supplierEmail: po.supplierEmail,
+          supplierPhone: po.supplierPhone,
+          supplierAddress: po.supplierAddress,
           totalValue: po.totalValue,
           lineItems: po.lineItems,
         }),
@@ -135,7 +160,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-w-[95vw] w-full max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl">
+      <DialogContent showCloseButton={false} className="sm:max-w-4xl max-w-[95vw] w-full max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl">
         {/* Action Header Bar (Hidden during printing) */}
         <div className="p-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 print:hidden">
           <div className="flex items-center gap-2 flex-wrap">
@@ -167,6 +192,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               <PrinterIcon className="w-3.5 h-3.5 mr-1.5 text-slate-700" />
               Print Invoice
             </Button>
+
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/80 ml-1"
+                title="Close modal"
+              >
+                <XIcon className="w-4 h-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </DialogClose>
           </div>
         </div>
 
@@ -218,10 +255,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         <div id="printable-invoice" className="p-5 sm:p-8 space-y-6 text-slate-900 dark:text-white bg-white dark:bg-slate-900">
           {/* Header Row: Logo & Invoice Badge */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
-            <div className="space-y-1">
-              <Logo className="h-7 w-auto" />
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium pt-1">
-                RetailMind AI Supermarket Network • Colombo, Sri Lanka
+            <div className="space-y-1.5">
+              <Logo layout="horizontal" size="sm" />
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Supermarket Retail Network • Colombo, Sri Lanka
               </p>
             </div>
 
@@ -318,25 +355,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         </div>
       </DialogContent>
 
-      {/* Embedded Print CSS */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #printable-invoice, #printable-invoice * {
-            visibility: visible;
-          }
-          #printable-invoice {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white !important;
-            color: black !important;
-          }
-        }
-      `}</style>
     </Dialog>
   );
 };

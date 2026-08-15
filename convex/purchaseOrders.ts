@@ -44,6 +44,9 @@ export const getPurchaseOrders = query({
         return {
           ...po,
           supplierName: supplier?.name ?? "Unknown",
+          supplierEmail: supplier?.email ?? "",
+          supplierPhone: supplier?.phone ?? "",
+          supplierAddress: supplier?.address ?? "",
           createdByName: createdBy?.name ?? "System",
           itemCount: po.lineItems.length,
         };
@@ -120,6 +123,9 @@ export const getPODetail = query({
     return {
       ...po,
       supplierName: supplier?.name ?? "Unknown",
+      supplierEmail: supplier?.email ?? "",
+      supplierPhone: supplier?.phone ?? "",
+      supplierAddress: supplier?.address ?? "",
       lineItems,
     };
   },

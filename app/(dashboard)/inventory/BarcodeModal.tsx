@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BarcodeGenerator } from "@/components/ui/barcode-generator";
 import { PrinterIcon, TagIcon } from "lucide-react";
+import { printElement } from "@/lib/print-helper";
 
 interface BarcodeModalProps {
   open: boolean;
@@ -30,9 +31,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({
   if (!product) return null;
 
   const handlePrintLabel = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
+    printElement("printable-barcode-label", `Barcode Label - ${product.sku}`);
   };
 
   return (
