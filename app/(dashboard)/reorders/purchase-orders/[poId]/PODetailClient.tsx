@@ -203,23 +203,76 @@ export default function PODetailClient({
           </div>
 
           {/* Action buttons */}
-          {canUpdateFulfillment && po.status !== "delivered" && po.status !== "cancelled" && (
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              {nextStatus && (
-                <Button
-                  size="sm"
-                  onClick={() => handleStatusUpdate(nextStatus)}
-                  disabled={updating}
-                  className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
-                >
-                  {updating ? (
-                    <RefreshCwIcon className="animate-spin size-4 mr-1.5" />
-                  ) : (
-                    <CheckCircleIcon className="size-4 mr-1.5" />
-                  )}
-                  {NEXT_LABEL[po.status]}
-                </Button>
-              )}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {/* Admin / Manager Action: ONLY "Send to Supplier" for draft POs */}
+            {!isSupplier && po.status === "draft" && (
+              <Button
+                size="sm"
+                onClick={() => handleStatusUpdate("sent")}
+                disabled={updating}
+                className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 shadow-md border-0"
+              >
+                {updating ? (
+                  <RefreshCwIcon className="animate-spin size-4 mr-1.5" />
+                ) : (
+                  <SendIcon className="size-4 mr-1.5" />
+                )}
+                Send to Supplier
+              </Button>
+            )}
+
+            {/* Supplier Actions: Update status options (Confirm, Ship, Deliver) */}
+            {isSupplier && (
+              <>
+                {po.status === "sent" && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleStatusUpdate("confirmed")}
+                    disabled={updating}
+                    className="h-9 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 px-4 shadow-md border-0"
+                  >
+                    {updating ? (
+                      <RefreshCwIcon className="animate-spin size-4 mr-1.5" />
+                    ) : (
+                      <CheckCircleIcon className="size-4 mr-1.5" />
+                    )}
+                    Confirm Order
+                  </Button>
+                )}
+
+                {po.status === "confirmed" && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleStatusUpdate("shipped")}
+                    disabled={updating}
+                    className="h-9 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 px-4 shadow-md border-0"
+                  >
+                    {updating ? (
+                      <RefreshCwIcon className="animate-spin size-4 mr-1.5" />
+                    ) : (
+                      <TruckIcon className="size-4 mr-1.5" />
+                    )}
+                    Mark Shipped
+                  </Button>
+                )}
+
+                {po.status === "shipped" && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleStatusUpdate("delivered")}
+                    disabled={updating}
+                    className="h-9 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-4 shadow-md border-0"
+                  >
+                    {updating ? (
+                      <RefreshCwIcon className="animate-spin size-4 mr-1.5" />
+                    ) : (
+                      <PackageCheckIcon className="size-4 mr-1.5" />
+                    )}
+                    Mark Delivered
+                  </Button>
+                )}
+              </>
+            )}
 
               {canEdit && (
               <AlertDialog>
@@ -277,7 +330,6 @@ export default function PODetailClient({
               </AlertDialog>
               )}
             </div>
-          )}
         </div>
       </div>
 

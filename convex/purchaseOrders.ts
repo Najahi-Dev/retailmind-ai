@@ -269,3 +269,43 @@ export const createPurchaseOrder = mutation({
     return { poId, poNumber, totalValue };
   },
 });
+
+// ── SUPPLIER ALERTS FOR PLACED POs ───────────────────────
+export const getSupplierPOAlerts = query({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || caller.role !== "supplier") return [];
+
+    const userSupplier = await getSupplierForUser(ctx, caller);
+    if (!userSupplier) return [];
+
+    const supplierPOs = await ctx.db
+      .query("purchaseOrders")
+      .withIndex("by_supplier", (q) => q.eq("supplierId", userSupplier._id))
+      .order("desc")
+      .collect();
+
+    // Active placed POs awaiting confirmation/fulfillment
+    const placedPOs = supplierPOs.filter((po) => po.status === "sent");
+
+    return await Promise.all(
+      placedPOs.map(async (po) => {
+        const creator = po.createdBy ? await ctx.db.get(po.createdBy) : null;
+        return {
+          _id: po._id,
+          poNumber: po.poNumber,
+          status: po.status,
+          totalValue: po.totalValue,
+          itemCount: po.lineItems.length,
+          createdAt: po.createdAt,
+          placedBy: creator?.name ?? "Store Management",
+          requestedDelivery: po.requestedDelivery,
+          notes: po.notes,
+        };
+      })
+    );
+  },
+});

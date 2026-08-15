@@ -170,6 +170,35 @@ export default function PurchaseOrdersClient({ role }: Props) {
         </div>
       </div>
 
+      {/* ── SUPPLIER PO ALERTS BANNER ── */}
+      {isSupplier && stats.sent > 0 && (
+        <div className="bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-amber-900 dark:text-amber-100 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="size-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <ClockIcon className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold">Action Required: {stats.sent} New Purchase Order(s) Placed</h4>
+                <Badge className="bg-amber-500 text-white font-extrabold text-[10px] px-2 py-0.5">
+                  Newly Placed
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mt-0.5">
+                The RetailMind AI store management team has issued new purchase order(s) to your account. Please review items, confirm availability, and mark order status.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setStatusFilter("sent")}
+            className="rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white border-0 shrink-0"
+          >
+            Review Placed Orders ({stats.sent})
+          </Button>
+        </div>
+      )}
+
       {/* ── 2. TOP KPI METRICS ── */}
       {!isSupplier && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -364,38 +393,70 @@ export default function PurchaseOrdersClient({ role }: Props) {
                         {/* Action Buttons */}
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {nextAction && !isSupplier && (
-                              <Button
-                                size="sm"
-                                disabled={isUpdating}
-                                className={`h-8 text-xs px-3.5 rounded-xl ${nextAction.className}`}
-                                onClick={() =>
-                                  handleStatusUpdate(po._id, nextAction.status)
-                                }
-                              >
-                                {isUpdating ? (
-                                  <RefreshCwIcon className="animate-spin size-3.5" />
-                                ) : (
-                                  nextAction.label
-                                )}
-                              </Button>
-                            )}
-
-                            {isSupplier && po.status === "sent" && (
+                            {/* Admin / Manager Action: ONLY "Send to Supplier" for draft POs */}
+                            {!isSupplier && po.status === "draft" && (
                               <Button
                                 size="sm"
                                 disabled={isUpdating}
                                 className="h-8 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl px-3.5 border-0 shadow-xs"
-                                onClick={() =>
-                                  handleStatusUpdate(po._id, "confirmed")
-                                }
+                                onClick={() => handleStatusUpdate(po._id, "sent")}
                               >
                                 {isUpdating ? (
                                   <RefreshCwIcon className="animate-spin size-3.5" />
                                 ) : (
-                                  "Confirm Order"
+                                  "Send to Supplier"
                                 )}
                               </Button>
+                            )}
+
+                            {/* Supplier Actions: Update status options (Confirm, Ship, Deliver) */}
+                            {isSupplier && (
+                              <>
+                                {po.status === "sent" && (
+                                  <Button
+                                    size="sm"
+                                    disabled={isUpdating}
+                                    className="h-8 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl px-3.5 border-0 shadow-xs"
+                                    onClick={() => handleStatusUpdate(po._id, "confirmed")}
+                                  >
+                                    {isUpdating ? (
+                                      <RefreshCwIcon className="animate-spin size-3.5" />
+                                    ) : (
+                                      "Confirm Order"
+                                    )}
+                                  </Button>
+                                )}
+
+                                {po.status === "confirmed" && (
+                                  <Button
+                                    size="sm"
+                                    disabled={isUpdating}
+                                    className="h-8 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl px-3.5 border-0 shadow-xs"
+                                    onClick={() => handleStatusUpdate(po._id, "shipped")}
+                                  >
+                                    {isUpdating ? (
+                                      <RefreshCwIcon className="animate-spin size-3.5" />
+                                    ) : (
+                                      "Mark Shipped"
+                                    )}
+                                  </Button>
+                                )}
+
+                                {po.status === "shipped" && (
+                                  <Button
+                                    size="sm"
+                                    disabled={isUpdating}
+                                    className="h-8 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl px-3.5 border-0 shadow-xs"
+                                    onClick={() => handleStatusUpdate(po._id, "delivered")}
+                                  >
+                                    {isUpdating ? (
+                                      <RefreshCwIcon className="animate-spin size-3.5" />
+                                    ) : (
+                                      "Mark Delivered"
+                                    )}
+                                  </Button>
+                                )}
+                              </>
                             )}
 
                             <Button
