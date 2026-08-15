@@ -48,7 +48,6 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
   const [imageUrl, setImageUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [role, setRole] = useState<"admin" | "manager" | "staff" | "supplier">("staff");
-  const [plan, setPlan] = useState<"starter" | "growth" | "enterprise">("starter");
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -57,7 +56,6 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
       setName(user.name ?? "");
       setImageUrl(user.imageUrl ?? "");
       setRole(user.role ?? "staff");
-      setPlan(user.plan ?? "starter");
       setIsActive(user.isActive ?? true);
     }
   }, [user]);
@@ -112,7 +110,6 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
           name,
           imageUrl,
           role,
-          plan,
           isActive,
         }),
       });
@@ -211,38 +208,21 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {/* System Role */}
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
-              <Select value={role} onValueChange={(val: any) => setRole(val)}>
-                <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Administrator</SelectItem>
-                  <SelectItem value="manager">Store Manager</SelectItem>
-                  <SelectItem value="staff">Inventory Staff</SelectItem>
-                  <SelectItem value="supplier">Vendor Supplier</SelectItem>
-                  <SelectItem value="pending">Pending Approval</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Subscription Plan */}
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Plan</Label>
-              <Select value={plan} onValueChange={(val: any) => setPlan(val)}>
-                <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="starter">Starter</SelectItem>
-                  <SelectItem value="growth">Growth</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* System Role */}
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
+            <Select value={role} onValueChange={(val: any) => setRole(val)}>
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Administrator</SelectItem>
+                <SelectItem value="manager">Store Manager</SelectItem>
+                <SelectItem value="staff">Inventory Staff</SelectItem>
+                <SelectItem value="supplier">Vendor Supplier</SelectItem>
+                <SelectItem value="pending">Pending Approval</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Account Status Toggle */}

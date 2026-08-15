@@ -30,22 +30,22 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
-      // 1. Checkout Session Completed
+      // 1. Checkout Session Completed (User completed Stripe checkout & payment)
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const orgId = (session.client_reference_id || session.metadata?.organization_id) as any;
+        const userId = session.metadata?.userId;
+        const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+        const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
 
-        if (orgId) {
-          const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-
-          await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
-            orgId,
-            stripeSubscriptionId: subscriptionId,
-            planTier: "GROWTH",
-            subscriptionStatus: "TRIALING",
-            trialEndsAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
-          });
-        }
+        await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
+          orgId: orgId || undefined,
+          stripeCustomerId: customerId || undefined,
+          stripeSubscriptionId: subscriptionId || undefined,
+          userId: userId || undefined,
+          planTier: "GROWTH",
+          subscriptionStatus: "ACTIVE",
+        });
         break;
       }
 
@@ -54,65 +54,89 @@ export async function POST(req: Request) {
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         const orgId = subscription.metadata?.organization_id as any;
+        const userId = subscription.metadata?.userId;
+        const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
 
-        if (orgId) {
-          const rawStatus = subscription.status; // trialing, active, past_due, canceled, unpaid
-          let status: "FREE" | "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" = "ACTIVE";
+        const rawStatus = subscription.status; // trialing, active, past_due, canceled, unpaid
+        let status: "FREE" | "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" = "ACTIVE";
 
-          if (rawStatus === "trialing") status = "TRIALING";
-          else if (rawStatus === "active") status = "ACTIVE";
-          else if (rawStatus === "past_due") status = "PAST_DUE";
-          else if (rawStatus === "canceled" || rawStatus === "unpaid") status = "CANCELED";
+        if (rawStatus === "active" || rawStatus === "trialing") status = "ACTIVE";
+        else if (rawStatus === "past_due") status = "PAST_DUE";
+        else if (rawStatus === "canceled" || rawStatus === "unpaid") status = "CANCELED";
 
-          const priceId = subscription.items.data[0]?.price?.id;
-          const trialEndsAt = subscription.trial_end ? subscription.trial_end * 1000 : undefined;
-          const subAny = subscription as any;
-          const currentPeriodEnd = subAny.current_period_end ? subAny.current_period_end * 1000 : undefined;
+        const priceId = subscription.items.data[0]?.price?.id;
+        const trialEndsAt = subscription.trial_end ? subscription.trial_end * 1000 : undefined;
+        const subAny = subscription as any;
+        const currentPeriodEnd = subAny.current_period_end ? subAny.current_period_end * 1000 : undefined;
 
+        await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
+          orgId: orgId || undefined,
+          stripeCustomerId: customerId || undefined,
+          stripeSubscriptionId: subscription.id,
+          stripePriceId: priceId,
+          userId: userId || undefined,
+          planTier: "GROWTH",
+          subscriptionStatus: status,
+          trialEndsAt,
+          currentPeriodEnd,
+        });
+        break;
+      }
+
+      // 3. Invoice Payment Succeeded
+      case "invoice.payment_succeeded":
+      case "invoice.paid": {
+        const invoice = event.data.object as any;
+        const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+
+        if (subscriptionId || customerId) {
           await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
-            orgId,
-            stripeSubscriptionId: subscription.id,
-            stripePriceId: priceId,
+            stripeCustomerId: customerId || undefined,
+            stripeSubscriptionId: subscriptionId || undefined,
             planTier: "GROWTH",
-            subscriptionStatus: status,
-            trialEndsAt,
-            currentPeriodEnd,
+            subscriptionStatus: "ACTIVE",
           });
         }
         break;
       }
 
-      // 3. Subscription Deleted (Cancelled/Expired)
+      // 4. Subscription Deleted (Cancelled/Expired)
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const orgId = subscription.metadata?.organization_id as any;
+        const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
 
-        if (orgId) {
-          await convex.mutation(api.organizations.downgradeSubscriptionInternal, {
-            orgId,
-          });
-        }
+        await convex.mutation(api.organizations.downgradeSubscriptionInternal, {
+          orgId: orgId || undefined,
+          stripeCustomerId: customerId || undefined,
+          stripeSubscriptionId: subscription.id,
+        });
         break;
       }
 
-      // 4. Payment Failed
+      // 5. Payment Failed
       case "invoice.payment_failed": {
         const invoiceAny = event.data.object as any;
         const subscriptionId = typeof invoiceAny.subscription === "string" ? invoiceAny.subscription : invoiceAny.subscription?.id;
+        const customerId = typeof invoiceAny.customer === "string" ? invoiceAny.customer : invoiceAny.customer?.id;
 
-        if (subscriptionId) {
-          // Retrieve subscription to get orgId
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const orgId = subscription.metadata?.organization_id as any;
+        if (subscriptionId || customerId) {
+          let orgId = undefined;
+          try {
+            if (subscriptionId) {
+              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+              orgId = subscription.metadata?.organization_id as any;
+            }
+          } catch {}
 
-          if (orgId) {
-            await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
-              orgId,
-              stripeSubscriptionId: subscription.id,
-              planTier: "GROWTH",
-              subscriptionStatus: "PAST_DUE",
-            });
-          }
+          await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
+            orgId: orgId || undefined,
+            stripeCustomerId: customerId || undefined,
+            stripeSubscriptionId: subscriptionId || undefined,
+            planTier: "GROWTH",
+            subscriptionStatus: "PAST_DUE",
+          });
         }
         break;
       }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
   CreditCard,
@@ -10,33 +10,36 @@ import {
   Sparkles,
   Shield,
   Clock,
-  Crown,
   ExternalLink,
   Loader2,
-  UserCheck,
-  UserX,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { useWorkspaceBilling } from "@/hooks/useWorkspaceBilling";
+import Link from "next/link";
 
 export default function BillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
-  const [vipLoadingId, setVipLoadingId] = useState<string | null>(null);
 
-  const { token, currentUser } = useAuth();
-  const subData = useQuery(api.subscriptions.getUserSubscription, { token: token ?? undefined });
+  const { currentUser } = useAuth();
+  const {
+    organization,
+    tier,
+    planConfig,
+    isSubscribed,
+    isTrialExpired,
+    daysRemaining,
+    trialEndsFormatted,
+    nextBillingFormatted,
+    isAdmin,
+  } = useWorkspaceBilling();
 
-  // Admin mutation
-  const grantVip = useMutation(api.subscriptions.grantVipAccess);
   const cancelSub = useMutation(api.subscriptions.cancelSubscriptionAtPeriodEnd);
-
-  const plan = subData?.userPlan || "starter";
-  const isVip = subData?.isVipAccess || currentUser?.role === "admin" || false;
-  const subscription: any = subData?.organization;
 
   const handleUpgrade = async () => {
     try {
@@ -50,34 +53,13 @@ export default function BillingPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        toast.error("Failed to redirect to Stripe. Directing to plan selection page...");
+        toast.info("Directing to plan selection page...");
         window.location.href = "/select-plan";
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to initiate checkout");
     } finally {
       setCheckoutLoading(false);
-    }
-  };
-
-  const handleManageBilling = async () => {
-    try {
-      setPortalLoading(true);
-      const res = await fetch("/api/billing/create-portal-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error(data?.error || "Could not open Stripe Billing Portal.");
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to open billing portal");
-    } finally {
-      setPortalLoading(false);
     }
   };
 
@@ -93,11 +75,10 @@ export default function BillingPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        toast.error("Could not open billing portal.");
+        toast.error(data?.error || "Could not open Stripe Billing Portal.");
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to launch Stripe Portal.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to open Stripe Billing Portal.");
     } finally {
       setPortalLoading(false);
     }
@@ -113,30 +94,6 @@ export default function BillingPage() {
     }
   };
 
-  const handleToggleVip = async (targetUserId: string, currentVip: boolean) => {
-    try {
-      setVipLoadingId(targetUserId);
-      const res = await grantVip({
-        targetUserId,
-        isVipAccess: !currentVip,
-        grantedPlan: !currentVip ? "enterprise" : undefined,
-      });
-      toast.success("VIP status updated successfully.");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update VIP status.");
-    } finally {
-      setVipLoadingId(null);
-    }
-  };
-
-  const periodEndFormatted = subscription?.currentPeriodEnd
-    ? new Date(subscription.currentPeriodEnd).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "N/A";
-
   return (
     <div className="space-y-5 p-3 sm:p-4 lg:p-5 w-full">
       {/* Header */}
@@ -147,15 +104,17 @@ export default function BillingPage() {
             Subscription & Billing
           </h1>
           <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
-            Manage your RetailMind AI plan, invoices, payment methods, and account permissions.
+            {isAdmin
+              ? "Manage your workspace plan, invoices, Stripe payment methods, and member permissions."
+              : "View your workspace's active subscription tier, inherited capabilities, and feature status."}
           </p>
         </div>
 
-        {plan === "starter" && !isVip && (
+        {isAdmin && !isSubscribed && (
           <Button
             onClick={handleUpgrade}
             disabled={checkoutLoading}
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-lg shadow-indigo-600/30 px-6 rounded-xl"
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-lg shadow-indigo-600/30 px-6 rounded-xl cursor-pointer"
           >
             {checkoutLoading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -167,6 +126,19 @@ export default function BillingPage() {
         )}
       </div>
 
+      {!isAdmin && (
+        <div className="p-4 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 flex items-start gap-3">
+          <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-indigo-900 dark:text-indigo-200">
+            <p className="font-bold mb-0.5">Workspace Plan Inheritance</p>
+            <p className="leading-relaxed">
+              Your account inherits all capabilities and features directly from the{" "}
+              <strong>{planConfig.displayName}</strong> subscribed by your workspace. Only Workspace Administrators can alter billing methods, upgrade packages, or access invoices.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Current Subscription Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-6">
@@ -177,22 +149,22 @@ export default function BillingPage() {
               </span>
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-bold font-heading text-slate-900 dark:text-white capitalize">
-                  {isVip ? "Enterprise (Admin VIP)" : `${plan} Plan`}
+                  {planConfig.displayName}
                 </h2>
                 <Badge
                   className={
-                    isVip || plan === "growth" || plan === "enterprise"
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 px-3 py-1"
-                      : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30 px-3 py-1"
+                    isSubscribed
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 px-3 py-1 font-bold"
+                      : isTrialExpired
+                      ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 px-3 py-1 font-bold"
+                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 px-3 py-1 font-bold"
                   }
                 >
-                  {isVip
-                    ? "VIP Unlimited"
-                    : subscription?.status === "active"
-                    ? "Active"
-                    : subscription?.status === "past_due"
-                    ? "Past Due"
-                    : "Starter Free"}
+                  {isSubscribed
+                    ? "Active Subscription"
+                    : isTrialExpired
+                    ? "Trial Expired"
+                    : `14-Day Free Trial (${daysRemaining}d left)`}
                 </Badge>
               </div>
             </div>
@@ -202,11 +174,7 @@ export default function BillingPage() {
                 Price
               </span>
               <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                {plan === "growth"
-                  ? "LKR 4,900 / mo"
-                  : plan === "enterprise" || isVip
-                  ? "Custom / VIP"
-                  : "LKR 0 (Free)"}
+                {planConfig.price}
               </div>
             </div>
           </div>
@@ -215,50 +183,66 @@ export default function BillingPage() {
             <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40">
               <Clock className="w-5 h-5 text-indigo-500 shrink-0" />
               <div>
-                <p className="text-xs font-medium text-slate-500">Next Billing Date</p>
+                <p className="text-xs font-medium text-slate-500">
+                  {isSubscribed ? "Next Billing Date" : "Trial Expiration Date"}
+                </p>
                 <p className="font-semibold text-slate-900 dark:text-slate-200">
-                  {periodEndFormatted}
+                  {isSubscribed
+                    ? nextBillingFormatted
+                    : daysRemaining > 0
+                    ? `${trialEndsFormatted} (${daysRemaining}d left)`
+                    : planConfig.billingCycle}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40">
-              <Shield className="w-5 h-5 text-indigo-500 shrink-0" />
+              <Package className="w-5 h-5 text-indigo-500 shrink-0" />
               <div>
                 <p className="text-xs font-medium text-slate-500">Product Limit</p>
                 <p className="font-semibold text-slate-900 dark:text-slate-200">
-                  {isVip || plan !== "starter" ? "Unlimited Products" : "Up to 100 Products"}
+                  {planConfig.skuLabel}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="pt-4 flex flex-wrap items-center gap-3">
-            <Button
-              onClick={handleOpenPortal}
-              disabled={portalLoading}
-              variant="outline"
-              className="border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl"
-            >
-              {portalLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          {/* Action Buttons (Admin Only) */}
+          {isAdmin && (
+            <div className="pt-4 flex flex-wrap items-center gap-3">
+              {isSubscribed ? (
+                <Button
+                  onClick={handleOpenPortal}
+                  disabled={portalLoading}
+                  variant="outline"
+                  className="border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl cursor-pointer"
+                >
+                  {portalLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                  )}
+                  Stripe Customer Portal
+                </Button>
               ) : (
-                <ExternalLink className="w-4 h-4 mr-2" />
+                <Link href="/select-plan">
+                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm gap-1.5 cursor-pointer">
+                    <Zap className="w-3.5 h-3.5" /> View Upgrade Options
+                  </Button>
+                </Link>
               )}
-              Stripe Customer Portal
-            </Button>
 
-            {plan === "growth" && subscription && !subscription.cancelAtPeriodEnd && (
-              <Button
-                onClick={handleCancelAtPeriodEnd}
-                variant="ghost"
-                className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-xs"
-              >
-                Cancel Subscription at Period End
-              </Button>
-            )}
-          </div>
+              {tier === "GROWTH" && organization && !(organization as any).cancelAtPeriodEnd && (
+                <Button
+                  onClick={handleCancelAtPeriodEnd}
+                  variant="ghost"
+                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-xs cursor-pointer"
+                >
+                  Cancel Subscription at Period End
+                </Button>
+              )}
+            </div>
+          )}
         </Card>
 
         {/* Feature Overview Card */}
@@ -267,81 +251,18 @@ export default function BillingPage() {
             <Sparkles className="w-4 h-4 text-indigo-400" /> Plan Features
           </div>
           <h3 className="text-lg font-bold font-heading">
-            {isVip || plan !== "starter" ? "Full Growth Unlocked" : "Starter Features"}
+            {planConfig.displayName} Capabilities
           </h3>
           <ul className="space-y-3 text-xs text-slate-300">
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              Real-time Stock Discrepancy Tracking
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              AI SKU Demand Forecasting ({plan !== "starter" || isVip ? "Enabled" : "Upgrade"})
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              Automated Purchase Orders ({plan !== "starter" || isVip ? "Enabled" : "Upgrade"})
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              Dynamic Margin Pricing Engine ({plan !== "starter" || isVip ? "Enabled" : "Upgrade"})
-            </li>
+            {planConfig.features.map((feat, idx) => (
+              <li key={idx} className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{feat}</span>
+              </li>
+            ))}
           </ul>
         </Card>
       </div>
-
-      {/* Admin VIP / Unlimited Access Management Section */}
-      {currentUser?.role === "admin" && (
-        <Card className="bg-white dark:bg-slate-900 border-indigo-500/30 rounded-xl p-6 shadow-md space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-            <div>
-              <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
-                <Crown className="w-5 h-5 text-amber-500" />
-                Admin VIP Unlimited Access Override
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                As an Administrator, you can grant complimentary unlimited access (Growth/Enterprise) to any favored user.
-              </p>
-            </div>
-            <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 px-3 py-1">
-              Admin Privilege
-            </Badge>
-          </div>
-
-          <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-            <div className="space-y-1">
-              <p className="font-bold text-sm text-slate-900 dark:text-white">
-                {currentUser.name} ({currentUser.email})
-              </p>
-              <p className="text-xs text-slate-500">Role: {currentUser.role.toUpperCase()}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
-                Full Admin VIP Access
-              </Badge>
-              <Button
-                onClick={() => handleToggleVip(currentUser.id, isVip)}
-                disabled={vipLoadingId === currentUser.id}
-                size="sm"
-                variant={isVip ? "destructive" : "default"}
-                className="rounded-xl text-xs"
-              >
-                {vipLoadingId === currentUser.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : isVip ? (
-                  <>
-                    <UserX className="w-3.5 h-3.5 mr-1" /> Revoke VIP
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="w-3.5 h-3.5 mr-1" /> Grant VIP Access
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

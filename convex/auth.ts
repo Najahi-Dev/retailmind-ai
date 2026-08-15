@@ -214,7 +214,8 @@ export const validateSession = action({
         email: res.user.email,
         name: res.user.name,
         role: res.user.role,
-        plan: res.user.plan,
+        plan: res.organization?.plan || "starter",
+        orgId: res.user.orgId,
         imageUrl: res.user.imageUrl,
         isActive: res.user.isActive,
       };

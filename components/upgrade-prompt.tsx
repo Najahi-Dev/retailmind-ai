@@ -105,10 +105,10 @@ export function UpgradePrompt({
 
           <Button
             asChild
-            variant="outline"
-            className="w-full sm:w-auto border-slate-700 text-slate-300 hover:bg-slate-800 text-sm h-12 rounded-xl"
+            variant="ghost"
+            className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white hover:text-white border border-white/20 text-sm h-12 rounded-xl font-semibold transition-colors cursor-pointer"
           >
-            <Link href="/#pricing">View Plan Comparison</Link>
+            <Link href="/select-plan">View Plan Comparison</Link>
           </Button>
         </div>
       </div>

@@ -22,13 +22,13 @@ export function TrialBanner() {
   } | null>(null);
 
   useEffect(() => {
-    if (trialStatus && trialStatus.isTrialExpired) {
+    if (trialStatus && trialStatus.isTrialExpired && !trialStatus.isSubscribed) {
       router.replace("/select-plan");
     }
   }, [trialStatus, router]);
 
   useEffect(() => {
-    if (!trialStatus?.trialEndsAt) return;
+    if (!trialStatus?.trialEndsAt || trialStatus.isSubscribed) return;
 
     const updateTimer = () => {
       const now = Date.now();
@@ -44,7 +44,7 @@ export function TrialBanner() {
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [trialStatus?.trialEndsAt]);
+  }, [trialStatus?.trialEndsAt, trialStatus?.isSubscribed]);
 
   if (!trialStatus || trialStatus.isSubscribed) {
     return null;

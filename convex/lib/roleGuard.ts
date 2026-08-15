@@ -116,3 +116,30 @@ export async function getSupplierForUser(
 
   return null;
 }
+
+export async function requireWorkspacePlan(
+  ctx: GenericMutationCtx<any> | GenericQueryCtx<any>,
+  token?: string,
+  minPlanTier: "GROWTH" | "ENTERPRISE" = "GROWTH",
+  allowedRoles?: string[],
+  featureName?: string
+) {
+  const { user, orgId, organization } = await requireCallerOrg(ctx, token, allowedRoles);
+
+  const rawStatus = (organization.subscriptionStatus || "FREE").toUpperCase();
+  const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
+  const tier = (organization.planTier || (organization.plan ? organization.plan.toUpperCase() : "STARTER")) as string;
+
+  const meetsTier = minPlanTier === "GROWTH"
+    ? (tier === "GROWTH" || tier === "ENTERPRISE")
+    : tier === "ENTERPRISE";
+
+  if (!meetsTier || !isPaidActive) {
+    throw new Error(
+      `Forbidden: ${featureName || "This feature"} requires an active ${minPlanTier} workspace plan. Please contact your Workspace Administrator to upgrade.`
+    );
+  }
+
+  return { user, orgId, organization };
+}
+

@@ -65,10 +65,12 @@ export async function POST(req: Request) {
       customer: stripeCustomerId,
       line_items: [lineItem],
       subscription_data: {
-        trial_period_days: 14,
         metadata: {
           organization_id: org._id,
         },
+      },
+      metadata: {
+        organization_id: org._id,
       },
       success_url: `${appUrl}/dashboard?billing=success`,
       cancel_url: `${appUrl}/select-plan?billing=cancelled`,

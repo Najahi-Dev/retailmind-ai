@@ -16,6 +16,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ redirectUrl: "/sign-in" });
     }
 
+    if (user.role !== "admin") {
+      return NextResponse.json({ error: "Access Denied: Only Workspace Admins can initiate subscription billing." }, { status: 403 });
+    }
+
     const userId = user.id;
     const body = await req.json().catch(() => ({}));
     const priceId =
@@ -67,10 +71,17 @@ export async function POST(req: Request) {
               quantity: 1,
             },
       ],
+      subscription_data: {
+        metadata: {
+          userId: userId,
+          plan: plan,
+        },
+      },
       metadata: {
         userId: userId,
         plan: plan,
       },
+      client_reference_id: userId,
       success_url: `${origin}/dashboard?subscription=success&plan=${plan}`,
       cancel_url: `${origin}/#pricing`,
     });

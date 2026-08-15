@@ -35,6 +35,7 @@ import {
   TrendingDownIcon,
   TrendingUpIcon,
   ChartCandlestick,
+  CreditCardIcon,
 } from "lucide-react"
 import { useRole } from "@/hooks/useRole"
 import { useAuth } from "@/lib/auth-context"
@@ -207,11 +208,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "User Management",
       url: "/users",
       icon: <UsersIcon className="size-4" />,
-    },
-    {
-      title: "Database Backup",
-      url: "/settings/backup",
-      icon: <DatabaseIcon className="size-4 text-amber-500" />,
     },
   ];
 

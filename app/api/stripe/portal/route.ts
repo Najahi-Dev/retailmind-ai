@@ -16,6 +16,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (user.role !== "admin") {
+      return NextResponse.json({ error: "Access Denied: Only Workspace Admins can access billing portal." }, { status: 403 });
+    }
+
     const userId = user.id;
     const userEmail = user.email || `${userId}@user.retailmind.ai`;
 

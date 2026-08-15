@@ -137,13 +137,17 @@ export const getTrialStatus = query({
     const org = await ctx.db.get(user.orgId);
     if (!org) return null;
 
+    const statusUpper = (org.subscriptionStatus || "").toUpperCase();
+    const hasActiveStripeSub = Boolean(org.stripeSubscriptionId) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
+    const hasActiveSubscribedAt = Boolean(org.subscribedAt) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
+    const isSubscribed = statusUpper === "ACTIVE" || hasActiveStripeSub || hasActiveSubscribedAt;
+
     const createdAt = org.createdAt || Date.now();
     const trialDurationMs = 14 * 24 * 60 * 60 * 1000;
-    const trialEndsAt = createdAt + trialDurationMs;
+    const trialEndsAt = org.trialEndsAt || (createdAt + trialDurationMs);
     const now = Date.now();
     const msRemaining = trialEndsAt - now;
     const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
-    const isSubscribed = org.subscriptionStatus === "active";
     const isTrialExpired = !isSubscribed && msRemaining <= 0;
 
     return {
@@ -152,8 +156,12 @@ export const getTrialStatus = query({
       isTrialExpired,
       trialEndsAt,
       createdAt,
-      plan: org.plan,
+      plan: org.plan || "starter",
+      planTier: org.planTier || (org.plan ? org.plan.toUpperCase() : "STARTER"),
+      subscriptionStatus: org.subscriptionStatus || (isSubscribed ? "ACTIVE" : "FREE"),
       orgName: org.name,
+      stripeSubscriptionId: org.stripeSubscriptionId,
+      currentPeriodEnd: org.currentPeriodEnd,
     };
   },
 });
@@ -193,10 +201,12 @@ export const updateStripeCustomerIdInternal = mutation({
 
 export const updateSubscriptionFromStripeInternal = mutation({
   args: {
-    orgId: v.id("organizations"),
+    orgId: v.optional(v.id("organizations")),
+    stripeCustomerId: v.optional(v.string()),
     stripeSubscriptionId: v.optional(v.string()),
+    userId: v.optional(v.string()),
     stripePriceId: v.optional(v.string()),
-    planTier: v.union(v.literal("STARTER"), v.literal("GROWTH"), v.literal("ENTERPRISE")),
+    planTier: v.optional(v.union(v.literal("STARTER"), v.literal("GROWTH"), v.literal("ENTERPRISE"))),
     subscriptionStatus: v.union(
       v.literal("FREE"),
       v.literal("TRIALING"),
@@ -208,30 +218,91 @@ export const updateSubscriptionFromStripeInternal = mutation({
     currentPeriodEnd: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const legacyPlan = args.planTier.toLowerCase() as "starter" | "growth" | "enterprise";
+    let targetOrg: any = null;
 
-    await ctx.db.patch(args.orgId, {
-      stripeSubscriptionId: args.stripeSubscriptionId,
-      stripePriceId: args.stripePriceId,
-      planTier: args.planTier,
+    if (args.orgId) {
+      targetOrg = await ctx.db.get(args.orgId);
+    }
+
+    if (!targetOrg && args.stripeCustomerId) {
+      const allOrgs = await ctx.db.query("organizations").collect();
+      targetOrg = allOrgs.find((o) => o.stripeCustomerId === args.stripeCustomerId);
+    }
+
+    if (!targetOrg && args.stripeSubscriptionId) {
+      const allOrgs = await ctx.db.query("organizations").collect();
+      targetOrg = allOrgs.find((o) => o.stripeSubscriptionId === args.stripeSubscriptionId);
+    }
+
+    if (!targetOrg && args.userId) {
+      try {
+        const user: any = await ctx.db.get(args.userId as any);
+        if (user && "orgId" in user && user.orgId) {
+          targetOrg = await ctx.db.get(user.orgId);
+        }
+      } catch {
+        // Fallback search
+        const allUsers = await ctx.db.query("users").collect();
+        const matchedUser = allUsers.find((u) => u._id === args.userId || u.clerkId === args.userId || u.email === args.userId);
+        if (matchedUser?.orgId) {
+          targetOrg = await ctx.db.get(matchedUser.orgId);
+        }
+      }
+    }
+
+    if (!targetOrg) {
+      console.warn("updateSubscriptionFromStripeInternal: target organization could not be resolved.");
+      return { success: false, reason: "Organization not found" };
+    }
+
+    const tier = args.planTier || "GROWTH";
+    const legacyPlan = tier.toLowerCase() as "starter" | "growth" | "enterprise";
+
+    await ctx.db.patch(targetOrg._id, {
+      stripeSubscriptionId: args.stripeSubscriptionId ?? targetOrg.stripeSubscriptionId,
+      stripeCustomerId: args.stripeCustomerId ?? targetOrg.stripeCustomerId,
+      stripePriceId: args.stripePriceId ?? targetOrg.stripePriceId,
+      planTier: tier,
       plan: legacyPlan,
       subscriptionStatus: args.subscriptionStatus,
       trialEndsAt: args.trialEndsAt,
-      currentPeriodEnd: args.currentPeriodEnd,
-      subscribedAt: args.subscriptionStatus === "ACTIVE" ? Date.now() : undefined,
+      currentPeriodEnd: args.currentPeriodEnd ?? targetOrg.currentPeriodEnd,
+      subscribedAt: args.subscriptionStatus === "ACTIVE" ? (targetOrg.subscribedAt || Date.now()) : targetOrg.subscribedAt,
     });
+
+    return { success: true, orgId: targetOrg._id };
   },
 });
 
 export const downgradeSubscriptionInternal = mutation({
   args: {
-    orgId: v.id("organizations"),
+    orgId: v.optional(v.id("organizations")),
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.orgId, {
-      planTier: "STARTER",
-      plan: "starter",
-      subscriptionStatus: "CANCELED",
-    });
+    let targetOrg: any = null;
+
+    if (args.orgId) {
+      targetOrg = await ctx.db.get(args.orgId);
+    }
+
+    if (!targetOrg && args.stripeCustomerId) {
+      const allOrgs = await ctx.db.query("organizations").collect();
+      targetOrg = allOrgs.find((o) => o.stripeCustomerId === args.stripeCustomerId);
+    }
+
+    if (!targetOrg && args.stripeSubscriptionId) {
+      const allOrgs = await ctx.db.query("organizations").collect();
+      targetOrg = allOrgs.find((o) => o.stripeSubscriptionId === args.stripeSubscriptionId);
+    }
+
+    if (targetOrg) {
+      await ctx.db.patch(targetOrg._id, {
+        planTier: "STARTER",
+        plan: "starter",
+        subscriptionStatus: "CANCELED",
+      });
+    }
   },
 });

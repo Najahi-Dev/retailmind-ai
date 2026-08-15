@@ -30,7 +30,6 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
     email: "",
     phone: "",
     role:  "staff" as "admin" | "manager" | "staff" | "supplier",
-    plan:  "starter" as "starter" | "growth" | "enterprise",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,10 +45,9 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
         email: form.email,
         phone: form.phone || undefined,
         role:  form.role,
-        plan:  form.plan,
       });
       toast.success(`User ${form.name} created successfully!`);
-      setForm({ name: "", email: "", phone: "", role: "staff", plan: "starter" });
+      setForm({ name: "", email: "", phone: "", role: "staff" });
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create user");
@@ -67,7 +65,7 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
             Add New User Account
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Register a new system user, assign security role, and set access subscription level
+            Register a new system user and assign their workspace role permissions.
           </DialogDescription>
         </DialogHeader>
 
@@ -110,51 +108,35 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
-              <Select value={form.role} onValueChange={(val) => set("role", val)}>
-                <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">
-                    <div className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400">
-                      <CrownIcon className="w-3.5 h-3.5" /> Administrator
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="manager">
-                    <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
-                      <ShieldCheckIcon className="w-3.5 h-3.5" /> Store Manager
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="staff">
-                    <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
-                      <UserCheckIcon className="w-3.5 h-3.5" /> Inventory Staff
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="supplier">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400">
-                      <Building2Icon className="w-3.5 h-3.5" /> Vendor Supplier
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Subscription Plan</Label>
-              <Select value={form.plan} onValueChange={(val) => set("plan", val)}>
-                <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="starter">Starter Plan</SelectItem>
-                  <SelectItem value="growth">Growth Plan</SelectItem>
-                  <SelectItem value="enterprise">Enterprise Tier</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
+            <Select value={form.role} onValueChange={(val) => set("role", val)}>
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">
+                  <div className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400">
+                    <CrownIcon className="w-3.5 h-3.5" /> Administrator
+                  </div>
+                </SelectItem>
+                <SelectItem value="manager">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                    <ShieldCheckIcon className="w-3.5 h-3.5" /> Store Manager
+                  </div>
+                </SelectItem>
+                <SelectItem value="staff">
+                  <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+                    <UserCheckIcon className="w-3.5 h-3.5" /> Inventory Staff
+                  </div>
+                </SelectItem>
+                <SelectItem value="supplier">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400">
+                    <Building2Icon className="w-3.5 h-3.5" /> Vendor Supplier
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

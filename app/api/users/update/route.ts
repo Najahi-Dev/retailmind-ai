@@ -35,7 +35,6 @@ export async function POST(req: Request) {
     }
 
     const finalRole = isAdminOrManager ? role : existingUser.role;
-    const finalPlan = isAdminOrManager ? plan : (existingUser.plan ?? "starter");
     const finalIsActive = isAdminOrManager ? isActive : existingUser.isActive;
 
     // Update Convex Database Document
@@ -44,7 +43,6 @@ export async function POST(req: Request) {
       name,
       imageUrl: imageUrl ?? existingUser.imageUrl,
       role: finalRole,
-      plan: finalPlan,
       isActive: finalIsActive,
     });
 

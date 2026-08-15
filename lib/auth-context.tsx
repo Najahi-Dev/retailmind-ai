@@ -13,6 +13,9 @@ export interface AuthUser {
   name: string;
   role: Role;
   plan?: string;
+  planTier?: string;
+  subscriptionStatus?: string;
+  orgId?: string;
   imageUrl?: string;
   isActive?: boolean;
 }
@@ -79,6 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: liveUserRecord.name,
           role: liveUserRecord.role as Role,
           plan: liveUserRecord.plan,
+          planTier: liveUserRecord.planTier,
+          subscriptionStatus: liveUserRecord.subscriptionStatus,
+          orgId: liveUserRecord.orgId,
           imageUrl: liveUserRecord.imageUrl,
           isActive: liveUserRecord.isActive,
         });
@@ -91,16 +97,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const sessionUser = await validateSessionAction({ token });
       if (sessionUser) {
-        setCurrentUser({
+        setCurrentUser((prev) => ({
+          ...(prev || {}),
           id: sessionUser.id,
           _id: sessionUser._id,
           email: sessionUser.email,
           name: sessionUser.name,
           role: sessionUser.role as Role,
-          plan: sessionUser.plan,
           imageUrl: sessionUser.imageUrl,
           isActive: sessionUser.isActive,
-        });
+        }));
       }
     } catch (err) {
       console.error("Failed to refresh session user", err);
@@ -125,16 +131,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(null);
           setCurrentUser(null);
         } else {
-          setCurrentUser({
+          setCurrentUser((prev) => ({
+            ...(prev || {}),
             id: sessionUser.id,
             _id: sessionUser._id,
             email: sessionUser.email,
             name: sessionUser.name,
             role: sessionUser.role as Role,
-            plan: sessionUser.plan,
             imageUrl: sessionUser.imageUrl,
             isActive: sessionUser.isActive,
-          });
+          }));
         }
       })
       .catch(() => {
@@ -237,6 +243,15 @@ export function useRole() {
   const canApproveReorders = isAdmin || isManager;
   const canManageUsers = isAdmin || isManager;
 
+  const workspacePlan = currentUser?.plan || "starter";
+  const planTier = currentUser?.planTier || (currentUser?.plan ? currentUser.plan.toUpperCase() : "STARTER");
+  const subscriptionStatus = currentUser?.subscriptionStatus || "FREE";
+  const rawStatus = subscriptionStatus.toUpperCase();
+  const isSubscribed = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
+
+  const hasGrowthAccess = (planTier === "GROWTH" || planTier === "ENTERPRISE") && isSubscribed;
+  const hasEnterpriseAccess = planTier === "ENTERPRISE" && isSubscribed;
+
   return {
     user: currentUser,
     role,
@@ -248,5 +263,11 @@ export function useRole() {
     canViewFinancials,
     canApproveReorders,
     canManageUsers,
+    workspacePlan,
+    planTier,
+    subscriptionStatus,
+    isSubscribed,
+    hasGrowthAccess,
+    hasEnterpriseAccess,
   };
 }

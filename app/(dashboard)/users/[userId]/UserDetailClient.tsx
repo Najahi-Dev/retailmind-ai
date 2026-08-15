@@ -123,7 +123,6 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
   const [imageUrl, setImageUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [userRole, setUserRole] = useState<"admin" | "manager" | "staff" | "supplier">("staff");
-  const [plan, setPlan] = useState<"starter" | "growth" | "enterprise">("starter");
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
@@ -131,7 +130,6 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
       setName(user.name);
       setImageUrl(user.imageUrl ?? "");
       setUserRole(user.role as any);
-      setPlan((user.plan as any) ?? "starter");
       setIsActive(user.isActive);
     }
   }, [user]);
@@ -159,8 +157,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
 
       if (res.imageUrl) {
         setImageUrl(res.imageUrl);
-        await refreshUser();
-        toast.success("Profile avatar uploaded and updated successfully!");
+        toast.success("Avatar Image Uploaded Successfully");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload image");
@@ -169,7 +166,8 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!user) return;
     if (!name.trim()) {
       toast.error("User name cannot be empty");
@@ -186,7 +184,6 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
           name,
           imageUrl,
           role: userRole,
-          plan,
           isActive,
         }),
       });
@@ -303,7 +300,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
                   </Badge>
 
                   {(() => {
-                    const planStyle = PLAN_CONFIG[plan] ?? PLAN_CONFIG.starter;
+                    const planStyle = PLAN_CONFIG[(user.plan as any) || "starter"] ?? PLAN_CONFIG.starter;
                     const PlanIcon = planStyle.Icon;
                     return (
                       <Badge className={`text-xs font-bold px-2.5 py-1 inline-flex items-center justify-center gap-1.5 rounded-full border ${planStyle.bg} shadow-xs leading-none`}>
@@ -449,19 +446,20 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
                 </Select>
               </div>
 
-              {/* Subscription Plan */}
+              {/* Workspace Inherited Plan */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Subscription Tier</Label>
-                <Select value={plan} onValueChange={(val: any) => setPlan(val)} disabled={!canManageSystemRole}>
-                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="starter">Starter Plan</SelectItem>
-                    <SelectItem value="growth">Growth Plan</SelectItem>
-                    <SelectItem value="enterprise">Enterprise Plan</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Workspace Subscription</Label>
+                <div className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <SparklesIcon className="size-4 text-indigo-500" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white capitalize">
+                      {user.plan || "Starter"} Plan
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Inherited
+                  </Badge>
+                </div>
               </div>
             </div>
 

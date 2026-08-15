@@ -212,7 +212,7 @@ export default function SelectPlanPage() {
               <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300 font-medium">
                 <li className="flex items-center gap-2.5">
                   <CheckIcon className="size-4 text-emerald-500 shrink-0" />
-                  <span>Up to 500 Active SKUs</span>
+                  <span>Up to 100 Active SKUs</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <CheckIcon className="size-4 text-emerald-500 shrink-0" />

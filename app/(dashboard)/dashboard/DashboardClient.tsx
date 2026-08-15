@@ -50,7 +50,7 @@ export function DashboardClient() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("subscription") === "success") {
+      if (params.get("subscription") === "success" || params.get("billing") === "success") {
         const planName = params.get("plan") || "Growth";
         toast.success(`🎉 Subscription Activated! Welcome to RetailMind AI ${planName.toUpperCase()} plan. All features unlocked!`, {
           duration: 7000,

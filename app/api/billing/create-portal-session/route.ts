@@ -20,6 +20,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Organization record not found." }, { status: 404 });
     }
 
+    if (org.userRole !== "admin") {
+      return NextResponse.json({ error: "Access Denied: Only Workspace Admins can access billing management." }, { status: 403 });
+    }
+
     if (!org.stripeCustomerId) {
       return NextResponse.json({ error: "No active Stripe customer account associated with this workspace." }, { status: 400 });
     }

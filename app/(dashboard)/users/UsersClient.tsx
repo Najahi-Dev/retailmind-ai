@@ -148,32 +148,11 @@ export default function UsersClient({ role: currentRole }: Props) {
         name: userRecord.name,
         imageUrl: userRecord.imageUrl,
         role: userRecord.role,
-        plan: (userRecord.plan as any) ?? "starter",
         isActive: !currentStatus,
       });
       toast.success("Account Status Updated Successfully");
     } catch (err: any) {
       toast.error(err?.message || "Failed to update status");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handlePlanChange = async (userRecord: any, newPlan: string) => {
-    setUpdatingId(userRecord._id);
-    try {
-      await updateUserFullDetail({
-        token: token ?? undefined,
-        userId: userRecord._id,
-        name: userRecord.name,
-        imageUrl: userRecord.imageUrl,
-        role: userRecord.role,
-        plan: newPlan as any,
-        isActive: userRecord.isActive,
-      });
-      toast.success("Subscription Plan Updated Successfully");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update plan");
     } finally {
       setUpdatingId(null);
     }
@@ -380,7 +359,7 @@ export default function UsersClient({ role: currentRole }: Props) {
                   <tr>
                     <th className="px-5 py-3.5 font-bold">User Identity</th>
                     <th className="px-5 py-3.5 font-bold">System Role</th>
-                    <th className="px-5 py-3.5 font-bold hidden md:table-cell">Subscription Plan</th>
+                    <th className="px-5 py-3.5 font-bold hidden md:table-cell">Workspace Plan</th>
                     <th className="px-5 py-3.5 font-bold hidden lg:table-cell">Registered Date</th>
                     <th className="px-5 py-3.5 font-bold">Account Status</th>
                     <th className="px-5 py-3.5 font-bold text-right">RBAC Controls</th>
@@ -437,22 +416,12 @@ export default function UsersClient({ role: currentRole }: Props) {
                           </Badge>
                         </td>
 
-                        {/* Subscription Plan */}
+                        {/* Workspace Inherited Plan */}
                         <td className="px-5 py-3.5 hidden md:table-cell">
-                          <Select
-                            value={u.plan ?? "starter"}
-                            onValueChange={(val) => handlePlanChange(u, val)}
-                            disabled={isUpdating}
-                          >
-                            <SelectTrigger className="w-32 h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 capitalize">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="starter">Starter</SelectItem>
-                              <SelectItem value="growth">Growth</SelectItem>
-                              <SelectItem value="enterprise">Enterprise</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1 inline-flex items-center gap-1.5 border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 capitalize">
+                            <SparklesIcon className="w-3 h-3 text-indigo-500" />
+                            <span>{org?.plan || u.plan || "Starter"} (Workspace)</span>
+                          </Badge>
                         </td>
 
                         {/* Registered Date */}

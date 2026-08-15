@@ -20,12 +20,26 @@ export const getCurrentUserRecord = query({
     const user = await ctx.db.get(session.userId);
     if (!user) return null;
 
+    let plan = "starter";
+    let planTier = "STARTER";
+    let subscriptionStatus = "FREE";
+    if (user.orgId) {
+      const org = await ctx.db.get(user.orgId);
+      if (org) {
+        plan = org.plan || "starter";
+        planTier = org.planTier || (org.plan ? org.plan.toUpperCase() : "STARTER");
+        subscriptionStatus = org.subscriptionStatus || "FREE";
+      }
+    }
+
     return {
       _id: user._id,
       email: user.email,
       name: user.name,
       role: user.role,
-      plan: user.plan,
+      plan,
+      planTier,
+      subscriptionStatus,
       orgId: user.orgId,
       imageUrl: user.imageUrl,
       isActive: user.isActive,
@@ -54,6 +68,10 @@ export const getUsers = query({
       return [];
     }
 
+    const org = caller?.orgId ? await ctx.db.get(caller.orgId) : null;
+    const orgPlan = org?.plan || "starter";
+    const orgPlanTier = org?.planTier || (org?.plan ? org.plan.toUpperCase() : "STARTER");
+
     if (args.role && args.role !== "all") {
       users = users.filter((u) => u.role === args.role);
     }
@@ -63,7 +81,13 @@ export const getUsers = query({
       users = users.filter((u) => u.isActive === isActive);
     }
 
-    return users.sort((a, b) => b.createdAt - a.createdAt);
+    return users
+      .map((u) => ({
+        ...u,
+        plan: orgPlan,
+        planTier: orgPlanTier,
+      }))
+      .sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
@@ -243,23 +267,16 @@ export const toggleUserStatus = mutation({
   },
 });
 
-// Update Subscription Plan
+// Update Subscription Plan (Maintained for backward compatibility, now explains workspace inheritance)
 export const updateUserPlan = mutation({
   args: {
     token: v.optional(v.string()),
     userId: v.id("users"),
-    plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
+    plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
   },
   handler: async (ctx, args) => {
-    if (args.token) {
-      const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
-      const targetUser = await ctx.db.get(args.userId);
-      if (targetUser && orgId && targetUser.orgId && targetUser.orgId !== orgId) {
-        throw new Error("Access Denied: Cannot modify user belonging to another organization.");
-      }
-    }
-
-    await ctx.db.patch(args.userId, { plan: args.plan });
+    // Plans are now organization-wide. Individual user plans are inherited.
+    return { success: true, message: "Subscription plans are managed at the workspace level." };
   },
 });
 
@@ -308,7 +325,6 @@ export const createUser = mutation({
       passwordHash,
       role: args.role,
       isActive: true,
-      plan: args.plan ?? "starter",
       createdAt: Date.now(),
     });
 
@@ -321,7 +337,7 @@ export const createUser = mutation({
   },
 });
 
-// Get user detail by ID
+// Get user detail by ID (inherits organization workspace plan)
 export const getUserById = query({
   args: {
     userId: v.id("users"),
@@ -344,7 +360,21 @@ export const getUserById = query({
       }
     }
 
-    return targetUser;
+    let orgPlan = "starter";
+    let orgPlanTier = "STARTER";
+    if (targetUser.orgId) {
+      const org = await ctx.db.get(targetUser.orgId);
+      if (org) {
+        orgPlan = org.plan || "starter";
+        orgPlanTier = org.planTier || (org.plan ? org.plan.toUpperCase() : "STARTER");
+      }
+    }
+
+    return {
+      ...targetUser,
+      plan: orgPlan,
+      planTier: orgPlanTier,
+    };
   },
 });
 
@@ -363,7 +393,7 @@ export const updateUserFullDetail = mutation({
       v.literal("supplier"),
       v.literal("pending")
     ),
-    plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
+    plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -383,7 +413,6 @@ export const updateUserFullDetail = mutation({
       phone: args.phone ?? user.phone,
       imageUrl: args.imageUrl ?? user.imageUrl,
       role: args.role,
-      plan: args.plan,
       isActive: args.isActive,
     });
 

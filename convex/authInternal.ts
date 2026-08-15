@@ -47,7 +47,9 @@ export const getSessionByToken = query({
     const user = await ctx.db.get(session.userId);
     if (!user) return null;
 
-    return { session, user };
+    const organization = user.orgId ? await ctx.db.get(user.orgId) : null;
+
+    return { session, user, organization };
   },
 });
 
