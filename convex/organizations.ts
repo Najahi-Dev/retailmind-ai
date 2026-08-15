@@ -27,7 +27,11 @@ export const getUserOrganizations = query({
     if (!args.token) return [];
     const user = await requireRole(ctx, args.token);
     const orgs = await ctx.db.query("organizations").collect();
-    return orgs.map((org) => ({
+    
+    // Strict isolation: return ONLY the workspace(s) owned by or assigned to the current user
+    const userOrgs = orgs.filter((org) => org._id === user.orgId || org.ownerId === user._id);
+
+    return userOrgs.map((org) => ({
       ...org,
       isCurrent: user.orgId === org._id,
     }));

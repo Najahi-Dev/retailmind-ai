@@ -122,6 +122,7 @@ export default function UsersClient({ role: currentRole }: Props) {
     setUpdatingId(userRecord._id);
     try {
       await updateUserFullDetail({
+        token: token ?? undefined,
         userId: userRecord._id,
         name: userRecord.name,
         imageUrl: userRecord.imageUrl,
@@ -141,6 +142,7 @@ export default function UsersClient({ role: currentRole }: Props) {
     setUpdatingId(userRecord._id);
     try {
       await updateUserFullDetail({
+        token: token ?? undefined,
         userId: userRecord._id,
         name: userRecord.name,
         imageUrl: userRecord.imageUrl,
@@ -160,6 +162,7 @@ export default function UsersClient({ role: currentRole }: Props) {
     setUpdatingId(userRecord._id);
     try {
       await updateUserFullDetail({
+        token: token ?? undefined,
         userId: userRecord._id,
         name: userRecord.name,
         imageUrl: userRecord.imageUrl,

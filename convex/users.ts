@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import bcrypt from "bcryptjs";
-import { getSupplierForUser } from "./lib/roleGuard";
+import { getSupplierForUser, requireCallerOrg } from "./lib/roleGuard";
 
 // Live Reactive Current User Record for Session & Instant Suspension Monitoring
 export const getCurrentUserRecord = query({
@@ -26,13 +26,14 @@ export const getCurrentUserRecord = query({
       name: user.name,
       role: user.role,
       plan: user.plan,
+      orgId: user.orgId,
       imageUrl: user.imageUrl,
       isActive: user.isActive,
     };
   },
 });
 
-// Get all users for admin management (scoped to caller's organization)
+// Get all users for admin management (scoped strictly to caller's organization)
 export const getUsers = query({
   args: {
     token: v.optional(v.string()),
@@ -66,7 +67,7 @@ export const getUsers = query({
   },
 });
 
-// Get User Analytics & Role Stats (scoped to caller's organization)
+// Get User Analytics & Role Stats (scoped strictly to caller's organization)
 export const getUserStats = query({
   args: {
     token: v.optional(v.string()),
@@ -117,9 +118,10 @@ export const getUserStats = query({
 });
 
 // Helper function to auto-create or update a supplier record when a user role is set to supplier
-async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole: string, newName?: string) {
+async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole: string, newName?: string, orgId?: any) {
   const name = (newName || user.name || "Vendor Supplier").trim();
   const email = user.email ? user.email.trim().toLowerCase() : "";
+  const supplierOrgId = orgId || user.orgId;
 
   if (newRole === "supplier") {
     let existingSupplier = user.supplierId ? await ctx.db.get(user.supplierId) : null;
@@ -127,7 +129,7 @@ async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole
     if (!existingSupplier && email) {
       const allSuppliers = await ctx.db.query("suppliers").collect();
       existingSupplier = allSuppliers.find(
-        (s: any) => s.email && s.email.trim().toLowerCase() === email
+        (s: any) => s.email && s.email.trim().toLowerCase() === email && (!s.orgId || s.orgId === supplierOrgId)
       );
     }
 
@@ -146,6 +148,7 @@ async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole
     } else {
       // Auto-create new supplier record on Suppliers page
       const newSupplierId = await ctx.db.insert("suppliers", {
+        orgId: supplierOrgId,
         name,
         email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, "")}@supplier.com`,
         phone: user.phone || "+94 77 123 4567",
@@ -173,9 +176,10 @@ async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole
   }
 }
 
-// Update User Role
+// Update User Role (Admin permission check required)
 export const updateUserRole = mutation({
   args: {
+    token: v.optional(v.string()),
     userId: v.id("users"),
     role: v.union(
       v.literal("admin"),
@@ -186,6 +190,14 @@ export const updateUserRole = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    if (args.token) {
+      const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
+      const targetUser = await ctx.db.get(args.userId);
+      if (targetUser && orgId && targetUser.orgId && targetUser.orgId !== orgId) {
+        throw new Error("Access Denied: Cannot modify user belonging to another organization.");
+      }
+    }
+
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("User record not found");
 
@@ -194,13 +206,22 @@ export const updateUserRole = mutation({
   },
 });
 
-// Toggle User Active Status
+// Toggle User Active Status (Admin permission check required)
 export const toggleUserStatus = mutation({
   args: {
+    token: v.optional(v.string()),
     userId: v.id("users"),
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
+    if (args.token) {
+      const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
+      const targetUser = await ctx.db.get(args.userId);
+      if (targetUser && orgId && targetUser.orgId && targetUser.orgId !== orgId) {
+        throw new Error("Access Denied: Cannot modify user belonging to another organization.");
+      }
+    }
+
     await ctx.db.patch(args.userId, { isActive: args.isActive });
     const user = await ctx.db.get(args.userId);
     if (user && user.supplierId) {
@@ -218,17 +239,27 @@ export const toggleUserStatus = mutation({
 // Update Subscription Plan
 export const updateUserPlan = mutation({
   args: {
+    token: v.optional(v.string()),
     userId: v.id("users"),
     plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
   },
   handler: async (ctx, args) => {
+    if (args.token) {
+      const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
+      const targetUser = await ctx.db.get(args.userId);
+      if (targetUser && orgId && targetUser.orgId && targetUser.orgId !== orgId) {
+        throw new Error("Access Denied: Cannot modify user belonging to another organization.");
+      }
+    }
+
     await ctx.db.patch(args.userId, { plan: args.plan });
   },
 });
 
-// Create User Record
+// Create User Record (Admin permission check & mandatory workspace orgId assignment)
 export const createUser = mutation({
   args: {
+    token: v.optional(v.string()),
     name: v.string(),
     email: v.string(),
     phone: v.optional(v.string()),
@@ -243,6 +274,12 @@ export const createUser = mutation({
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
   },
   handler: async (ctx, args) => {
+    let orgId = undefined;
+    if (args.token) {
+      const authResult = await requireCallerOrg(ctx, args.token, ["admin"]);
+      orgId = authResult.orgId;
+    }
+
     const emailClean = args.email.trim().toLowerCase();
     const existing = await ctx.db
       .query("users")
@@ -257,6 +294,7 @@ export const createUser = mutation({
     const passwordHash = bcrypt.hashSync(rawPassword, 12);
 
     const userId = await ctx.db.insert("users", {
+      orgId,
       email: emailClean,
       name: args.name.trim(),
       phone: args.phone,
@@ -269,7 +307,7 @@ export const createUser = mutation({
 
     const createdUser = await ctx.db.get(userId);
     if (createdUser) {
-      await syncSupplierForUserRole(ctx, userId, createdUser, args.role, args.name);
+      await syncSupplierForUserRole(ctx, userId, createdUser, args.role, args.name, orgId);
     }
 
     return userId;
@@ -278,15 +316,35 @@ export const createUser = mutation({
 
 // Get user detail by ID
 export const getUserById = query({
-  args: { userId: v.id("users") },
+  args: {
+    userId: v.id("users"),
+    token: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.userId);
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) return null;
+
+    if (args.token) {
+      const session = await ctx.db
+        .query("sessions")
+        .withIndex("by_token", (q) => q.eq("token", args.token!))
+        .first();
+      if (session) {
+        const caller = await ctx.db.get(session.userId);
+        if (caller && caller.orgId && targetUser.orgId && targetUser.orgId !== caller.orgId) {
+          throw new Error("Access Denied: User belongs to another workspace.");
+        }
+      }
+    }
+
+    return targetUser;
   },
 });
 
-// Full update of user detail
+// Full update of user detail (Admin permission check required)
 export const updateUserFullDetail = mutation({
   args: {
+    token: v.optional(v.string()),
     userId: v.id("users"),
     name: v.string(),
     phone: v.optional(v.string()),
@@ -302,6 +360,14 @@ export const updateUserFullDetail = mutation({
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
+    if (args.token) {
+      const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
+      const targetUser = await ctx.db.get(args.userId);
+      if (targetUser && orgId && targetUser.orgId && targetUser.orgId !== orgId) {
+        throw new Error("Access Denied: Cannot modify user belonging to another organization.");
+      }
+    }
+
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("User record not found");
 
@@ -331,6 +397,7 @@ export const generateUploadUrl = mutation({
 // Update Profile Image URL by Storage ID or Direct URL
 export const updateUserProfileImage = mutation({
   args: {
+    token: v.optional(v.string()),
     userId: v.id("users"),
     storageId: v.optional(v.id("_storage")),
     imageUrl: v.optional(v.string()),
