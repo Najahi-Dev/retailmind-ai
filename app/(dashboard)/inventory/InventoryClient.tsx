@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -155,6 +156,12 @@ export default function InventoryClient({ role }: Props) {
   const handleExportCSV = () => {
     if (!filtered.length) return;
 
+    const escapeCSV = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val);
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
     const headers = [
       "SKU",
       "Product Name",
@@ -169,28 +176,32 @@ export default function InventoryClient({ role }: Props) {
       ...(canViewFinancials ? ["Stock Value (LKR)"] : []),
     ];
 
-    const rows = filtered.map((item) => [
-      item!.sku,
-      item!.name,
-      item!.category,
-      item!.location,
-      item!.onHand,
-      item!.available,
-      item!.reserved,
-      item!.reorderPoint,
-      item!.safetyStock,
-      item!.status,
-      ...(canViewFinancials ? [item!.stockValue.toFixed(2)] : []),
-    ]);
+    const rows = filtered.map((item) => {
+      const productName = item!.name ?? (item as any)!.productName ?? "Unnamed Product";
+      return [
+        escapeCSV(item!.sku ?? ""),
+        escapeCSV(productName),
+        escapeCSV(item!.category ?? "Uncategorized"),
+        escapeCSV(item!.location ?? "Main Warehouse"),
+        escapeCSV(item!.onHand ?? 0),
+        escapeCSV(item!.available ?? 0),
+        escapeCSV(item!.reserved ?? 0),
+        escapeCSV(item!.reorderPoint ?? 0),
+        escapeCSV(item!.safetyStock ?? 0),
+        escapeCSV(item!.status ?? "healthy"),
+        ...(canViewFinancials ? [escapeCSV(item!.stockValue ? item!.stockValue.toFixed(2) : "0.00")] : []),
+      ];
+    });
 
-    const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    const csvContent = [headers.map(escapeCSV).join(","), ...rows.map((row) => row.join(","))].join("\r\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `inventory-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `inventory-export-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success("Inventory data exported successfully to CSV!");
   };
 
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,7 +260,7 @@ export default function InventoryClient({ role }: Props) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push("/inventory/add")}
+              onClick={() => router.push("/inventory/stock-in")}
               className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white rounded-xl"
             >
               <Boxes className="w-4 h-4 mr-1.5 text-emerald-400" /> Stock In

@@ -191,8 +191,15 @@ export default function PurchaseOrdersClient({ role }: Props) {
           </div>
           <Button
             size="sm"
-            onClick={() => setStatusFilter("sent")}
-            className="rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white border-0 shrink-0"
+            onClick={() => {
+              const firstSentPo = orders?.find((po) => po.status === "sent");
+              if (firstSentPo) {
+                router.push(`/reorders/purchase-orders/${firstSentPo._id}`);
+              } else {
+                setStatusFilter("sent");
+              }
+            }}
+            className="rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white border-0 shrink-0 shadow-md"
           >
             Review Placed Orders ({stats.sent})
           </Button>

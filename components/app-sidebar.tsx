@@ -33,6 +33,7 @@ import {
   SparklesIcon,
   TrendingDown,
   TrendingDownIcon,
+  TrendingUpIcon,
   ChartCandlestick,
 } from "lucide-react"
 import { useRole } from "@/hooks/useRole"
@@ -75,6 +76,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Inventory",
       url:   "/inventory",
       icon:  <PackageIcon className="size-4" />,
+    },
+    {
+      title: "Stock-In",
+      url:   "/inventory/stock-in",
+      icon:  <TrendingUpIcon className="size-4" />,
     },
     {
       title: "Stock-Out",
