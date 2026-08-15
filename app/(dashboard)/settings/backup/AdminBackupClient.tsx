@@ -52,11 +52,14 @@ interface Props {
   userEmail: string;
 }
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function AdminBackupClient({ role, userEmail }: Props) {
   const router = useRouter();
+  const { token } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const stats = useQuery(api.adminBackup.getSystemDataStats);
-  const backupData = useQuery(api.adminBackup.exportFullDatabaseBackup);
+  const stats = useQuery(api.adminBackup.getSystemDataStats, { token: token ?? undefined });
+  const exportFullBackupMutation = useMutation(api.adminBackup.exportFullDatabaseBackup);
   const wipeDataMutation = useMutation(api.adminBackup.wipeOperationalData);
   const wipeBatchChunkMutation = useMutation(api.adminBackup.wipeBatchChunk);
   const restoreMutation = useMutation(api.adminBackup.restoreFullDatabaseBackup);
@@ -75,16 +78,16 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
   const REQUIRED_CONFIRMATION = "DELETE PERMANENTLY ALL DATA";
 
   // ── 1. HANDLE DOWNLOAD JSON BACKUP ──
-  const handleDownloadBackup = () => {
-    if (!backupData) {
-      toast.error("Backup dataset is preparing. Please try again in a moment.");
-      return;
-    }
-
+  const handleDownloadBackup = async () => {
     try {
       setDownloading(true);
-      const jsonString = JSON.stringify(backupData, null, 2);
-      const blob = new Blob([jsonString], { type: "application/json" });
+      const res = await exportFullBackupMutation({ token: token ?? undefined });
+      if (!res || !res.jsonString) {
+        toast.error("Failed to fetch backup content.");
+        return;
+      }
+
+      const blob = new Blob([res.jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
 
       const timestamp = new Date()
@@ -101,10 +104,10 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success("Database backup downloaded successfully!");
-    } catch (err) {
+      toast.success(`Database backup downloaded successfully! (${res.recordCount} records)`);
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to generate backup JSON file.");
+      toast.error(err?.message || "Failed to generate backup JSON file.");
     } finally {
       setDownloading(false);
     }
@@ -165,7 +168,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
 
     setImporting(true);
     try {
-      const res = await restoreMutation({ backupJsonString: importJsonString });
+      const res = await restoreMutation({ token: token ?? undefined, backupJsonString: importJsonString });
       toast.success(res.message);
 
       // Reset import state
@@ -197,6 +200,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
       while (hasMore && iterations < 50) {
         iterations++;
         const res = await wipeBatchChunkMutation({
+          token: token ?? undefined,
           confirmationCode: confirmationInput,
         });
         totalDeleted += res.deletedCount;
@@ -361,7 +365,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
           <div className="p-6 pt-0">
             <Button
               onClick={handleDownloadBackup}
-              disabled={downloading || !backupData}
+              disabled={downloading}
               className="w-full h-11 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-md transition-all gap-2"
             >
               {downloading ? (

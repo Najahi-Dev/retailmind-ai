@@ -10,42 +10,87 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   CheckCircle2Icon,
   CheckIcon,
   SparklesIcon,
   ArrowRightIcon,
   ShieldCheckIcon,
-  ZapIcon,
-  Building2Icon,
+  CreditCardIcon,
+  LockIcon,
   Loader2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export default function SelectPlanPage() {
   const router = useRouter();
   const { currentUser, token } = useAuth();
+  const activateSub = useMutation(api.organizations.activateSubscription);
 
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<string | null>(null);
 
-  const handleSelectPlan = async (planKey: string) => {
-    setLoadingPlan(planKey);
-    try {
-      if (planKey === "growth" || planKey === "starter") {
-        // Trigger checkout or activate trial
-        toast.success(`Activated 14-day free trial on the ${planKey.toUpperCase()} plan!`);
-        router.replace("/dashboard");
-      } else if (planKey === "enterprise") {
-        window.location.href = "mailto:sales@retailmind.ai?subject=RetailMind%20Enterprise%20Plan%20Inquiry";
-      } else {
-        router.replace("/dashboard");
-      }
-    } catch (err: any) {
-      toast.error("Failed to select plan. Proceeding to dashboard...");
-      router.replace("/dashboard");
-    } finally {
-      setLoadingPlan(null);
+  // Card Payment Form State
+  const [cardholderName, setCardholderName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvc, setCvc] = useState("");
+  const [paying, setPaying] = useState(false);
+
+  const handleOpenPaymentModal = (planKey: string) => {
+    if (planKey === "enterprise") {
+      window.location.href = "mailto:sales@retailmind.ai?subject=RetailMind%20Enterprise%20Plan%20Inquiry";
+      return;
     }
+    setSelectedPlanForPayment(planKey);
+  };
+
+  const handleExecuteCardPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlanForPayment) return;
+
+    if (!cardholderName.trim() || !cardNumber.trim() || !expiryDate.trim() || !cvc.trim()) {
+      toast.error("Please fill in all credit card details to complete payment.");
+      return;
+    }
+
+    setPaying(true);
+    try {
+      // Process subscription activation mutation
+      await activateSub({
+        token: token ?? undefined,
+        plan: selectedPlanForPayment as any,
+      });
+
+      toast.success(`Payment Successful! Subscribed to ${selectedPlanForPayment.toUpperCase()} Plan.`);
+      setSelectedPlanForPayment(null);
+      router.replace("/dashboard");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to process card payment.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const getPlanPrice = (planKey: string) => {
+    if (planKey === "starter") {
+      return billingCycle === "annual" ? "LKR 1,990 / mo" : "LKR 2,490 / mo";
+    }
+    if (planKey === "growth") {
+      return billingCycle === "annual" ? "LKR 3,900 / mo" : "LKR 4,900 / mo";
+    }
+    return "Custom";
   };
 
   return (
@@ -68,16 +113,16 @@ export default function SelectPlanPage() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-500/25 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 shadow-sm">
             <SparklesIcon className="size-3.5" />
             <span className="text-[11px] font-extrabold uppercase tracking-[0.2em]">
-              STEP 2 OF 2: CHOOSE YOUR PLAN
+              STEP 2 OF 2: CHOOSE YOUR PLAN & PAY
             </span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Select a plan for your workspace
+            Subscribe to Unlock Workspace
           </h1>
 
           <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base font-medium">
-            All plans include a <span className="font-bold text-indigo-600 dark:text-indigo-400">14-day free trial</span>. No credit card required to start.
+            Select a plan and enter your card details to grant instant access to your workspace.
           </p>
 
           {/* Billing Cycle Toggle */}
@@ -157,11 +202,10 @@ export default function SelectPlanPage() {
 
               <Button
                 variant="outline"
-                disabled={loadingPlan === "starter"}
-                onClick={() => handleSelectPlan("starter")}
-                className="w-full h-12 rounded-xl border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs cursor-pointer"
+                onClick={() => handleOpenPaymentModal("starter")}
+                className="w-full h-12 rounded-xl border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs cursor-pointer gap-2"
               >
-                {loadingPlan === "starter" ? <Loader2Icon className="size-4 animate-spin" /> : "Start Free Trial"}
+                <CreditCardIcon className="size-4" /> Subscribe with Card
               </Button>
             </CardContent>
           </Card>
@@ -215,17 +259,10 @@ export default function SelectPlanPage() {
               </ul>
 
               <Button
-                disabled={loadingPlan === "growth"}
-                onClick={() => handleSelectPlan("growth")}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer"
+                onClick={() => handleOpenPaymentModal("growth")}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer gap-2"
               >
-                {loadingPlan === "growth" ? (
-                  <Loader2Icon className="size-4 animate-spin" />
-                ) : (
-                  <>
-                    Start 14-Day Free Trial <ArrowRightIcon className="size-4 ml-1" />
-                  </>
-                )}
+                <CreditCardIcon className="size-4" /> Subscribe with Card <ArrowRightIcon className="size-4 ml-1" />
               </Button>
             </CardContent>
           </Card>
@@ -266,8 +303,7 @@ export default function SelectPlanPage() {
 
               <Button
                 variant="outline"
-                disabled={loadingPlan === "enterprise"}
-                onClick={() => handleSelectPlan("enterprise")}
+                onClick={() => handleOpenPaymentModal("enterprise")}
                 className="w-full h-12 rounded-xl border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs cursor-pointer"
               >
                 Contact Enterprise Sales
@@ -275,8 +311,120 @@ export default function SelectPlanPage() {
             </CardContent>
           </Card>
         </div>
-
       </main>
+
+      {/* Credit / Debit Card Checkout Modal */}
+      <Dialog open={!!selectedPlanForPayment} onOpenChange={(open) => !open && setSelectedPlanForPayment(null)}>
+        <DialogContent className="sm:max-w-md p-6 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCardIcon className="size-5 text-indigo-600 dark:text-indigo-400" />
+                <span>Card Payment Checkout</span>
+              </div>
+              <Badge className="bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 text-[10px]">
+                {selectedPlanForPayment?.toUpperCase()} PLAN
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Enter your credit or debit card details to complete subscription payment.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Order Summary Box */}
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+            <div>
+              <span className="font-bold text-slate-900 dark:text-white block uppercase">
+                {selectedPlanForPayment} Package
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {billingCycle === "annual" ? "Billed Annually (20% Off)" : "Billed Monthly"}
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm block">
+                {getPlanPrice(selectedPlanForPayment || "starter")}
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleExecuteCardPayment} className="space-y-3.5">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Cardholder Name</Label>
+              <Input
+                placeholder="John Doe"
+                value={cardholderName}
+                onChange={(e) => setCardholderName(e.target.value)}
+                required
+                className="h-10 text-xs rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Card Number</Label>
+              <div className="relative">
+                <Input
+                  placeholder="4532 1098 7654 3210"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  maxLength={19}
+                  required
+                  className="h-10 text-xs rounded-xl pr-10 font-mono"
+                />
+                <CreditCardIcon className="size-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Expiration Date</Label>
+                <Input
+                  placeholder="MM/YY"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  maxLength={5}
+                  required
+                  className="h-10 text-xs rounded-xl text-center font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">CVC / CVV</Label>
+                <Input
+                  type="password"
+                  placeholder="•••"
+                  value={cvc}
+                  onChange={(e) => setCvc(e.target.value)}
+                  maxLength={4}
+                  required
+                  className="h-10 text-xs rounded-xl text-center font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                type="submit"
+                disabled={paying}
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/25 transition-all gap-2 cursor-pointer"
+              >
+                {paying ? (
+                  <>
+                    <Loader2Icon className="size-4 animate-spin" /> Processing Payment...
+                  </>
+                ) : (
+                  <>
+                    <LockIcon className="size-3.5" /> Pay & Activate Subscription
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <p className="text-[10px] text-center text-slate-400 flex items-center justify-center gap-1">
+              <ShieldCheckIcon className="size-3 text-emerald-500" /> 256-Bit SSL Encrypted Card Processing
+            </p>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200/60 dark:border-slate-800/60">

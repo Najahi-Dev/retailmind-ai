@@ -8,6 +8,8 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { getServerUser } from "@/lib/get-server-user";
 
+import { TrialBanner } from "@/components/trial-banner";
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -21,6 +23,7 @@ export default async function DashboardLayout({
       <AppSidebar />
       <SidebarInset>
         <SiteHeader />
+        <TrialBanner />
         <div className="flex flex-1 flex-col">{children}</div>
       </SidebarInset>
       <Toaster />

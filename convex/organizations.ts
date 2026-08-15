@@ -116,3 +116,62 @@ export const switchActiveOrganization = mutation({
     return { success: true };
   },
 });
+
+// ── 6. Get Workspace Trial Status ──
+export const getTrialStatus = query({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.token) return null;
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token!))
+      .first();
+
+    if (!session || session.expiresAt < Date.now()) return null;
+
+    const user = await ctx.db.get(session.userId);
+    if (!user || !user.orgId) return null;
+
+    const org = await ctx.db.get(user.orgId);
+    if (!org) return null;
+
+    const createdAt = org.createdAt || Date.now();
+    const trialDurationMs = 14 * 24 * 60 * 60 * 1000;
+    const trialEndsAt = createdAt + trialDurationMs;
+    const now = Date.now();
+    const msRemaining = trialEndsAt - now;
+    const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+    const isSubscribed = org.subscriptionStatus === "active";
+    const isTrialExpired = !isSubscribed && msRemaining <= 0;
+
+    return {
+      daysRemaining,
+      isSubscribed,
+      isTrialExpired,
+      trialEndsAt,
+      createdAt,
+      plan: org.plan,
+      orgName: org.name,
+    };
+  },
+});
+
+// ── 7. Activate Paid Subscription Package ──
+export const activateSubscription = mutation({
+  args: {
+    token: v.optional(v.string()),
+    plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    await ctx.db.patch(orgId, {
+      plan: args.plan,
+      subscriptionStatus: "active",
+      subscribedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});

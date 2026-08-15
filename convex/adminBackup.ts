@@ -1,22 +1,34 @@
 // convex/adminBackup.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
 
 // ── 1. EXPORT FULL DATABASE BACKUP (JSON DATASET) ──
-export const exportFullDatabaseBackup = query({
-  args: {},
-  handler: async (ctx) => {
-    const products           = await ctx.db.query("products").collect();
-    const inventory          = await ctx.db.query("inventory").collect();
-    const suppliers          = await ctx.db.query("suppliers").collect();
-    const categories         = await ctx.db.query("categories").collect();
-    const locations          = await ctx.db.query("locations").collect();
-    const stockMovements     = await ctx.db.query("stockMovements").collect();
-    const purchaseOrders     = await ctx.db.query("purchaseOrders").collect();
-    const reorderSuggestions = await ctx.db.query("reorderSuggestions").collect();
-    const alerts             = await ctx.db.query("alerts").collect();
-    const priceSuggestions   = await ctx.db.query("priceSuggestions").collect();
-    const users              = await ctx.db.query("users").collect();
+export const exportFullDatabaseBackup = mutation({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) {
+      return {
+        jsonString: JSON.stringify({ metadata: { totalRecords: 0, tableCounts: {} }, data: {} }),
+        recordCount: 0,
+      };
+    }
+
+    const orgId = caller.orgId;
+    const products           = (await ctx.db.query("products").collect()).filter((p) => p.orgId === orgId);
+    const inventory          = (await ctx.db.query("inventory").collect()).filter((i) => i.orgId === orgId);
+    const suppliers          = (await ctx.db.query("suppliers").collect()).filter((s) => s.orgId === orgId);
+    const categories         = (await ctx.db.query("categories").collect()).filter((c) => !c.orgId || c.orgId === orgId);
+    const locations          = (await ctx.db.query("locations").collect()).filter((l) => !l.orgId || l.orgId === orgId);
+    const stockMovements     = (await ctx.db.query("stockMovements").collect()).filter((sm) => sm.orgId === orgId);
+    const purchaseOrders     = (await ctx.db.query("purchaseOrders").collect()).filter((po) => po.orgId === orgId);
+    const reorderSuggestions = (await ctx.db.query("reorderSuggestions").collect()).filter((rs) => rs.orgId === orgId);
+    const alerts             = (await ctx.db.query("alerts").collect()).filter((a) => a.orgId === orgId);
+    const priceSuggestions   = (await ctx.db.query("priceSuggestions").collect()).filter((ps) => ps.orgId === orgId);
+    const users              = (await ctx.db.query("users").collect()).filter((u) => u.orgId === orgId);
 
     // Sanitize user records to omit sensitive password hashes from raw exports
     const sanitizedUsers = users.map((u) => ({
@@ -30,7 +42,7 @@ export const exportFullDatabaseBackup = query({
       createdAt: u.createdAt,
     }));
 
-    return {
+    const backupObject = {
       metadata: {
         system: "RetailMind AI Supermarket Management",
         version: "2.5.0",
@@ -76,26 +88,50 @@ export const exportFullDatabaseBackup = query({
         users: sanitizedUsers,
       },
     };
+
+    return {
+      jsonString: JSON.stringify(backupObject, null, 2),
+      recordCount: backupObject.metadata.totalRecords,
+    };
   },
 });
 
-// ── 2. GET SYSTEM DATA STATS ──
+// ── 2. GET SYSTEM DATA STATS (STRICT ORG SCOPED) ──
 export const getSystemDataStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const products       = await ctx.db.query("products").collect();
-    const inventory      = await ctx.db.query("inventory").collect();
-    const suppliers      = await ctx.db.query("suppliers").collect();
-    const categories     = await ctx.db.query("categories").collect();
-    const locations      = await ctx.db.query("locations").collect();
-    const stockMovements = await ctx.db.query("stockMovements").collect();
-    const purchaseOrders = await ctx.db.query("purchaseOrders").collect();
-    const alerts         = await ctx.db.query("alerts").collect();
-    const users          = await ctx.db.query("users").collect();
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) {
+      return {
+        productCount: 0,
+        inventoryCount: 0,
+        supplierCount: 0,
+        categoryCount: 0,
+        locationCount: 0,
+        movementCount: 0,
+        poCount: 0,
+        alertCount: 0,
+        userCount: 0,
+        totalRecords: 0,
+      };
+    }
+
+    const orgId = caller.orgId;
+    const products       = (await ctx.db.query("products").collect()).filter((p) => p.orgId === orgId);
+    const inventory      = (await ctx.db.query("inventory").collect()).filter((i) => i.orgId === orgId);
+    const suppliers      = (await ctx.db.query("suppliers").collect()).filter((s) => s.orgId === orgId);
+    const categories     = (await ctx.db.query("categories").collect()).filter((c) => !c.orgId || c.orgId === orgId);
+    const locations      = (await ctx.db.query("locations").collect()).filter((l) => !l.orgId || l.orgId === orgId);
+    const stockMovements = (await ctx.db.query("stockMovements").collect()).filter((sm) => sm.orgId === orgId);
+    const purchaseOrders = (await ctx.db.query("purchaseOrders").collect()).filter((po) => po.orgId === orgId);
+    const alerts         = (await ctx.db.query("alerts").collect()).filter((a) => a.orgId === orgId);
+    const users          = (await ctx.db.query("users").collect()).filter((u) => u.orgId === orgId);
 
     return {
       productCount: products.length,
-      inventoryCount: inventory.length,
+      inventoryCount: inventory.reduce((sum, item) => sum + (item.onHand || 0), 0),
       supplierCount: suppliers.length,
       categoryCount: categories.length,
       locationCount: locations.length,
@@ -117,12 +153,14 @@ export const getSystemDataStats = query({
   },
 });
 
-// ── 3. CHUNKED WIPE OPERATIONAL DATA (PREVENTS CONVEX 4096 EXECUTION LIMIT) ──
+// ── 3. CHUNKED WIPE OPERATIONAL DATA (SCOPED TO WORKSPACE ORG) ──
 export const wipeBatchChunk = mutation({
   args: {
+    token: v.optional(v.string()),
     confirmationCode: v.string(),
   },
   handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
     if (args.confirmationCode !== "DELETE PERMANENTLY ALL DATA") {
       throw new Error("Invalid confirmation code. Wipe aborted.");
     }
@@ -136,16 +174,15 @@ export const wipeBatchChunk = mutation({
       "inventory",
       "products",
       "suppliers",
-      "categories",
-      "locations",
     ] as const;
 
     let deletedCount = 0;
-    const CHUNK_LIMIT = 350; // Safely below Convex 4096 read/write execution cap
+    const CHUNK_LIMIT = 350;
 
     for (const tableName of tablesToWipe) {
-      const records = await ctx.db.query(tableName).take(CHUNK_LIMIT - deletedCount);
-      for (const record of records) {
+      const records = await ctx.db.query(tableName).collect();
+      const orgRecords = records.filter((r) => r.orgId === orgId).slice(0, CHUNK_LIMIT - deletedCount);
+      for (const record of orgRecords) {
         await ctx.db.delete(record._id);
         deletedCount++;
         if (deletedCount >= CHUNK_LIMIT) break;
@@ -163,9 +200,11 @@ export const wipeBatchChunk = mutation({
 // Legacy single-call compatibility export
 export const wipeOperationalData = mutation({
   args: {
+    token: v.optional(v.string()),
     confirmationCode: v.string(),
   },
   handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
     if (args.confirmationCode !== "DELETE PERMANENTLY ALL DATA") {
       throw new Error("Invalid confirmation code. Wipe aborted.");
     }
@@ -179,14 +218,13 @@ export const wipeOperationalData = mutation({
       "inventory",
       "products",
       "suppliers",
-      "categories",
-      "locations",
     ] as const;
 
     let deletedCount = 0;
     for (const tableName of tablesToWipe) {
-      const records = await ctx.db.query(tableName).take(200);
-      for (const record of records) {
+      const records = await ctx.db.query(tableName).collect();
+      const orgRecords = records.filter((r) => r.orgId === orgId).slice(0, 200);
+      for (const record of orgRecords) {
         await ctx.db.delete(record._id);
         deletedCount++;
       }
@@ -203,9 +241,12 @@ export const wipeOperationalData = mutation({
 // ── 4. RESTORE FULL DATABASE FROM BACKUP (JSON DATASET) ──
 export const restoreFullDatabaseBackup = mutation({
   args: {
+    token: v.optional(v.string()),
     backupJsonString: v.string(),
   },
   handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
+
     let backupPayload: any;
     try {
       backupPayload = JSON.parse(args.backupJsonString);
@@ -226,6 +267,7 @@ export const restoreFullDatabaseBackup = mutation({
       for (const loc of data.locations) {
         const oldId = loc._id;
         const newId = await ctx.db.insert("locations", {
+          orgId,
           name: loc.name,
           address: loc.address,
           type: loc.type || "store",
@@ -242,6 +284,7 @@ export const restoreFullDatabaseBackup = mutation({
       for (const cat of data.categories) {
         const oldId = cat._id;
         const newId = await ctx.db.insert("categories", {
+          orgId,
           name: cat.name,
           description: cat.description,
           createdAt: cat.createdAt || Date.now(),
@@ -256,6 +299,7 @@ export const restoreFullDatabaseBackup = mutation({
       for (const sup of data.suppliers) {
         const oldId = sup._id;
         const newId = await ctx.db.insert("suppliers", {
+          orgId,
           name: sup.name,
           email: sup.email,
           phone: sup.phone,
@@ -280,6 +324,7 @@ export const restoreFullDatabaseBackup = mutation({
         const primarySupplierId = idMap.get(prod.primarySupplierId) || prod.primarySupplierId;
 
         const newId = await ctx.db.insert("products", {
+          orgId,
           categoryId,
           primarySupplierId,
           sku: prod.sku,
@@ -306,6 +351,7 @@ export const restoreFullDatabaseBackup = mutation({
         const locationId = idMap.get(inv.locationId) || inv.locationId;
         if (productId && locationId) {
           await ctx.db.insert("inventory", {
+            orgId,
             productId,
             locationId,
             onHand: inv.onHand || 0,
@@ -325,6 +371,7 @@ export const restoreFullDatabaseBackup = mutation({
         const locationId = idMap.get(sm.locationId) || sm.locationId;
         if (productId && locationId) {
           await ctx.db.insert("stockMovements", {
+            orgId,
             productId,
             locationId,
             type: sm.type || "stock_in",
@@ -352,6 +399,7 @@ export const restoreFullDatabaseBackup = mutation({
           }));
 
           await ctx.db.insert("purchaseOrders", {
+            orgId,
             supplierId,
             poNumber: po.poNumber,
             status: po.status || "draft",
@@ -373,6 +421,7 @@ export const restoreFullDatabaseBackup = mutation({
         const preferredSupplierId = idMap.get(rs.preferredSupplierId) || rs.preferredSupplierId;
         if (productId && preferredSupplierId) {
           await ctx.db.insert("reorderSuggestions", {
+            orgId,
             productId,
             preferredSupplierId,
             urgency: rs.urgency || "medium",
@@ -394,6 +443,7 @@ export const restoreFullDatabaseBackup = mutation({
       for (const alt of data.alerts) {
         const productId = alt.productId ? (idMap.get(alt.productId) || alt.productId) : undefined;
         await ctx.db.insert("alerts", {
+          orgId,
           productId,
           type: alt.type || "system",
           priority: alt.priority || "medium",
@@ -413,6 +463,7 @@ export const restoreFullDatabaseBackup = mutation({
         const productId = idMap.get(ps.productId) || ps.productId;
         if (productId) {
           await ctx.db.insert("priceSuggestions", {
+            orgId,
             productId,
             currentPrice: ps.currentPrice,
             suggestedPrice: ps.suggestedPrice,

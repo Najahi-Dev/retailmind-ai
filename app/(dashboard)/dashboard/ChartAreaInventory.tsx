@@ -28,24 +28,10 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
 
-// Simulated stock movement data
-// Phase 3 la real Convex data wire pannuvom
-const generateChartData = () => {
-  const data = []
-  const now  = new Date()
-  for (let i = 89; i >= 0; i--) {
-    const date = new Date(now)
-    date.setDate(date.getDate() - i)
-    data.push({
-      date:     date.toISOString().split("T")[0],
-      stockIn:  Math.floor(Math.random() * 400 + 100),
-      stockOut: Math.floor(Math.random() * 350 + 80),
-    })
-  }
-  return data
-}
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { useAuth } from "@/lib/auth-context"
 
-const chartData   = generateChartData()
 const chartConfig = {
   stockIn: {
     label: "Stock In",
@@ -58,14 +44,18 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function ChartAreaInventory() {
-  const isMobile             = useIsMobile()
+  const { token } = useAuth()
+  const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
 
   React.useEffect(() => {
     if (isMobile) setTimeRange("7d")
   }, [isMobile])
 
-  const filteredData = chartData.filter(item => {
+  const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90
+  const realChartData = useQuery(api.inventory.getStockMovementChartData, { token: token ?? undefined, days }) ?? []
+
+  const filteredData = realChartData.filter(item => {
     const date          = new Date(item.date)
     const referenceDate = new Date()
     let daysToSubtract  = 90

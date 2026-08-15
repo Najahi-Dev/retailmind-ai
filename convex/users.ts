@@ -190,19 +190,21 @@ export const updateUserRole = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) throw new Error("User record not found");
+
     if (args.token) {
-      const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
-      const targetUser = await ctx.db.get(args.userId);
-      if (targetUser && orgId && targetUser.orgId && targetUser.orgId !== orgId) {
+      const { orgId, organization } = await requireCallerOrg(ctx, args.token, ["admin"]);
+      if (orgId && targetUser.orgId && targetUser.orgId !== orgId) {
         throw new Error("Access Denied: Cannot modify user belonging to another organization.");
+      }
+      if (organization.ownerId === targetUser._id && args.role !== "admin") {
+        throw new Error("Workspace Owner role cannot be changed.");
       }
     }
 
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User record not found");
-
     await ctx.db.patch(args.userId, { role: args.role });
-    await syncSupplierForUserRole(ctx, args.userId, user, args.role);
+    await syncSupplierForUserRole(ctx, args.userId, targetUser, args.role);
   },
 });
 
@@ -214,11 +216,16 @@ export const toggleUserStatus = mutation({
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) throw new Error("User record not found");
+
     if (args.token) {
-      const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
-      const targetUser = await ctx.db.get(args.userId);
-      if (targetUser && orgId && targetUser.orgId && targetUser.orgId !== orgId) {
+      const { orgId, organization } = await requireCallerOrg(ctx, args.token, ["admin"]);
+      if (orgId && targetUser.orgId && targetUser.orgId !== orgId) {
         throw new Error("Access Denied: Cannot modify user belonging to another organization.");
+      }
+      if (organization.ownerId === targetUser._id && !args.isActive) {
+        throw new Error("Workspace Owner account cannot be suspended.");
       }
     }
 

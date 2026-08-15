@@ -8,6 +8,8 @@ export default defineSchema({
     slug: v.string(),
     inviteCode: v.string(),
     plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
+    subscriptionStatus: v.optional(v.union(v.literal("trial"), v.literal("active"), v.literal("canceled"), v.literal("past_due"))),
+    subscribedAt: v.optional(v.number()),
     logoUrl: v.optional(v.string()),
     ownerId: v.optional(v.id("users")),
     isActive: v.boolean(),

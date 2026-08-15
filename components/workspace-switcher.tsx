@@ -130,9 +130,6 @@ export function WorkspaceSwitcher() {
 
           <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
 
-          <DropdownMenuItem onClick={() => setShowCreateModal(true)} className="rounded-lg p-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer focus:bg-indigo-50 dark:focus:bg-indigo-950/50">
-            <PlusIcon className="size-4 mr-2" /> Create New Workspace
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setShowJoinModal(true)} className="rounded-lg p-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800">
             <KeyRoundIcon className="size-4 mr-2" /> Join Workspace via Code
           </DropdownMenuItem>

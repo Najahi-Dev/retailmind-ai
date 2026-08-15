@@ -436,6 +436,49 @@ export const getStockHistory = query({
   },
 });
 
+export const getStockMovementChartData = query({
+  args: {
+    token: v.optional(v.string()),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args?.token);
+    if (!caller || !caller.orgId) return [];
+
+    const numDays = args.days ?? 90;
+    const allMovements = await ctx.db.query("stockMovements").collect();
+    const movements = allMovements.filter((m) => m.orgId === caller.orgId);
+
+    const dataMap = new Map<string, { stockIn: number; stockOut: number }>();
+    const now = new Date();
+
+    for (let i = numDays - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      dataMap.set(dateStr, { stockIn: 0, stockOut: 0 });
+    }
+
+    for (const m of movements) {
+      const dateStr = new Date(m.createdAt).toISOString().split("T")[0];
+      if (dataMap.has(dateStr)) {
+        const entry = dataMap.get(dateStr)!;
+        if (m.type === "stock_in") {
+          entry.stockIn += m.quantity;
+        } else if (m.type === "stock_out") {
+          entry.stockOut += m.quantity;
+        }
+      }
+    }
+
+    return Array.from(dataMap.entries()).map(([date, counts]) => ({
+      date,
+      stockIn: counts.stockIn,
+      stockOut: counts.stockOut,
+    }));
+  },
+});
+
 // ── createProduct mutation ──
 export const createProduct = mutation({
   args: {

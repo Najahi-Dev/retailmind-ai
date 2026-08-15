@@ -106,7 +106,8 @@ export default function UsersClient({ role: currentRole }: Props) {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const { token } = useAuth();
+  const { token, currentUser } = useAuth();
+  const org = useQuery(api.organizations.getCurrentOrganization, { token: token ?? undefined });
   const users = useQuery(api.users.getUsers, {
     token: token ?? undefined,
     role: roleFilter === "all" ? undefined : roleFilter,
@@ -390,6 +391,7 @@ export default function UsersClient({ role: currentRole }: Props) {
                     const roleCfg = ROLE_CONFIG[u.role] ?? ROLE_CONFIG.staff;
                     const RoleIcon = roleCfg.icon;
                     const isUpdating = updatingId === u._id;
+                    const isWorkspaceOwner = (org?.ownerId && u._id === org.ownerId) || (u.role === "admin" && currentUser?._id === u._id);
 
                     return (
                       <tr
@@ -413,9 +415,14 @@ export default function UsersClient({ role: currentRole }: Props) {
                             <div>
                               <button
                                 onClick={() => router.push(`/users/${u._id}`)}
-                                className="font-bold text-slate-900 dark:text-white text-sm hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline text-left transition-colors"
+                                className="font-bold text-slate-900 dark:text-white text-sm hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline text-left transition-colors flex items-center gap-1.5"
                               >
-                                {u.name}
+                                <span>{u.name}</span>
+                                {isWorkspaceOwner && (
+                                  <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] font-extrabold px-1.5 py-0">
+                                    OWNER
+                                  </Badge>
+                                )}
                               </button>
                               <p className="text-xs text-slate-500 font-medium">{u.email}</p>
                             </div>
@@ -481,9 +488,14 @@ export default function UsersClient({ role: currentRole }: Props) {
                             <Select
                               value={u.role}
                               onValueChange={(val) => handleRoleChange(u, val)}
-                              disabled={isUpdating}
+                              disabled={isUpdating || isWorkspaceOwner}
                             >
-                              <SelectTrigger className="w-32 h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800">
+                              <SelectTrigger
+                                title={isWorkspaceOwner ? "Workspace Owner role cannot be modified" : undefined}
+                                className={`w-32 h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 ${
+                                  isWorkspaceOwner ? "opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-800" : ""
+                                }`}
+                              >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -499,12 +511,15 @@ export default function UsersClient({ role: currentRole }: Props) {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={isUpdating}
+                              disabled={isUpdating || isWorkspaceOwner}
                               onClick={() => handleStatusToggle(u, u.isActive)}
+                              title={isWorkspaceOwner ? "Workspace Owner account cannot be suspended" : undefined}
                               className={`h-8 text-xs px-3 rounded-xl font-bold border ${
-                                u.isActive
-                                  ? "text-red-600 dark:text-red-400 border-red-500/20 hover:bg-red-500/10"
-                                  : "text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10"
+                                isWorkspaceOwner
+                                  ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700"
+                                  : u.isActive
+                                    ? "text-red-600 dark:text-red-400 border-red-500/20 hover:bg-red-500/10"
+                                    : "text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10"
                               }`}
                             >
                               {isUpdating ? (
