@@ -11,6 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   LockIcon,
   MailIcon,
   UserIcon,
@@ -21,6 +29,7 @@ import {
   LogInIcon,
   EyeIcon,
   EyeOffIcon,
+  ClockIcon,
 } from "lucide-react";
 
 const ROLE_DESTINATIONS: Record<string, string> = {
@@ -44,6 +53,7 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && currentUser) {
@@ -79,13 +89,30 @@ export default function SignInPage() {
         });
 
         if (res && res.isPending) {
-          setSuccessMessage(res.message);
+          setShowPendingModal(true);
           setMode("signin");
           setLoading(false);
         }
       }
     } catch (err: any) {
-      setError(err?.message || "Authentication failed. Please try again.");
+      let msg = err?.message || "Authentication failed. Please try again.";
+      msg = msg
+        .replace(/\[CONVEX.*?\]\s*/g, "")
+        .replace(/Server Error\s*/g, "")
+        .replace(/Uncaught Error:\s*/g, "")
+        .replace(/at handler \(.*?\)/g, "")
+        .trim();
+
+      if (
+        msg.includes("Waiting for the admin approval") ||
+        msg.includes("pending administrator role") ||
+        msg.includes("not assigned")
+      ) {
+        setShowPendingModal(true);
+        setError(null);
+      } else {
+        setError(msg || "Authentication failed. Please try again.");
+      }
       setLoading(false);
     }
   };
@@ -284,6 +311,37 @@ export default function SignInPage() {
           </div>
         </div>
       </div>
+
+      {/* ── PENDING APPROVAL POPUP MODAL ── */}
+      <Dialog open={showPendingModal} onOpenChange={setShowPendingModal}>
+        <DialogContent className="rounded-2xl border-slate-200 dark:border-slate-800 max-w-md text-center p-6 space-y-4 shadow-2xl">
+          <div className="mx-auto size-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center">
+            <ClockIcon className="w-7 h-7 animate-pulse" />
+          </div>
+
+          <div className="space-y-1">
+            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
+              Pending Admin Approval
+            </DialogTitle>
+            <DialogDescription className="text-xs text-amber-600 dark:text-amber-400 font-bold pt-1">
+              Your user role is not assigned. Waiting for the admin approval.
+            </DialogDescription>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
+            Thank you for registering with RetailMind AI. A system administrator or manager must review your registration and assign your account role (Administrator, Store Manager, Staff, or Supplier) before you can sign in to the platform.
+          </p>
+
+          <DialogFooter className="pt-2 sm:justify-center">
+            <Button
+              onClick={() => setShowPendingModal(false)}
+              className="w-full rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white border-0 py-2.5 shadow-md"
+            >
+              Understood
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

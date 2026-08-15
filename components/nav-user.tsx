@@ -22,7 +22,15 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
-import { ChevronsUpDownIcon, UserIcon, LogOutIcon, ShieldCheckIcon } from "lucide-react"
+import { ChevronsUpDownIcon, UserIcon, LogOutIcon, ShieldCheckIcon, ZapIcon, RocketIcon, CrownIcon } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+
+const PLAN_BADGES: Record<string, { label: string; Icon: any; bg: string }> = {
+  starter: { label: "Starter", Icon: ZapIcon, bg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" },
+  growth: { label: "Growth", Icon: RocketIcon, bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
+  enterprise: { label: "Enterprise", Icon: CrownIcon, bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
+};
 
 export function NavUser() {
   const { isMobile } = useSidebar()
@@ -30,6 +38,10 @@ export function NavUser() {
   const router = useRouter()
 
   if (!user) return null
+
+  const userPlan = (user as any).plan ?? "starter";
+  const planInfo = PLAN_BADGES[userPlan] ?? PLAN_BADGES.starter;
+  const PlanIcon = planInfo.Icon;
 
   const initials = user.name
     ? user.name
@@ -57,13 +69,21 @@ export function NavUser() {
               </Avatar>
 
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold text-slate-900 dark:text-white">{user.name}</span>
+                <div className="flex items-center justify-start gap-1.5 min-w-0">
+                  <span className="truncate font-semibold text-slate-900 dark:text-white">{user.name}</span>
+                  <Badge
+                    title={`${planInfo.label} Plan`}
+                    className={`size-5 p-0 rounded-full border ${planInfo.bg} shrink-0 inline-flex items-center justify-center`}
+                  >
+                    <PlanIcon className="w-3 h-3 shrink-0" />
+                  </Badge>
+                </div>
                 <span className="truncate text-xs text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1">
                   <ShieldCheckIcon className="w-3 h-3 text-indigo-500 shrink-0" />
                   {user.role}
                 </span>
               </div>
-              <ChevronsUpDownIcon className="ml-auto size-4 text-slate-400" />
+              <ChevronsUpDownIcon className="ml-auto size-4 text-slate-400 shrink-0" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
@@ -82,7 +102,15 @@ export function NavUser() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-xs leading-tight">
-                  <span className="truncate font-bold text-slate-900 dark:text-white">{user.name}</span>
+                  <div className="flex items-center justify-start gap-1.5 min-w-0">
+                    <span className="truncate font-bold text-slate-900 dark:text-white">{user.name}</span>
+                    <Badge
+                      title={`${planInfo.label} Plan`}
+                      className={`size-5 p-0 rounded-full border ${planInfo.bg} shrink-0 inline-flex items-center justify-center`}
+                    >
+                      <PlanIcon className="w-3 h-3 shrink-0" />
+                    </Badge>
+                  </div>
                   <span className="truncate text-[11px] text-slate-500 dark:text-slate-400">{user.email}</span>
                 </div>
               </div>

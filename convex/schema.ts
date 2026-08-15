@@ -323,4 +323,26 @@ export default defineSchema({
   })
     .index("by_created", ["createdAt"])
     .index("by_event_type", ["eventType"]),
+
+  // ── Support Tickets ───────────────────────────
+  supportTickets: defineTable({
+    ticketId: v.string(),
+    userId: v.id("users"),
+    userName: v.string(),
+    userEmail: v.string(),
+    userRole: v.string(),
+    userImageUrl: v.optional(v.string()),
+    subject: v.string(),
+    category: v.string(),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    details: v.string(),
+    status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("resolved"), v.literal("closed")),
+    adminResponse: v.optional(v.string()),
+    respondedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_created", ["createdAt"]),
 });

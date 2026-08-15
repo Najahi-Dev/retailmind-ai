@@ -44,6 +44,8 @@ import {
   CameraIcon,
   UploadIcon,
   ImageIcon,
+  ZapIcon,
+  RocketIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,6 +78,30 @@ const ROLE_CONFIG: Record<string, { label: string; bg: string; color: string; bo
     bg: "bg-amber-500/10",
     color: "text-amber-600 dark:text-amber-400",
     border: "border-amber-500/30",
+  },
+};
+
+const PLAN_CONFIG: Record<string, { label: string; Icon: any; bg: string; color: string; border: string }> = {
+  starter: {
+    label: "Starter Plan",
+    Icon: ZapIcon,
+    bg: "bg-indigo-500/20 text-indigo-300 border-indigo-400/40",
+    color: "text-indigo-400",
+    border: "border-indigo-500/40",
+  },
+  growth: {
+    label: "Growth Plan",
+    Icon: RocketIcon,
+    bg: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+    color: "text-emerald-400",
+    border: "border-emerald-500/40",
+  },
+  enterprise: {
+    label: "Enterprise VIP",
+    Icon: CrownIcon,
+    bg: "bg-amber-500/20 text-amber-300 border-amber-400/40",
+    color: "text-amber-400",
+    border: "border-amber-500/40",
   },
 };
 
@@ -271,17 +297,29 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
                   <MailIcon className="w-3.5 h-3.5 text-indigo-300 shrink-0" />
                   <span>{user.email && user.email.trim() ? user.email : "No email registered"}</span>
                 </p>
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <Badge className={`text-xs font-bold ${roleStyle.bg} ${roleStyle.color} border ${roleStyle.border} px-2.5 py-0.5`}>
+                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                  <Badge className={`text-xs font-bold ${roleStyle.bg} ${roleStyle.color} border ${roleStyle.border} px-2.5 py-1 inline-flex items-center gap-1.5 rounded-full`}>
                     {roleStyle.label}
                   </Badge>
+
+                  {(() => {
+                    const planStyle = PLAN_CONFIG[plan] ?? PLAN_CONFIG.starter;
+                    const PlanIcon = planStyle.Icon;
+                    return (
+                      <Badge className={`text-xs font-bold px-2.5 py-1 inline-flex items-center justify-center gap-1.5 rounded-full border ${planStyle.bg} shadow-xs leading-none`}>
+                        <PlanIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="leading-none">{planStyle.label}</span>
+                      </Badge>
+                    );
+                  })()}
+
                   {isActive ? (
-                    <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs px-2.5 py-0.5">
-                      <CheckCircle2Icon className="w-3 h-3 mr-1" /> Active Account
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs px-2.5 py-1 inline-flex items-center gap-1.5 rounded-full">
+                      <CheckCircle2Icon className="w-3.5 h-3.5" /> Active Account
                     </Badge>
                   ) : (
-                    <Badge className="bg-red-500/20 text-red-300 border border-red-400/30 text-xs px-2.5 py-0.5">
-                      <XCircleIcon className="w-3 h-3 mr-1" /> Suspended
+                    <Badge className="bg-red-500/20 text-red-300 border border-red-400/30 text-xs px-2.5 py-1 inline-flex items-center gap-1.5 rounded-full">
+                      <XCircleIcon className="w-3.5 h-3.5" /> Suspended
                     </Badge>
                   )}
                 </div>

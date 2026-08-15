@@ -49,19 +49,15 @@ export const loginUser = action({
     }
 
     if (user.role === "pending") {
-      throw new Error("Your account is pending administrator role assignment and approval. Please contact system manager.");
+      throw new Error("Your user role is not assigned. Waiting for the admin approval.");
     }
 
     if (user.isActive === false) {
-      if (user.role !== "pending") {
-        await ctx.runMutation(api.authInternal.updateUserStatus, {
-          userId: user._id,
-          isActive: true,
-        });
-        user.isActive = true;
-      } else {
-        throw new Error("Account suspended. Please contact system administrator.");
-      }
+      await ctx.runMutation(api.authInternal.updateUserStatus, {
+        userId: user._id,
+        isActive: true,
+      });
+      user.isActive = true;
     }
 
     if (!user.passwordHash) {

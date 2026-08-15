@@ -111,26 +111,22 @@ export default function UsersClient({ role: currentRole }: Props) {
   });
   const stats = useQuery(api.users.getUserStats);
 
+  const updateUserFullDetail = useMutation(api.users.updateUserFullDetail);
+
   const handleRoleChange = async (userRecord: any, newRole: string) => {
     setUpdatingId(userRecord._id);
     try {
-      const res = await fetch("/api/users/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userRecord._id,
-          clerkId: userRecord.clerkId,
-          name: userRecord.name,
-          role: newRole,
-          plan: userRecord.plan ?? "starter",
-          isActive: userRecord.isActive,
-        }),
+      await updateUserFullDetail({
+        userId: userRecord._id,
+        name: userRecord.name,
+        imageUrl: userRecord.imageUrl,
+        role: newRole as any,
+        plan: (userRecord.plan as any) ?? "starter",
+        isActive: userRecord.isActive,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update user role");
-      toast.success("Updated Successfully");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update role");
+      toast.success("User Role Updated Successfully");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update role");
     } finally {
       setUpdatingId(null);
     }
@@ -138,25 +134,18 @@ export default function UsersClient({ role: currentRole }: Props) {
 
   const handleStatusToggle = async (userRecord: any, currentStatus: boolean) => {
     setUpdatingId(userRecord._id);
-    const newStatus = !currentStatus;
     try {
-      const res = await fetch("/api/users/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userRecord._id,
-          clerkId: userRecord.clerkId,
-          name: userRecord.name,
-          role: userRecord.role,
-          plan: userRecord.plan ?? "starter",
-          isActive: newStatus,
-        }),
+      await updateUserFullDetail({
+        userId: userRecord._id,
+        name: userRecord.name,
+        imageUrl: userRecord.imageUrl,
+        role: userRecord.role,
+        plan: (userRecord.plan as any) ?? "starter",
+        isActive: !currentStatus,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update status");
-      toast.success("Updated Successfully");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
+      toast.success("Account Status Updated Successfully");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update status");
     } finally {
       setUpdatingId(null);
     }
@@ -165,23 +154,17 @@ export default function UsersClient({ role: currentRole }: Props) {
   const handlePlanChange = async (userRecord: any, newPlan: string) => {
     setUpdatingId(userRecord._id);
     try {
-      const res = await fetch("/api/users/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userRecord._id,
-          clerkId: userRecord.clerkId,
-          name: userRecord.name,
-          role: userRecord.role,
-          plan: newPlan,
-          isActive: userRecord.isActive,
-        }),
+      await updateUserFullDetail({
+        userId: userRecord._id,
+        name: userRecord.name,
+        imageUrl: userRecord.imageUrl,
+        role: userRecord.role,
+        plan: newPlan as any,
+        isActive: userRecord.isActive,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update plan");
-      toast.success("Updated Successfully");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update plan");
+      toast.success("Subscription Plan Updated Successfully");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update plan");
     } finally {
       setUpdatingId(null);
     }
@@ -476,19 +459,6 @@ export default function UsersClient({ role: currentRole }: Props) {
                         {/* RBAC Controls */}
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {/* Full Edit Modal Trigger */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setEditOpen(true);
-                              }}
-                              className="h-8 text-xs font-semibold px-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                              <EditIcon className="w-3.5 h-3.5 mr-1 text-indigo-500" /> Edit
-                            </Button>
-
                             {/* View Detail Link */}
                             <Button
                               size="sm"
