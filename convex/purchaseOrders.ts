@@ -532,3 +532,57 @@ export const getPOPayments = query({
     );
   },
 });
+
+// ── 10. GET ALL PAYMENTS FOR ORGANIZATION (ADMIN/MANAGER) ──
+export const getPayments = query({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+
+    // Fetch all payments for the org
+    const payments = await ctx.db
+      .query("poPayments")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .order("desc")
+      .collect();
+
+    // Enrich payments with PO and supplier details
+    return await Promise.all(
+      payments.map(async (payment) => {
+        // Get the PO for this payment
+        const po = await ctx.db.get(payment.poId);
+        if (!po) {
+          // If PO is missing, return payment with null PO and supplier
+          return {
+            ...payment,
+            po: null,
+            supplier: null,
+            recordedByName: "System",
+          };
+        }
+
+        // Get the supplier for the PO
+        const supplier = await ctx.db.get(po.supplierId);
+        const recordedBy = payment.recordedBy ? await ctx.db.get(payment.recordedBy) : null;
+
+        return {
+          ...payment,
+          po: {
+            ...po,
+            supplierName: supplier?.name ?? "Unknown",
+          },
+          supplier: {
+            id: supplier?._id,
+            name: supplier?.name ?? "Unknown",
+            email: supplier?.email ?? "",
+            phone: supplier?.phone ?? "",
+            address: supplier?.address ?? "",
+          },
+          recordedByName: recordedBy?.name ?? "System",
+        };
+      })
+    );
+  },
+});

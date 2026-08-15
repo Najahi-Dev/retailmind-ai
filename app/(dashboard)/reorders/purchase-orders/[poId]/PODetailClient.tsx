@@ -223,6 +223,8 @@ export default function PODetailClient({
     );
   }
 
+  const isPaid = (po as any).paymentStatus === "PAID" || (po as any).paymentStatus === "paid";
+
   const nextStatus = NEXT_STATUS[po.status];
   const statusCfg = STATUS_CONFIG[po.status] ?? STATUS_CONFIG.draft;
   const steps = ["draft", "sent", "confirmed", "shipped", "delivered"];
@@ -720,7 +722,7 @@ export default function PODetailClient({
       </div>
 
       {/* ── PAYMENT SECTION ── */}
-      {canEdit && (
+      {canEdit && !isPaid && (
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="flex items-center gap-3">
@@ -960,6 +962,9 @@ export default function PODetailClient({
             supplierPhone: (po as any).supplierPhone,
             supplierAddress: (po as any).supplierAddress,
             totalValue: po.totalValue,
+            paymentMethod: (po as any).paymentMethod,
+            paymentStatus: (po as any).paymentStatus,
+            amountPaid: (po as any).amountPaid,
             lineItems: po.lineItems.map((item) => ({
               productId: item.productId,
               productName: item.productName,

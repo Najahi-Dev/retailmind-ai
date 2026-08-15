@@ -55,6 +55,8 @@ interface InvoiceModalProps {
     totalValue: number;
     lineItems: LineItem[];
     paymentStatus?: string;
+    paymentMethod?: string;
+    amountPaid?: number;
   };
 }
 
@@ -106,6 +108,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       salesPersonName: currentUser?.name || "Najahi",
       totalValue: po.totalValue,
       lineItems: po.lineItems,
+      paymentMethod: po.paymentMethod,
+      paymentStatus: po.paymentStatus,
+      amountPaid: po.amountPaid,
     });
   };
 
@@ -273,6 +278,16 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                 Date: {invoiceDateStr} • PO Ref: {po.poNumber}
               </p>
+              {po.paymentMethod && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                  Payment Method: {po.paymentMethod}
+                </p>
+              )}
+              {po.paymentStatus && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                  Payment Status: {po.paymentStatus}
+                </p>
+              )}
               {po.paymentStatus && (
                 <Badge className={`text-[10px] font-bold px-2 py-0.5 ${
                   po.paymentStatus === "PAID" || po.paymentStatus === "paid"
