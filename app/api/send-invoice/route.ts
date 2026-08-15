@@ -37,11 +37,11 @@ export async function POST(req: Request) {
         const unitCostLKR = `LKR ${Number(item.unitCost || 0).toLocaleString("en-LK")}`;
         return `
           <tr style="border-bottom: 1px solid #f1f5f9;">
-            <td style="padding: 12px; font-weight: 700; color: #0f172a;">${item.productName || "Purchase Item"}</td>
-            <td style="padding: 12px; font-family: monospace; color: #64748b;">${item.sku || item.productSku || "SKU-ITEM"}</td>
-            <td style="padding: 12px; text-align: right; font-family: monospace; color: #475569;">${unitCostLKR}</td>
-            <td style="padding: 12px; text-align: center; font-weight: 700; color: #0f172a;">${item.quantityOrdered || 1}</td>
-            <td style="padding: 12px; text-align: right; font-family: monospace; font-weight: 700; color: #4f46e5;">${lineTotalLKR}</td>
+            <td class="table-cell-mobile" style="padding: 10px; font-weight: 700; color: #0f172a;">${item.productName || "Purchase Item"}</td>
+            <td class="table-cell-mobile" style="padding: 10px; font-family: monospace; color: #64748b;">${item.sku || item.productSku || "SKU-ITEM"}</td>
+            <td class="table-cell-mobile" style="padding: 10px; text-align: right; font-family: monospace; color: #475569;">${unitCostLKR}</td>
+            <td class="table-cell-mobile" style="padding: 10px; text-align: center; font-weight: 700; color: #0f172a;">${item.quantityOrdered || 1}</td>
+            <td class="table-cell-mobile" style="padding: 10px; text-align: right; font-family: monospace; font-weight: 700; color: #4f46e5;">${lineTotalLKR}</td>
           </tr>
         `;
       })
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     // Barcode API image URL for Code128
     const barcodeImageUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(invoiceNo)}&scale=2&height=12&incltext=0`;
 
-    // 100% Pixel-Perfect Matching HTML Email Body
+    // 100% Mobile Responsive HTML Email Body
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -58,38 +58,75 @@ export async function POST(req: Request) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Commercial Invoice ${invoiceNo}</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #0f172a; -webkit-print-color-adjust: exact;">
-        <div style="max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); padding: 32px;">
+        <style>
+          /* Global & Client Reset */
+          body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+          table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+          img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
           
-          <!-- Header Row: Logo & Invoice Number -->
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 24px;">
+          /* Responsive Mobile Breakpoints */
+          @media only screen and (max-width: 600px) {
+            .email-container {
+              width: 100% !important;
+              max-width: 100% !important;
+              padding: 16px !important;
+              border-radius: 12px !important;
+            }
+            .stack-column {
+              display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              box-sizing: border-box !important;
+              margin-bottom: 12px !important;
+            }
+            .mobile-text-left {
+              text-align: left !important;
+            }
+            .mobile-mt-12 {
+              margin-top: 12px !important;
+            }
+            .table-cell-mobile {
+              padding: 8px 4px !important;
+              font-size: 11px !important;
+            }
+            .barcode-img {
+              max-width: 180px !important;
+            }
+            .header-title-mobile {
+              font-size: 20px !important;
+            }
+          }
+        </style>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 16px; color: #0f172a;">
+        <div class="email-container" style="max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); padding: 28px; box-sizing: border-box;">
+          
+          <!-- Header Row: High-Res Logo & Invoice Title -->
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px;">
             <tr>
-              <td style="vertical-align: top; text-align: left;">
-                <div style="display: inline-block;">
-                  <table style="border-collapse: collapse;">
-                    <tr>
-                      <td style="vertical-align: middle;">
-                        <div style="width: 32px; height: 32px; background: #0f172a; border-radius: 10px; text-align: center; line-height: 32px; color: #ffffff; font-weight: 800; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                          🧠
-                        </div>
-                      </td>
-                      <td style="vertical-align: middle; padding-left: 10px;">
-                        <span style="font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px;">RetailMind</span>
-                        <span style="background: #e0e7ff; color: #4338ca; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; margin-left: 4px;">AI</span>
-                      </td>
-                    </tr>
-                  </table>
-                  <p style="margin: 6px 0 0 0; font-size: 12px; color: #64748b; font-weight: 500;">
-                    Supermarket Retail Network • Colombo, Sri Lanka
-                  </p>
-                </div>
+              <td class="stack-column" style="vertical-align: top; text-align: left;">
+                <table style="border-collapse: collapse;">
+                  <tr>
+                    <td style="vertical-align: middle; padding-right: 10px;">
+                      <div style="width: 38px; height: 38px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-radius: 12px; text-align: center; line-height: 38px; color: #ffffff; font-size: 18px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25); border: 1px solid rgba(255,255,255,0.1);">
+                        🧠
+                      </div>
+                    </td>
+                    <td style="vertical-align: middle;">
+                      <span style="font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">RetailMind</span>
+                      <span style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #ffffff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 8px; margin-left: 6px; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(99,102,241,0.3);">AI</span>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 6px 0 0 0; font-size: 12px; color: #64748b; font-weight: 500;">
+                  Supermarket Retail Network • Colombo, Sri Lanka
+                </p>
               </td>
-              <td style="vertical-align: top; text-align: right;">
+              <td class="stack-column mobile-text-left mobile-mt-12" style="vertical-align: top; text-align: right;">
                 <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #4f46e5; display: block; margin-bottom: 4px;">
                   TAX COMMERCIAL INVOICE
                 </span>
-                <h1 style="margin: 0; font-size: 24px; font-family: monospace; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
+                <h1 class="header-title-mobile" style="margin: 0; font-size: 22px; font-family: monospace; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
                   ${invoiceNo}
                 </h1>
                 <p style="margin: 4px 0 0 0; font-size: 12px; font-family: monospace; color: #64748b;">
@@ -99,40 +136,44 @@ export async function POST(req: Request) {
             </tr>
           </table>
 
-          <!-- 2-Column Grid: Billing & Vendor Info -->
-          <table style="width: 100%; border-collapse: separate; border-spacing: 16px; margin-left: -16px; margin-right: -16px; margin-bottom: 24px;">
+          <!-- 2-Column Responsive Grid: Billing & Vendor Info -->
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
             <tr>
-              <td style="width: 50%; vertical-align: top; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px;">
-                <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; display: block; margin-bottom: 6px;">
-                  BILLED TO (CUSTOMER / RETAILER)
-                </span>
-                <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: #0f172a;">RetailMind AI Store Operations</p>
-                <p style="margin: 0 0 2px 0; font-size: 12px; color: #475569;">Main Commercial Warehouse, Branch #01</p>
-                <p style="margin: 0 0 4px 0; font-size: 12px; color: #475569;">No. 142 Galle Road, Colombo 03, Sri Lanka</p>
-                <p style="margin: 0; font-size: 11px; font-family: monospace; color: #64748b;">ops@retailmind.lk • +94 11 755 8800</p>
+              <td class="stack-column" style="width: 50%; vertical-align: top; padding-right: 8px; box-sizing: border-box;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; min-height: 120px;">
+                  <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; display: block; margin-bottom: 6px;">
+                    BILLED TO (CUSTOMER / RETAILER)
+                  </span>
+                  <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: #0f172a;">RetailMind AI Store Operations</p>
+                  <p style="margin: 0 0 2px 0; font-size: 11px; color: #475569;">Main Commercial Warehouse, Branch #01</p>
+                  <p style="margin: 0 0 4px 0; font-size: 11px; color: #475569;">No. 142 Galle Road, Colombo 03, Sri Lanka</p>
+                  <p style="margin: 0; font-size: 10px; font-family: monospace; color: #64748b; word-break: break-all;">ops@retailmind.lk • +94 11 755 8800</p>
+                </div>
               </td>
-              <td style="width: 50%; vertical-align: top; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px;">
-                <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; display: block; margin-bottom: 6px;">
-                  ISSUED BY (VENDOR SUPPLIER)
-                </span>
-                <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: #4f46e5;">${supplierName || "Vendor Supplier Facilities"}</p>
-                <p style="margin: 0 0 2px 0; font-size: 12px; color: #475569;">${supplierAddress || "Vendor Supplier Facilities"}</p>
-                <p style="margin: 0 0 2px 0; font-size: 11px; font-family: monospace; color: #64748b;">Email: ${supplierEmail || email}</p>
-                <p style="margin: 0; font-size: 11px; font-family: monospace; color: #64748b;">Phone: ${supplierPhone || "+94 11 200 4455"}</p>
+              <td class="stack-column" style="width: 50%; vertical-align: top; padding-left: 8px; box-sizing: border-box;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; min-height: 120px;">
+                  <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; display: block; margin-bottom: 6px;">
+                    ISSUED BY (VENDOR SUPPLIER)
+                  </span>
+                  <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: #4f46e5;">${supplierName || "Vendor Supplier Facilities"}</p>
+                  <p style="margin: 0 0 2px 0; font-size: 11px; color: #475569;">${supplierAddress || "Vendor Supplier Facilities"}</p>
+                  <p style="margin: 0 0 2px 0; font-size: 10px; font-family: monospace; color: #64748b; word-break: break-all;">Email: ${supplierEmail || email}</p>
+                  <p style="margin: 0; font-size: 10px; font-family: monospace; color: #64748b;">Phone: ${supplierPhone || "+94 11 200 4455"}</p>
+                </div>
               </td>
             </tr>
           </table>
 
           <!-- Line Items Table -->
-          <div style="border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin-bottom: 24px;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+          <div style="border: 1px solid #e2e8f0; border-radius: 14px; overflow-x: auto; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; min-width: 100%;">
               <thead>
                 <tr style="background: #f8fafc; color: #475569; font-weight: 700; border-bottom: 1px solid #e2e8f0;">
-                  <th style="padding: 12px;">Item Specification</th>
-                  <th style="padding: 12px;">SKU / Barcode</th>
-                  <th style="padding: 12px; text-align: right;">Unit Price</th>
-                  <th style="padding: 12px; text-align: center;">Qty</th>
-                  <th style="padding: 12px; text-align: right;">Total (LKR)</th>
+                  <th class="table-cell-mobile" style="padding: 10px;">Item Specification</th>
+                  <th class="table-cell-mobile" style="padding: 10px;">SKU</th>
+                  <th class="table-cell-mobile" style="padding: 10px; text-align: right;">Unit Price</th>
+                  <th class="table-cell-mobile" style="padding: 10px; text-align: center;">Qty</th>
+                  <th class="table-cell-mobile" style="padding: 10px; text-align: right;">Total (LKR)</th>
                 </tr>
               </thead>
               <tbody>
@@ -141,36 +182,40 @@ export async function POST(req: Request) {
             </table>
           </div>
 
-          <!-- Bottom Grid: Barcode & Financial Calculation -->
-          <table style="width: 100%; border-collapse: separate; border-spacing: 16px; margin-left: -16px; margin-right: -16px;">
+          <!-- Bottom Responsive Grid: Barcode & Financial Calculation -->
+          <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <!-- Barcode Box -->
-              <td style="width: 50%; vertical-align: bottom; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; text-align: center;">
-                <div style="background: #ffffff; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 8px;">
-                  <img src="${barcodeImageUrl}" alt="Barcode ${invoiceNo}" style="max-width: 220px; height: 45px; display: block; margin: 0 auto;" />
-                  <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #0f172a; display: block; margin-top: 4px;">${invoiceNo}</span>
+              <td class="stack-column" style="width: 50%; vertical-align: bottom; padding-right: 8px; box-sizing: border-box;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; text-align: center;">
+                  <div style="background: #ffffff; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 6px;">
+                    <img class="barcode-img" src="${barcodeImageUrl}" alt="Barcode ${invoiceNo}" style="max-width: 200px; height: 42px; display: block; margin: 0 auto;" />
+                    <span style="font-family: monospace; font-size: 10px; font-weight: 700; color: #0f172a; display: block; margin-top: 4px;">${invoiceNo}</span>
+                  </div>
+                  <p style="margin: 0; font-size: 9px; font-family: monospace; color: #94a3b8;">
+                    Official RetailMind Invoice Verification Code
+                  </p>
                 </div>
-                <p style="margin: 0; font-size: 10px; font-family: monospace; color: #94a3b8;">
-                  Official RetailMind Invoice Verification Code
-                </p>
               </td>
 
               <!-- Financial Totals Box -->
-              <td style="width: 50%; vertical-align: bottom; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                  <tr>
-                    <td style="padding: 4px 0; color: #64748b;">Subtotal (Net Amount):</td>
-                    <td style="padding: 4px 0; text-align: right; font-family: monospace; font-weight: 600; color: #0f172a;">${formattedTotalLKR}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 4px 0; color: #64748b;">VAT / NBT Tax (0% Exempt):</td>
-                    <td style="padding: 4px 0; text-align: right; font-family: monospace; font-weight: 600; color: #0f172a;">LKR 0</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px 0 0 0; border-top: 1px solid #e2e8f0; font-weight: 800; font-size: 14px; color: #4f46e5;">Invoice Grand Total:</td>
-                    <td style="padding: 10px 0 0 0; border-top: 1px solid #e2e8f0; text-align: right; font-family: monospace; font-weight: 800; font-size: 16px; color: #4f46e5;">${formattedTotalLKR}</td>
-                  </tr>
-                </table>
+              <td class="stack-column" style="width: 50%; vertical-align: bottom; padding-left: 8px; box-sizing: border-box;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <tr>
+                      <td style="padding: 3px 0; color: #64748b;">Subtotal (Net Amount):</td>
+                      <td style="padding: 3px 0; text-align: right; font-family: monospace; font-weight: 600; color: #0f172a;">${formattedTotalLKR}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 3px 0; color: #64748b;">VAT / NBT Tax (0% Exempt):</td>
+                      <td style="padding: 3px 0; text-align: right; font-family: monospace; font-weight: 600; color: #0f172a;">LKR 0</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0 0 0; border-top: 1px solid #e2e8f0; font-weight: 800; font-size: 12px; color: #4f46e5;">Invoice Grand Total:</td>
+                      <td style="padding: 8px 0 0 0; border-top: 1px solid #e2e8f0; text-align: right; font-family: monospace; font-weight: 800; font-size: 14px; color: #4f46e5;">${formattedTotalLKR}</td>
+                    </tr>
+                  </table>
+                </div>
               </td>
             </tr>
           </table>
