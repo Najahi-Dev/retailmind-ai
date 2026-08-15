@@ -53,10 +53,19 @@ export async function POST(req: Request) {
       payment_method_types: ["card"],
       customer: customerId,
       line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
+        priceId && priceId.startsWith("price_")
+          ? { price: priceId, quantity: 1 }
+          : {
+              price_data: {
+                currency: "lkr",
+                product_data: {
+                  name: `${plan.toUpperCase()} Plan (RetailMind AI)`,
+                },
+                unit_amount: 490000,
+                recurring: { interval: "month" },
+              },
+              quantity: 1,
+            },
       ],
       metadata: {
         userId: userId,

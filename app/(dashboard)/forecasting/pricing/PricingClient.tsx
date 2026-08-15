@@ -79,7 +79,7 @@ export default function PricingClient() {
   const [statusFilter, setStatusFilter] = useState<SuggestionStatus>("pending");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const access = useQuery(api.subscriptions.checkFeatureAccess);
+  const access = useQuery(api.subscriptions.checkFeatureAccess, { token: token ?? undefined });
   const suggestions = useQuery(api.pricing.getPriceSuggestions, { token: token ?? undefined, status: statusFilter });
   const stats = useQuery(api.pricing.getPricingStats, { token: token ?? undefined });
   const approve = useMutation(api.pricing.approvePriceSuggestion);

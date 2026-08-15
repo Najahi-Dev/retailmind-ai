@@ -48,12 +48,44 @@ export default function SelectPlanPage() {
   const [cvc, setCvc] = useState("");
   const [paying, setPaying] = useState(false);
 
-  const handleOpenPaymentModal = (planKey: string) => {
+  const [initiatingStripe, setInitiatingStripe] = useState(false);
+
+  const handleOpenPaymentModal = async (planKey: string) => {
     if (planKey === "enterprise") {
       window.location.href = "mailto:sales@retailmind.ai?subject=RetailMind%20Enterprise%20Plan%20Inquiry";
       return;
     }
-    setSelectedPlanForPayment(planKey);
+
+    if (planKey === "starter") {
+      try {
+        await activateSub({ token: token ?? undefined, plan: "starter" });
+        toast.success("Starter Plan activated! Up to 100 SKUs enabled.");
+        router.replace("/dashboard");
+      } catch (err: any) {
+        toast.error("Failed to activate Starter plan.");
+      }
+      return;
+    }
+
+    // Growth Plan: Attempt official Stripe Checkout Session first
+    setInitiatingStripe(true);
+    try {
+      const res = await fetch("/api/billing/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      // Fallback to internal card payment modal if Stripe keys not configured
+      setSelectedPlanForPayment(planKey);
+    } catch (err) {
+      setSelectedPlanForPayment(planKey);
+    } finally {
+      setInitiatingStripe(false);
+    }
   };
 
   const handleExecuteCardPayment = async (e: React.FormEvent) => {

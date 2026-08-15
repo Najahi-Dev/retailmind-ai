@@ -27,8 +27,8 @@ export default function BillingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [vipLoadingId, setVipLoadingId] = useState<string | null>(null);
 
-  const { currentUser } = useAuth();
-  const subData = useQuery(api.subscriptions.getUserSubscription, { userId: currentUser?.id });
+  const { token, currentUser } = useAuth();
+  const subData = useQuery(api.subscriptions.getUserSubscription, { token: token ?? undefined });
 
   // Admin mutation
   const grantVip = useMutation(api.subscriptions.grantVipAccess);
@@ -36,29 +36,48 @@ export default function BillingPage() {
 
   const plan = subData?.userPlan || "starter";
   const isVip = subData?.isVipAccess || currentUser?.role === "admin" || false;
-  const subscription: any = subData?.subscription;
+  const subscription: any = subData?.organization;
 
   const handleUpgrade = async () => {
     try {
       setCheckoutLoading(true);
-      const res = await fetch("/api/stripe/create-checkout", {
+      const res = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "growth" }),
       });
 
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        toast.error("Failed to redirect to Stripe. Opening pricing page...");
-        window.location.href = "/#pricing";
+        toast.error("Failed to redirect to Stripe. Directing to plan selection page...");
+        window.location.href = "/select-plan";
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error opening checkout.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to initiate checkout");
     } finally {
       setCheckoutLoading(false);
+    }
+  };
+
+  const handleManageBilling = async () => {
+    try {
+      setPortalLoading(true);
+      const res = await fetch("/api/billing/create-portal-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data?.error || "Could not open Stripe Billing Portal.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to open billing portal");
+    } finally {
+      setPortalLoading(false);
     }
   };
 
@@ -102,7 +121,7 @@ export default function BillingPage() {
         isVipAccess: !currentVip,
         grantedPlan: !currentVip ? "enterprise" : undefined,
       });
-      toast.success(res.message);
+      toast.success("VIP status updated successfully.");
     } catch (err: any) {
       toast.error(err.message || "Failed to update VIP status.");
     } finally {

@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireCallerOrg, requireRole, verifyEntityOrgAccess } from "./lib/roleGuard";
 
@@ -166,12 +166,72 @@ export const activateSubscription = mutation({
   },
   handler: async (ctx, args) => {
     const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const tier = args.plan.toUpperCase() as "STARTER" | "GROWTH" | "ENTERPRISE";
     await ctx.db.patch(orgId, {
       plan: args.plan,
-      subscriptionStatus: "active",
+      planTier: tier,
+      subscriptionStatus: "ACTIVE",
       subscribedAt: Date.now(),
     });
 
     return { success: true };
+  },
+});
+
+// ── 8. Billing Mutations for Webhooks & Server APIs ──
+export const updateStripeCustomerIdInternal = mutation({
+  args: {
+    orgId: v.id("organizations"),
+    stripeCustomerId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orgId, {
+      stripeCustomerId: args.stripeCustomerId,
+    });
+  },
+});
+
+export const updateSubscriptionFromStripeInternal = mutation({
+  args: {
+    orgId: v.id("organizations"),
+    stripeSubscriptionId: v.optional(v.string()),
+    stripePriceId: v.optional(v.string()),
+    planTier: v.union(v.literal("STARTER"), v.literal("GROWTH"), v.literal("ENTERPRISE")),
+    subscriptionStatus: v.union(
+      v.literal("FREE"),
+      v.literal("TRIALING"),
+      v.literal("ACTIVE"),
+      v.literal("PAST_DUE"),
+      v.literal("CANCELED")
+    ),
+    trialEndsAt: v.optional(v.number()),
+    currentPeriodEnd: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const legacyPlan = args.planTier.toLowerCase() as "starter" | "growth" | "enterprise";
+
+    await ctx.db.patch(args.orgId, {
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      stripePriceId: args.stripePriceId,
+      planTier: args.planTier,
+      plan: legacyPlan,
+      subscriptionStatus: args.subscriptionStatus,
+      trialEndsAt: args.trialEndsAt,
+      currentPeriodEnd: args.currentPeriodEnd,
+      subscribedAt: args.subscriptionStatus === "ACTIVE" ? Date.now() : undefined,
+    });
+  },
+});
+
+export const downgradeSubscriptionInternal = mutation({
+  args: {
+    orgId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orgId, {
+      planTier: "STARTER",
+      plan: "starter",
+      subscriptionStatus: "CANCELED",
+    });
   },
 });

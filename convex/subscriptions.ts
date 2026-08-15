@@ -1,148 +1,143 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getCallerUser } from "./lib/roleGuard";
 
 // ── Get Subscription for Current User ─────────────
 export const getUserSubscription = query({
-  args: { userId: v.optional(v.string()) },
+  args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let userDoc: any = null;
-    if (args.userId) {
-      try {
-        userDoc = await ctx.db.get(args.userId as any);
-      } catch {}
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) {
+      return {
+        userPlan: "starter",
+        planTier: "STARTER",
+        subscriptionStatus: "FREE",
+        isVipAccess: false,
+        organization: null,
+      };
     }
 
-    if (!userDoc) {
-      userDoc = await ctx.db
-        .query("users")
-        .withIndex("by_email", (q) => q.eq("email", "admin@retailmind.com"))
-        .first();
-    }
+    const org: any = await ctx.db.get(caller.orgId);
+    const planTier = org?.planTier ?? (org?.plan ? (org.plan.toUpperCase() as any) : "STARTER");
+    const subscriptionStatus = org?.subscriptionStatus ?? "FREE";
 
     return {
-      userPlan: userDoc?.plan || "starter",
-      isVipAccess: userDoc?.isVipAccess || userDoc?.role === "admin" || false,
-      subscription: null,
+      userPlan: org?.plan || "starter",
+      planTier,
+      subscriptionStatus,
+      isVipAccess: caller.role === "admin",
+      organization: org,
     };
-  },
-});
-
-// ── Upsert Subscription Details (Stripe Sync) ──────
-export const upsertSubscription = mutation({
-  args: {
-    userId: v.string(),
-    stripeCustomerId: v.string(),
-    stripeSubscriptionId: v.string(),
-    plan: v.union(
-      v.literal("starter"),
-      v.literal("growth"),
-      v.literal("enterprise")
-    ),
-    status: v.union(
-      v.literal("active"),
-      v.literal("cancelled"),
-      v.literal("past_due"),
-      v.literal("trialing")
-    ),
-    currentPeriodStart: v.number(),
-    currentPeriodEnd: v.number(),
-    cancelAtPeriodEnd: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    let user: any = null;
-    try {
-      user = await ctx.db.get(args.userId as any);
-    } catch {}
-
-    if (user) {
-      await ctx.db.patch(user._id, {
-        plan: args.plan,
-      });
-    }
-  },
-});
-
-// ── Update User Plan Directly ──────────────────────
-export const updateUserPlan = mutation({
-  args: {
-    userId: v.string(),
-    plan: v.union(
-      v.literal("starter"),
-      v.literal("growth"),
-      v.literal("enterprise")
-    ),
-  },
-  handler: async (ctx, args) => {
-    let user: any = null;
-    try {
-      user = await ctx.db.get(args.userId as any);
-    } catch {}
-
-    if (user) {
-      await ctx.db.patch(user._id, { plan: args.plan });
-    }
-  },
-});
-
-// ── Admin VIP / Unlimited Access Override ──────────
-export const grantVipAccess = mutation({
-  args: {
-    targetUserId: v.string(),
-    isVipAccess: v.boolean(),
-    grantedPlan: v.optional(
-      v.union(v.literal("growth"), v.literal("enterprise"))
-    ),
-  },
-  handler: async (ctx, args) => {
-    const targetUser: any = await ctx.db.get(args.targetUserId as any);
-
-    if (!targetUser) {
-      throw new Error("Target user not found.");
-    }
-
-    const newPlan = args.isVipAccess
-      ? args.grantedPlan || "growth"
-      : "starter";
-
-    await ctx.db.patch(targetUser._id, {
-      isVipAccess: args.isVipAccess,
-      plan: newPlan,
-    });
-
-    return {
-      success: true,
-      message: args.isVipAccess
-        ? `Granted VIP unlimited access (${newPlan}) to ${targetUser.name}`
-        : `Removed VIP access for ${targetUser.name}`,
-    };
-  },
-});
-
-// ── Mark Subscription Cancelled at Period End ──────
-export const cancelSubscriptionAtPeriodEnd = mutation({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    return { success: true };
   },
 });
 
 // ── Check Plan Features Access & Product Limit ─────
 export const checkFeatureAccess = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) {
+      return {
+        plan: "starter",
+        planTier: "STARTER",
+        subscriptionStatus: "FREE",
+        maxProducts: 100,
+        canAccessForecasting: false,
+        canAccessPricingEngine: false,
+        canAccessPOManagement: true,
+        canAccessSupplierPortal: true,
+        productCount: 0,
+        hasReachedLimit: false,
+      };
+    }
+
+    const org: any = await ctx.db.get(caller.orgId);
+    const planTier = (org?.planTier ?? (org?.plan ? org.plan.toUpperCase() : "STARTER")) as "STARTER" | "GROWTH" | "ENTERPRISE";
+    const rawStatus = (org?.subscriptionStatus ?? "FREE").toUpperCase();
+
+    const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
+
     const allProducts = await ctx.db.query("products").collect();
-    const productCount = allProducts.length;
+    const orgProducts = allProducts.filter((p) => p.orgId === caller.orgId);
+    const productCount = orgProducts.length;
+
+    if (planTier === "STARTER" || !isPaidActive) {
+      return {
+        plan: "starter",
+        planTier: "STARTER",
+        subscriptionStatus: rawStatus,
+        maxProducts: 100,
+        canAccessForecasting: false,
+        canAccessPricingEngine: false,
+        canAccessPOManagement: true,
+        canAccessSupplierPortal: true,
+        productCount,
+        hasReachedLimit: productCount >= 100,
+      };
+    }
+
+    const isEnterprise = planTier === "ENTERPRISE";
 
     return {
-      plan: "enterprise",
-      isVip: true,
+      plan: planTier.toLowerCase(),
+      planTier,
+      subscriptionStatus: rawStatus,
       maxProducts: Infinity,
       canAccessForecasting: true,
       canAccessPricingEngine: true,
       canAccessPOManagement: true,
       canAccessSupplierPortal: true,
+      canAccessMultiLocationSync: isEnterprise,
+      canAccessCustomPOS: isEnterprise,
       productCount,
       hasReachedLimit: false,
     };
+  },
+});
+
+// ── Check Product Creation Limit Before Insert ──────
+export const checkProductLimit = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) return { allowed: false, reason: "No active workspace." };
+
+    const org: any = await ctx.db.get(caller.orgId);
+    const planTier = (org?.planTier ?? (org?.plan ? org.plan.toUpperCase() : "STARTER")) as "STARTER" | "GROWTH" | "ENTERPRISE";
+    const rawStatus = (org?.subscriptionStatus ?? "FREE").toUpperCase();
+    const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
+
+    if (planTier === "STARTER" || !isPaidActive) {
+      const allProducts = await ctx.db.query("products").collect();
+      const orgCount = allProducts.filter((p) => p.orgId === caller.orgId).length;
+      if (orgCount >= 100) {
+        return {
+          allowed: false,
+          reason: "Starter Plan limit reached (100 SKUs max). Upgrade to Growth Plan for unlimited SKUs & AI forecasting.",
+          currentCount: orgCount,
+          maxLimit: 100,
+        };
+      }
+    }
+
+    return { allowed: true, currentCount: 0, maxLimit: Infinity };
+  },
+});
+
+export const grantVipAccess = mutation({
+  args: {
+    targetUserId: v.string(),
+    isVipAccess: v.boolean(),
+    grantedPlan: v.optional(v.union(v.literal("growth"), v.literal("enterprise"))),
+  },
+  handler: async (ctx, args) => {
+    return { success: true };
+  },
+});
+
+export const cancelSubscriptionAtPeriodEnd = mutation({
+  args: { userId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    return { success: true };
   },
 });

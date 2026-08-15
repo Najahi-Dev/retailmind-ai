@@ -507,6 +507,19 @@ export const createProduct = mutation({
       throw new Error(`Product with SKU '${args.sku}' already exists in your workspace.`);
     }
 
+    // Starter Plan Usage Check: 100 SKUs limit
+    const org: any = await ctx.db.get(orgId);
+    const planTier = (org?.planTier ?? (org?.plan ? org.plan.toUpperCase() : "STARTER"));
+    const rawStatus = (org?.subscriptionStatus ?? "FREE").toUpperCase();
+    const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
+
+    if (planTier === "STARTER" || !isPaidActive) {
+      const orgProducts = allProducts.filter((p) => p.orgId === orgId);
+      if (orgProducts.length >= 100) {
+        throw new Error("Starter Plan limit reached (100 SKUs max). Upgrade to Growth Plan for unlimited SKUs.");
+      }
+    }
+
     const productId = await ctx.db.insert("products", {
       orgId,
       sku: args.sku,
