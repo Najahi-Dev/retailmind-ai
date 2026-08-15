@@ -219,37 +219,37 @@ export default function PaymentsPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">
                   <DropdownMenuItem
-                    onValueChange={() => setFilters((prev) => ({ ...prev, status: '' }))]
+                    onClick={() => setFilters((prev) => ({ ...prev, status: '' }))}
                     state={filters.status === '' ? 'checked' : undefined}
                   >
                     All Statuses
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onValueChange={() => setFilters((prev) => ({ ...prev, status: 'paid' }))}
+                    onClick={() => setFilters((prev) => ({ ...prev, status: 'paid' }))}
                     state={filters.status === 'paid' ? 'checked' : undefined}
                   >
                     Paid
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onValueChange={() => setFilters((prev) => ({ ...prev, status: 'partially_paid' }))}
+                    onClick={() => setFilters((prev) => ({ ...prev, status: 'partially_paid' }))}
                     state={filters.status === 'partially_paid' ? 'checked' : undefined}
                   >
                     Partially Paid
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onValueChange={() => setFilters((prev) => ({ ...prev, status: 'pending_on_delivery' }))}
+                    onClick={() => setFilters((prev) => ({ ...prev, status: 'pending_on_delivery' }))}
                     state={filters.status === 'pending_on_delivery' ? 'checked' : undefined}
                   >
                     Pending on Delivery
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onValueChange={() => setFilters((prev) => ({ ...prev, status: 'cheque_pending' }))}
+                    onClick={() => setFilters((prev) => ({ ...prev, status: 'cheque_pending' }))}
                     state={filters.status === 'cheque_pending' ? 'checked' : undefined}
                   >
                     Cheque Pending
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onValueChange={() => setFilters((prev) => ({ ...prev, status: 'due' }))}
+                    onClick={() => setFilters((prev) => ({ ...prev, status: 'due' }))}
                     state={filters.status === 'due' ? 'checked' : undefined}
                   >
                     Due
