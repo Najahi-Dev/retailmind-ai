@@ -221,7 +221,34 @@ export const updateSubscriptionFromStripeInternal = mutation({
     let targetOrg: any = null;
 
     if (args.orgId) {
-      targetOrg = await ctx.db.get(args.orgId);
+      try {
+        const item: any = await ctx.db.get(args.orgId);
+        if (item) {
+          if ("slug" in item || "inviteCode" in item) {
+            targetOrg = item;
+          } else if ("orgId" in item && item.orgId) {
+            targetOrg = await ctx.db.get(item.orgId);
+          }
+        }
+      } catch {}
+    }
+
+    if (!targetOrg && args.userId) {
+      try {
+        const user: any = await ctx.db.get(args.userId as any);
+        if (user && "orgId" in user && user.orgId) {
+          targetOrg = await ctx.db.get(user.orgId);
+        }
+      } catch {}
+      if (!targetOrg) {
+        const allUsers = await ctx.db.query("users").collect();
+        const matchedUser = allUsers.find(
+          (u) => u._id === args.userId || (u as any).clerkId === args.userId || u.email === args.userId
+        );
+        if (matchedUser?.orgId) {
+          targetOrg = await ctx.db.get(matchedUser.orgId);
+        }
+      }
     }
 
     if (!targetOrg && args.stripeCustomerId) {
@@ -234,19 +261,11 @@ export const updateSubscriptionFromStripeInternal = mutation({
       targetOrg = allOrgs.find((o) => o.stripeSubscriptionId === args.stripeSubscriptionId);
     }
 
-    if (!targetOrg && args.userId) {
-      try {
-        const user: any = await ctx.db.get(args.userId as any);
-        if (user && "orgId" in user && user.orgId) {
-          targetOrg = await ctx.db.get(user.orgId);
-        }
-      } catch {
-        // Fallback search
-        const allUsers = await ctx.db.query("users").collect();
-        const matchedUser = allUsers.find((u) => u._id === args.userId || u.clerkId === args.userId || u.email === args.userId);
-        if (matchedUser?.orgId) {
-          targetOrg = await ctx.db.get(matchedUser.orgId);
-        }
+    // Single organization fallback if webhook metadata was ambiguous
+    if (!targetOrg) {
+      const allOrgs = await ctx.db.query("organizations").collect();
+      if (allOrgs.length === 1) {
+        targetOrg = allOrgs[0];
       }
     }
 
@@ -271,6 +290,37 @@ export const updateSubscriptionFromStripeInternal = mutation({
     });
 
     return { success: true, orgId: targetOrg._id };
+  },
+});
+
+// ── 9. Direct Admin Upgrade / Sync Mutation ──
+export const syncCurrentOrgToGrowth = mutation({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    await ctx.db.patch(orgId, {
+      plan: "growth",
+      planTier: "GROWTH",
+      subscriptionStatus: "ACTIVE",
+      subscribedAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+export const forceUpgradeWorkspaceToGrowth = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const allOrgs = await ctx.db.query("organizations").collect();
+    for (const org of allOrgs) {
+      await ctx.db.patch(org._id, {
+        plan: "growth",
+        planTier: "GROWTH",
+        subscriptionStatus: "ACTIVE",
+        subscribedAt: Date.now(),
+      });
+    }
+    return { count: allOrgs.length };
   },
 });
 

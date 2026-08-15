@@ -56,12 +56,15 @@ const URGENCY_CONFIG = {
   },
 };
 
+import { UpgradePrompt } from "@/components/upgrade-prompt";
+
 export default function ReordersClient() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "dismissed" | undefined>("pending");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { token } = useAuth();
+  const access = useQuery(api.subscriptions.checkFeatureAccess, { token: token ?? undefined });
   const suggestions = useQuery(api.reorder.getReorderSuggestions, {
     token: token ?? undefined,
     status: statusFilter,
@@ -76,6 +79,17 @@ export default function ReordersClient() {
 
   const formatDate = (ts: number) =>
     new Date(ts).toLocaleDateString("en-US", { day: "numeric", month: "short" });
+
+  if (access && access.canAccessReorders === false) {
+    return (
+      <div className="p-6">
+        <UpgradePrompt
+          title="AI Reorder Suggestions Gated"
+          description="Automated replenishment suggestions based on daily sales velocity, safety stock, and supplier lead times are exclusive to RetailMind AI Growth & Enterprise plans."
+        />
+      </div>
+    );
+  }
 
   if (!suggestions || !stats) {
     return (

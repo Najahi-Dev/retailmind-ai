@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import Stripe from "stripe";
 import { getServerUser } from "@/lib/get-server-user";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "sk_test_mock";
 
@@ -52,6 +57,16 @@ export async function POST(req: Request) {
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
+    const cookieStore = await cookies();
+    const token = cookieStore.get("retailmind_token")?.value;
+    let orgId: string | undefined;
+    if (token) {
+      try {
+        const org = await convex.query(api.organizations.getCurrentOrganization, { token });
+        if (org?._id) orgId = org._id;
+      } catch {}
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -74,14 +89,16 @@ export async function POST(req: Request) {
       subscription_data: {
         metadata: {
           userId: userId,
+          organization_id: orgId || "",
           plan: plan,
         },
       },
       metadata: {
         userId: userId,
+        organization_id: orgId || "",
         plan: plan,
       },
-      client_reference_id: userId,
+      client_reference_id: orgId || userId,
       success_url: `${origin}/dashboard?subscription=success&plan=${plan}`,
       cancel_url: `${origin}/#pricing`,
     });

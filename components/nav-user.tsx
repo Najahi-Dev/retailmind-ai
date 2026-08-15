@@ -39,8 +39,8 @@ export function NavUser() {
 
   if (!user) return null
 
-  const userPlan = (user as any).plan ?? "starter";
-  const planInfo = PLAN_BADGES[userPlan] ?? PLAN_BADGES.starter;
+  const rawPlan = ((user as any).planTier || (user as any).plan || "starter").toLowerCase();
+  const planInfo = PLAN_BADGES[rawPlan] ?? PLAN_BADGES.starter;
   const PlanIcon = planInfo.Icon;
 
   const initials = user.name

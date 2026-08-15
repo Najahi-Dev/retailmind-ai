@@ -44,6 +44,7 @@ export function DashboardClient() {
   const reorders = useQuery(api.reorder.getReorderSuggestions, { token: token ?? undefined, status: "pending" });
   const pricingSuggestions = useQuery(api.pricing.getPriceSuggestions, { token: token ?? undefined, status: "pending" });
   const approvePricing = useMutation(api.pricing.approvePriceSuggestion);
+  const activateSub = useMutation(api.organizations.activateSubscription);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -51,14 +52,16 @@ export function DashboardClient() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("subscription") === "success" || params.get("billing") === "success") {
-        const planName = params.get("plan") || "Growth";
-        toast.success(`🎉 Subscription Activated! Welcome to RetailMind AI ${planName.toUpperCase()} plan. All features unlocked!`, {
+        const planName = params.get("plan") || "growth";
+        const targetPlan = (planName.toLowerCase() === "starter" ? "starter" : planName.toLowerCase() === "enterprise" ? "enterprise" : "growth") as "starter" | "growth" | "enterprise";
+        activateSub({ token: token ?? undefined, plan: targetPlan }).catch(() => {});
+        toast.success(`🎉 Subscription Activated! Welcome to RetailMind AI ${targetPlan.toUpperCase()} plan. All features unlocked!`, {
           duration: 7000,
         });
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
-  }, []);
+  }, [token, activateSub]);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-LK", {

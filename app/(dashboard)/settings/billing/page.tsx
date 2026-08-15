@@ -25,6 +25,7 @@ import Link from "next/link";
 export default function BillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const { currentUser } = useAuth();
   const {
@@ -40,6 +41,23 @@ export default function BillingPage() {
   } = useWorkspaceBilling();
 
   const cancelSub = useMutation(api.subscriptions.cancelSubscriptionAtPeriodEnd);
+
+  const handleSyncStripe = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/billing/sync-stripe", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || "Subscription status synchronized with Stripe!");
+      } else {
+        toast.error(data.error || "Failed to sync subscription.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to sync subscription.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleUpgrade = async () => {
     try {
@@ -241,6 +259,20 @@ export default function BillingPage() {
                   Cancel Subscription at Period End
                 </Button>
               )}
+
+              <Button
+                onClick={handleSyncStripe}
+                disabled={syncing}
+                variant="outline"
+                className="border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl cursor-pointer text-xs"
+              >
+                {syncing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+                )}
+                Sync Stripe Status
+              </Button>
             </div>
           )}
         </Card>
