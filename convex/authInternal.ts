@@ -84,6 +84,22 @@ export const createUserRecord = mutation({
       createdAt: Date.now(),
     });
 
+    if (args.role === "supplier") {
+      const supplierId = await ctx.db.insert("suppliers", {
+        name: args.name,
+        email: args.email,
+        phone: "+94 77 123 4567",
+        address: "Registered Vendor Facilities, Sri Lanka",
+        leadTimeDays: 3,
+        paymentTerms: "Net 30",
+        status: "active",
+        reliabilityScore: 95,
+        isActive: true,
+        createdAt: Date.now(),
+      });
+      await ctx.db.patch(userId, { supplierId });
+    }
+
     return userId;
   },
 });

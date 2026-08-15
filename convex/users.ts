@@ -81,6 +81,62 @@ export const getUserStats = query({
   },
 });
 
+// Helper function to auto-create or update a supplier record when a user role is set to supplier
+async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole: string, newName?: string) {
+  const name = (newName || user.name || "Vendor Supplier").trim();
+  const email = user.email ? user.email.trim().toLowerCase() : "";
+
+  if (newRole === "supplier") {
+    let existingSupplier = user.supplierId ? await ctx.db.get(user.supplierId) : null;
+
+    if (!existingSupplier && email) {
+      const allSuppliers = await ctx.db.query("suppliers").collect();
+      existingSupplier = allSuppliers.find(
+        (s: any) => s.email && s.email.trim().toLowerCase() === email
+      );
+    }
+
+    if (existingSupplier) {
+      // Update and activate existing supplier
+      await ctx.db.patch(existingSupplier._id, {
+        name,
+        email: email || existingSupplier.email,
+        status: "active",
+        isActive: true,
+      });
+      if (user.supplierId !== existingSupplier._id) {
+        await ctx.db.patch(userId, { supplierId: existingSupplier._id });
+      }
+    } else {
+      // Auto-create new supplier record on Suppliers page
+      const newSupplierId = await ctx.db.insert("suppliers", {
+        name,
+        email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, "")}@supplier.com`,
+        phone: "+94 77 123 4567",
+        address: "Registered Vendor Facilities, Sri Lanka",
+        leadTimeDays: 3,
+        paymentTerms: "Net 30",
+        status: "active",
+        reliabilityScore: 95,
+        isActive: true,
+        createdAt: Date.now(),
+      });
+      await ctx.db.patch(userId, { supplierId: newSupplierId });
+    }
+  } else if (user.role === "supplier" && newRole !== "supplier") {
+    // If role changed away from supplier, set linked supplier status to inactive
+    if (user.supplierId) {
+      const existingSupplier = await ctx.db.get(user.supplierId);
+      if (existingSupplier) {
+        await ctx.db.patch(existingSupplier._id, {
+          status: "inactive",
+          isActive: false,
+        });
+      }
+    }
+  }
+}
+
 // Update User Role
 export const updateUserRole = mutation({
   args: {
@@ -94,7 +150,11 @@ export const updateUserRole = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User record not found");
+
     await ctx.db.patch(args.userId, { role: args.role });
+    await syncSupplierForUserRole(ctx, args.userId, user, args.role);
   },
 });
 
@@ -106,6 +166,16 @@ export const toggleUserStatus = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, { isActive: args.isActive });
+    const user = await ctx.db.get(args.userId);
+    if (user && user.supplierId) {
+      const supplier = await ctx.db.get(user.supplierId);
+      if (supplier) {
+        await ctx.db.patch(supplier._id, {
+          status: args.isActive ? "active" : "inactive",
+          isActive: args.isActive,
+        });
+      }
+    }
   },
 });
 
@@ -159,6 +229,11 @@ export const createUser = mutation({
       createdAt: Date.now(),
     });
 
+    const createdUser = await ctx.db.get(userId);
+    if (createdUser) {
+      await syncSupplierForUserRole(ctx, userId, createdUser, args.role, args.name);
+    }
+
     return userId;
   },
 });
@@ -199,15 +274,7 @@ export const updateUserFullDetail = mutation({
       isActive: args.isActive,
     });
 
-    // ── Sync supplier master record if user is a supplier ──
-    if (user.role === "supplier" || args.role === "supplier") {
-      const supplier = await getSupplierForUser(ctx, user);
-      if (supplier) {
-        await ctx.db.patch(supplier._id, {
-          name: args.name,
-        });
-      }
-    }
+    await syncSupplierForUserRole(ctx, args.userId, user, args.role, args.name);
 
     return { success: true };
   },
