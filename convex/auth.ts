@@ -110,6 +110,7 @@ export const registerUser = action({
     email: v.string(),
     password: v.string(),
     name: v.string(),
+    phone: v.optional(v.string()),
     role: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
   },
@@ -124,6 +125,7 @@ export const registerUser = action({
       email,
       passwordHash,
       name: args.name,
+      phone: args.phone,
       role,
       imageUrl: args.imageUrl,
     });

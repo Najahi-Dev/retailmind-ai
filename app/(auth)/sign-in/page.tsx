@@ -30,6 +30,8 @@ import {
   EyeIcon,
   EyeOffIcon,
   ClockIcon,
+  ShieldAlertIcon,
+  PhoneIcon,
 } from "lucide-react";
 
 const ROLE_DESTINATIONS: Record<string, string> = {
@@ -46,6 +48,7 @@ export default function SignInPage() {
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -93,6 +96,7 @@ export default function SignInPage() {
           name: name.trim(),
           email: email.trim(),
           password: password.trim(),
+          phone: phone.trim() || undefined,
         });
 
         if (res && res.isPending) {
@@ -199,20 +203,36 @@ export default function SignInPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Full Name</Label>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="John Doe"
-                    required={mode === "signup"}
-                    className="h-11 text-xs rounded-xl pl-10 border-slate-200 dark:border-slate-800"
-                  />
-                  <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none" />
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Full Name</Label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="John Doe"
+                      required={mode === "signup"}
+                      className="h-11 text-xs rounded-xl pl-10 border-slate-200 dark:border-slate-800"
+                    />
+                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none" />
+                  </div>
                 </div>
-              </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mobile Number</Label>
+                  <div className="relative">
+                    <Input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+94 77 123 4567"
+                      className="h-11 text-xs rounded-xl pl-10 border-slate-200 dark:border-slate-800"
+                    />
+                    <PhoneIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none" />
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="space-y-1.5">

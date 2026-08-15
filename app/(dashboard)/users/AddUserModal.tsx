@@ -28,6 +28,7 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
   const [form, setForm] = useState({
     name:  "",
     email: "",
+    phone: "",
     role:  "staff" as "admin" | "manager" | "staff" | "supplier",
     plan:  "starter" as "starter" | "growth" | "enterprise",
   });
@@ -43,11 +44,12 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
       await createUser({
         name:  form.name,
         email: form.email,
+        phone: form.phone || undefined,
         role:  form.role,
         plan:  form.plan,
       });
       toast.success(`User ${form.name} created successfully!`);
-      setForm({ name: "", email: "", role: "staff", plan: "starter" });
+      setForm({ name: "", email: "", phone: "", role: "staff", plan: "starter" });
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create user");
@@ -82,17 +84,30 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
             />
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Email Address <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              type="email"
-              placeholder="sarah@retailmind.ai"
-              value={form.email}
-              onChange={e => set("email", e.target.value)}
-              className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Email Address <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="email"
+                placeholder="sarah@retailmind.ai"
+                value={form.email}
+                onChange={e => set("email", e.target.value)}
+                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mobile Number</Label>
+              <Input
+                type="tel"
+                placeholder="+94 77 123 4567"
+                value={form.phone}
+                onChange={e => set("phone", e.target.value)}
+                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

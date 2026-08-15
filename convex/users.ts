@@ -101,6 +101,7 @@ async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole
       await ctx.db.patch(existingSupplier._id, {
         name,
         email: email || existingSupplier.email,
+        phone: user.phone || existingSupplier.phone || "+94 77 123 4567",
         status: "active",
         isActive: true,
       });
@@ -112,7 +113,7 @@ async function syncSupplierForUserRole(ctx: any, userId: any, user: any, newRole
       const newSupplierId = await ctx.db.insert("suppliers", {
         name,
         email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, "")}@supplier.com`,
-        phone: "+94 77 123 4567",
+        phone: user.phone || "+94 77 123 4567",
         address: "Registered Vendor Facilities, Sri Lanka",
         leadTimeDays: 3,
         paymentTerms: "Net 30",
@@ -195,6 +196,7 @@ export const createUser = mutation({
   args: {
     name: v.string(),
     email: v.string(),
+    phone: v.optional(v.string()),
     password: v.optional(v.string()),
     role: v.union(
       v.literal("admin"),
@@ -222,6 +224,7 @@ export const createUser = mutation({
     const userId = await ctx.db.insert("users", {
       email: emailClean,
       name: args.name.trim(),
+      phone: args.phone,
       passwordHash,
       role: args.role,
       isActive: true,
@@ -251,6 +254,7 @@ export const updateUserFullDetail = mutation({
   args: {
     userId: v.id("users"),
     name: v.string(),
+    phone: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     role: v.union(
       v.literal("admin"),
@@ -268,6 +272,7 @@ export const updateUserFullDetail = mutation({
 
     await ctx.db.patch(args.userId, {
       name: args.name,
+      phone: args.phone ?? user.phone,
       imageUrl: args.imageUrl ?? user.imageUrl,
       role: args.role,
       plan: args.plan,
