@@ -977,12 +977,10 @@ export const batchImportProducts = mutation({
             safetyStock: parseFloat(String(item.safetyStock || "0")) || 0,
             minStockLevel: parseFloat(String(item.minStockLevel || "0")) || 0,
             trackBatches:
-              item.trackBatches === undefined ||
-              item.trackBatches === null ||
-              item.trackBatches === "" ||
+              !item.trackBatches ||
               item.trackBatches === false ||
-              item.trackBatches === 0 ||
-              String(item.trackBatches).toLowerCase() === "false"
+              String(item.trackBatches).toLowerCase().trim() === "false" ||
+              String(item.trackBatches).trim() === "0"
                 ? false
                 : true,
             expiryDate: item.expiryDate ? new Date(item.expiryDate).getTime() : undefined,
