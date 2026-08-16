@@ -186,6 +186,87 @@ export const activateSubscription = mutation({
   },
 });
 
+// ── 7b. Activate 14-Day Free Trial ──────────────────
+export const activateFreeTrial = mutation({
+  args: {
+    token: v.optional(v.string()),
+    selectedPlan: v.union(v.literal("STARTER"), v.literal("GROWTH")),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const org = await ctx.db.get(orgId);
+    if (!org) throw new Error("Organization not found.");
+
+    // Idempotency guard — each workspace gets one trial
+    if (org.isTrialUsed) {
+      throw new Error(
+        "Your workspace has already used its free trial. Please subscribe to continue."
+      );
+    }
+
+    const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+    const trialEndsAt = Date.now() + TRIAL_DURATION_MS;
+    const legacyPlan = args.selectedPlan.toLowerCase() as "starter" | "growth";
+
+    await ctx.db.patch(orgId, {
+      planTier: args.selectedPlan,
+      plan: legacyPlan,
+      subscriptionStatus: "TRIALING",
+      trialEndsAt,
+      isTrialUsed: true,
+    });
+
+    return { success: true, trialEndsAt };
+  },
+});
+
+// ── 7c. Get Workspace Billing Health ────────────────
+export const getWorkspaceBilling = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    if (!args.token) return null;
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token!))
+      .first();
+
+    if (!session || session.expiresAt < Date.now()) return null;
+    const user = await ctx.db.get(session.userId);
+    if (!user || !user.orgId) return null;
+    const org = await ctx.db.get(user.orgId);
+    if (!org) return null;
+
+    const statusUpper = (org.subscriptionStatus || "FREE").toUpperCase();
+    const isSubscribed =
+      statusUpper === "ACTIVE" ||
+      (Boolean(org.stripeSubscriptionId) &&
+        statusUpper !== "CANCELED" &&
+        statusUpper !== "PAST_DUE");
+
+    const isTrialing = statusUpper === "TRIALING";
+    const trialEndsAt = org.trialEndsAt ?? null;
+    const now = Date.now();
+
+    const msRemaining = trialEndsAt ? Math.max(0, trialEndsAt - now) : 0;
+    const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+    const isExpired =
+      !isSubscribed && isTrialing && trialEndsAt !== null && now > trialEndsAt;
+
+    return {
+      isSubscribed,
+      isTrialing,
+      isExpired,
+      isTrialUsed: org.isTrialUsed ?? false,
+      daysRemaining,
+      trialEndsAt,
+      planTier: org.planTier ?? (org.plan ? org.plan.toUpperCase() : "STARTER"),
+      subscriptionStatus: statusUpper,
+      orgName: org.name,
+    };
+  },
+});
+
+
 // ── 8. Billing Mutations for Webhooks & Server APIs ──
 export const updateStripeCustomerIdInternal = mutation({
   args: {

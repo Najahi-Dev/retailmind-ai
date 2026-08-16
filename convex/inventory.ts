@@ -897,12 +897,27 @@ export const batchImportProducts = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+
+    // Starter Plan Usage Check: 100 SKUs limit
+    const org: any = await ctx.db.get(orgId);
+    const planTier = (org?.planTier ?? (org?.plan ? org.plan.toUpperCase() : "STARTER"));
+    const rawStatus = (org?.subscriptionStatus ?? "FREE").toUpperCase();
+    const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
+
     let imported = 0;
 
     for (const item of args.products) {
       const allProducts = await ctx.db.query("products").collect();
       const existing = allProducts.find((p) => p.sku === item.sku && (!p.orgId || p.orgId === orgId));
       if (!existing) {
+        // Check plan limit before inserting each product
+        if (planTier === "STARTER" || !isPaidActive) {
+          const orgProducts = allProducts.filter((p) => p.orgId === orgId);
+          if (orgProducts.length >= 100) {
+            throw new Error("Starter Plan limit reached (100 SKUs max). Upgrade to Growth Plan for unlimited SKUs.");
+          }
+        }
+
         await ctx.db.insert("products", {
           orgId,
           sku: item.sku,
