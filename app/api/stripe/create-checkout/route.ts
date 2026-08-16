@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       customerId = newCustomer.id;
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     const cookieStore = await cookies();
     const token = cookieStore.get("retailmind_token")?.value;
