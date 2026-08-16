@@ -92,6 +92,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [liveUserRecord, token]);
 
+  // Additional validation for token/session consistency
+  useEffect(() => {
+    if (!token) return;
+
+    // Validate the token/session on mount and periodically
+    const validateSession = async () => {
+      try {
+        const sessionValid = await validateSessionAction({ token });
+        if (!sessionValid) {
+          // Token/session is invalid, clear it
+          localStorage.removeItem(TOKEN_KEY);
+          document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+          setToken(null);
+          setCurrentUser(null);
+          setIsLoading(false);
+
+          // Redirect to sign-in if not already there
+          if (typeof window !== "undefined" && !window.location.pathname.includes('/sign-in')) {
+            window.location.href = "/sign-in?session_expired=true";
+          }
+        }
+      } catch (error) {
+        console.error("Session validation error:", error);
+        // On error, clear the session to be safe
+        localStorage.removeItem(TOKEN_KEY);
+        document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+        setToken(null);
+        setCurrentUser(null);
+        setIsLoading(false);
+      }
+    };
+
+    validateSession();
+
+    // Set up periodic validation (every 5 minutes)
+    const intervalId = setInterval(validateSession, 5 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [token, validateSessionAction]);
+
   const refreshUser = async () => {
     if (!token) return;
     try {

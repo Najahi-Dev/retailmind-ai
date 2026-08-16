@@ -9,12 +9,19 @@ export const getCurrentOrganization = query({
   },
   handler: async (ctx, args) => {
     if (!args.token) return null;
-    const { organization, orgId, user } = await requireCallerOrg(ctx, args.token);
-    return {
-      ...organization,
-      userRole: user.role,
-      isOwner: organization.ownerId === user._id,
-    };
+    try {
+      const { organization, orgId, user } = await requireCallerOrg(ctx, args.token);
+      return {
+        ...organization,
+        userRole: user.role,
+        isOwner: organization.ownerId === user._id,
+      };
+    } catch (err) {
+      // Log the error for debugging but return null to prevent UI crashes
+      // The auth context will handle redirecting to sign-in if needed
+      console.warn("getCurrentOrganization unauthorized:", err.message);
+      return null;
+    }
   },
 });
 
@@ -25,16 +32,23 @@ export const getUserOrganizations = query({
   },
   handler: async (ctx, args) => {
     if (!args.token) return [];
-    const user = await requireRole(ctx, args.token);
-    const orgs = await ctx.db.query("organizations").collect();
-    
-    // Strict isolation: return ONLY the workspace(s) owned by or assigned to the current user
-    const userOrgs = orgs.filter((org) => org._id === user.orgId || org.ownerId === user._id);
+    try {
+      const user = await requireRole(ctx, args.token);
+      const orgs = await ctx.db.query("organizations").collect();
 
-    return userOrgs.map((org) => ({
-      ...org,
-      isCurrent: user.orgId === org._id,
-    }));
+      // Strict isolation: return ONLY the workspace(s) owned by or assigned to the current user
+      const userOrgs = orgs.filter((org) => org._id === user.orgId || org.ownerId === user._id);
+
+      return userOrgs.map((org) => ({
+        ...org,
+        isCurrent: user.orgId === org._id,
+      }));
+    } catch (err) {
+      // Log the error for debugging but return empty array to prevent UI crashes
+      // The auth context will handle redirecting to sign-in if needed
+      console.warn("getUserOrganizations unauthorized:", err.message);
+      return [];
+    }
   },
 });
 
@@ -60,6 +74,7 @@ export const createOrganization = mutation({
       plan: args.plan ?? "starter",
       ownerId: user._id,
       isActive: true,
+      isTrialUsed: false,
       createdAt: Date.now(),
     });
 
@@ -124,45 +139,53 @@ export const getTrialStatus = query({
   },
   handler: async (ctx, args) => {
     if (!args.token) return null;
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.token!))
-      .first();
+    try {
+      const session = await ctx.db
+        .query("sessions")
+        .withIndex("by_token", (q) => q.eq("token", args.token!))
+        .first();
 
-    if (!session || session.expiresAt < Date.now()) return null;
+      if (!session || session.expiresAt < Date.now()) return null;
 
-    const user = await ctx.db.get(session.userId);
-    if (!user || !user.orgId) return null;
+      const user = await ctx.db.get(session.userId);
+      if (!user || !user.orgId) return null;
 
-    const org = await ctx.db.get(user.orgId);
-    if (!org) return null;
+      const org = await ctx.db.get(user.orgId);
+      if (!org) return null;
 
-    const statusUpper = (org.subscriptionStatus || "").toUpperCase();
-    const hasActiveStripeSub = Boolean(org.stripeSubscriptionId) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
-    const hasActiveSubscribedAt = Boolean(org.subscribedAt) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
-    const isSubscribed = statusUpper === "ACTIVE" || hasActiveStripeSub || hasActiveSubscribedAt;
+      const statusUpper = (org.subscriptionStatus || "").toUpperCase();
+      const hasActiveStripeSub = Boolean(org.stripeSubscriptionId) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
+      const hasActiveSubscribedAt = Boolean(org.subscribedAt) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
+      const isSubscribed = statusUpper === "ACTIVE" || hasActiveStripeSub || hasActiveSubscribedAt;
 
-    const createdAt = org.createdAt || Date.now();
-    const trialDurationMs = 14 * 24 * 60 * 60 * 1000;
-    const trialEndsAt = org.trialEndsAt || (createdAt + trialDurationMs);
-    const now = Date.now();
-    const msRemaining = trialEndsAt - now;
-    const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
-    const isTrialExpired = !isSubscribed && msRemaining <= 0;
+      const createdAt = org.createdAt || Date.now();
+      const trialDurationMs = 14 * 24 * 60 * 60 * 1000;
+      const trialEndsAt = org.trialEndsAt || (createdAt + trialDurationMs);
+      const now = Date.now();
+      const msRemaining = trialEndsAt - now;
+      const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+      const isTrialExpired = !isSubscribed && msRemaining <= 0;
 
-    return {
-      daysRemaining,
-      isSubscribed,
-      isTrialExpired,
-      trialEndsAt,
-      createdAt,
-      plan: org.plan || "starter",
-      planTier: org.planTier || (org.plan ? org.plan.toUpperCase() : "STARTER"),
-      subscriptionStatus: org.subscriptionStatus || (isSubscribed ? "ACTIVE" : "FREE"),
-      orgName: org.name,
-      stripeSubscriptionId: org.stripeSubscriptionId,
-      currentPeriodEnd: org.currentPeriodEnd,
-    };
+      return {
+        daysRemaining,
+        isSubscribed,
+        isTrialExpired,
+        trialEndsAt,
+        createdAt,
+        plan: org.plan || "starter",
+        planTier: org.planTier || (org.plan ? org.plan.toUpperCase() : "STARTER"),
+        subscriptionStatus: org.subscriptionStatus || (isSubscribed ? "ACTIVE" : "FREE"),
+        orgName: org.name,
+        stripeSubscriptionId: org.stripeSubscriptionId,
+        currentPeriodEnd: org.currentPeriodEnd,
+        isTrialUsed: org.isTrialUsed ?? false,
+      };
+    } catch (err) {
+      // Log the error for debugging but return null to prevent UI crashes
+      // The auth context will handle redirecting to sign-in if needed
+      console.warn("getTrialStatus unauthorized:", err.message);
+      return null;
+    }
   },
 });
 
@@ -183,6 +206,82 @@ export const activateSubscription = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// ── 7a. Activate Free Trial ──
+export const activateFreeTrial = mutation({
+  args: {
+    token: v.optional(v.string()),
+    selectedPlan: v.union(v.literal("starter"), v.literal("growth")),
+  },
+  handler: async (ctx, args) => {
+    const { orgId, organization } = await requireCallerOrg(ctx, args.token);
+    const org = organization as any;
+    if (!org) throw new Error("Organization not found");
+    if (org.isTrialUsed) {
+      throw new Error("Free trial has already been used for this organization.");
+    }
+    const trialEndsAt = Date.now() + 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
+    const tier = args.selectedPlan.toUpperCase() as "STARTER" | "GROWTH";
+    await ctx.db.patch(orgId, {
+      plan: args.selectedPlan,
+      planTier: tier,
+      subscriptionStatus: "TRIALING",
+      isTrialUsed: true,
+      trialEndsAt: trialEndsAt,
+    });
+
+    return { success: true };
+  },
+});
+
+// ── 7b. Get Workspace Billing Information ──
+export const getWorkspaceBilling = query({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { organization } = await requireCallerOrg(ctx, args.token);
+    const org = organization as any;
+    if (!org) {
+      return {
+        isExpired: false,
+        trialDaysRemaining: 0,
+        plan: "starter",
+        planTier: "STARTER",
+        subscriptionStatus: "FREE",
+        isTrialUsed: false,
+        trialEndsAt: undefined,
+        currentPeriodEnd: undefined,
+        subscribedAt: undefined,
+      };
+    }
+
+    const statusUpper = (org.subscriptionStatus || "").toUpperCase();
+    const hasActiveStripeSub = Boolean(org.stripeSubscriptionId) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
+    const hasActiveSubscribedAt = Boolean(org.subscribedAt) && statusUpper !== "CANCELED" && statusUpper !== "PAST_DUE";
+    const isSubscribed = statusUpper === "ACTIVE" || hasActiveStripeSub || hasActiveSubscribedAt;
+
+    const createdAt = org.createdAt || Date.now();
+    const trialDurationMs = 14 * 24 * 60 * 60 * 1000;
+    const trialEndsAt = org.trialEndsAt || (createdAt + trialDurationMs);
+    const now = Date.now();
+    const msRemaining = trialEndsAt - now;
+    const trialDaysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+    const isExpired = statusUpper === "TRIALING" && now > trialEndsAt;
+
+    return {
+      isExpired,
+      trialDaysRemaining,
+      plan: org.plan || "starter",
+      planTier: org.planTier ?? (org.plan ? org.plan.toUpperCase() : "STARTER"),
+      subscriptionStatus: org.subscriptionStatus ?? (isSubscribed ? "ACTIVE" : "FREE"),
+      isTrialUsed: org.isTrialUsed ?? false,
+      trialEndsAt: org.trialEndsAt,
+      currentPeriodEnd: org.currentPeriodEnd,
+      subscribedAt: org.subscribedAt,
+    };
   },
 });
 

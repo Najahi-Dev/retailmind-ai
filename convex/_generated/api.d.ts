@@ -26,6 +26,7 @@ import type * as subscriptions from "../subscriptions.js";
 import type * as suppliers from "../suppliers.js";
 import type * as supportTickets from "../supportTickets.js";
 import type * as users from "../users.js";
+import type * as wipeDb from "../wipeDb.js";
 
 import type {
   ApiFromModules,
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   suppliers: typeof suppliers;
   supportTickets: typeof supportTickets;
   users: typeof users;
+  wipeDb: typeof wipeDb;
 }>;
 
 /**

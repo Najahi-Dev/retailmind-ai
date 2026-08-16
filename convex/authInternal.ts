@@ -215,6 +215,7 @@ export const createWorkspaceAndOwnerRecord = mutation({
       inviteCode,
       plan: "starter",
       isActive: true,
+      isTrialUsed: false,
       createdAt: Date.now(),
     });
 

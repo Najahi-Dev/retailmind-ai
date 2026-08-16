@@ -25,6 +25,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Access Denied: Only Workspace Admins can initiate subscription checkout." }, { status: 403 });
     }
 
+    // Parse request body to get plan type
+    const reqBody = await req.json();
+    const plan = reqBody.plan || "growth"; // default to growth if not specified
+
     const reqUrl = new URL(req.url);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
     let stripeCustomerId = org.stripeCustomerId;
@@ -44,17 +48,34 @@ export async function POST(req: Request) {
       });
     }
 
-    const priceId = process.env.STRIPE_GROWTH_PRICE_ID;
+    // Determine price ID and product details based on plan
+    let priceId, productName, productDescription, unitAmount;
+
+    if (plan === "starter") {
+      priceId = process.env.STRIPE_STARTER_PRICE_ID;
+      productName = "Starter Plan (RetailMind AI)";
+      productDescription = "Essential inventory tracking for single-branch stores (Up to 100 SKUs)";
+      unitAmount = 250000; // 2,500 LKR in cents
+    } else if (plan === "growth") {
+      priceId = process.env.STRIPE_GROWTH_PRICE_ID;
+      productName = "Growth Plan (RetailMind AI)";
+      productDescription = "Unlimited SKUs, AI Demand Forecasting & Automated Reorders";
+      unitAmount = 490000; // 4,900 LKR in cents
+    } else {
+      // Enterprise plan is handled via mailto link, shouldn't reach here
+      return NextResponse.json({ error: "Invalid plan type for Stripe checkout." }, { status: 400 });
+    }
+
     const lineItem = priceId && priceId.startsWith("price_")
       ? { price: priceId, quantity: 1 }
       : {
           price_data: {
             currency: "lkr",
             product_data: {
-              name: "Growth Plan (RetailMind AI)",
-              description: "Unlimited SKUs, AI Demand Forecasting & Automated Reorders",
+              name: productName,
+              description: productDescription,
             },
-            unit_amount: 490000, // 4,900 LKR in cents
+            unit_amount: unitAmount,
             recurring: { interval: "month" as const },
           },
           quantity: 1,
@@ -68,10 +89,12 @@ export async function POST(req: Request) {
       subscription_data: {
         metadata: {
           organization_id: org._id,
+          plan_tier: plan.toUpperCase(), // STARTER or GROWTH
         },
       },
       metadata: {
         organization_id: org._id,
+        plan_tier: plan.toUpperCase(),
       },
       success_url: `${appUrl}/dashboard?billing=success`,
       cancel_url: `${appUrl}/select-plan?billing=cancelled`,

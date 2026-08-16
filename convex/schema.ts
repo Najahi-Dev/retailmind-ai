@@ -26,6 +26,7 @@ export default defineSchema({
     trialEndsAt: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
     subscribedAt: v.optional(v.number()),
+    isTrialUsed: v.optional(v.boolean()),
     logoUrl: v.optional(v.string()),
     ownerId: v.optional(v.id("users")),
     isActive: v.boolean(),

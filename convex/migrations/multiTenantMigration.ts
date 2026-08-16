@@ -24,6 +24,7 @@ export const migrateToMultiTenant = mutation({
         inviteCode: "RETAILMIND-MAIN-2026",
         plan: "enterprise",
         isActive: true,
+        isTrialUsed: true,
         createdAt: Date.now(),
       });
       defaultOrg = (await ctx.db.get(orgId))!;

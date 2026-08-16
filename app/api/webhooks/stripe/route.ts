@@ -37,13 +37,15 @@ export async function POST(req: Request) {
         const userId = session.metadata?.userId;
         const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
         const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+        const rawPlan = session.metadata?.plan_tier || session.metadata?.plan || "GROWTH";
+        const planTier = (rawPlan.toUpperCase() === "STARTER" ? "STARTER" : rawPlan.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH") as "STARTER" | "GROWTH" | "ENTERPRISE";
 
         await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
           orgId: orgId || undefined,
           stripeCustomerId: customerId || undefined,
           stripeSubscriptionId: subscriptionId || undefined,
           userId: userId || undefined,
-          planTier: "GROWTH",
+          planTier: planTier,
           subscriptionStatus: "ACTIVE",
         });
         break;
@@ -68,6 +70,8 @@ export async function POST(req: Request) {
         const trialEndsAt = subscription.trial_end ? subscription.trial_end * 1000 : undefined;
         const subAny = subscription as any;
         const currentPeriodEnd = subAny.current_period_end ? subAny.current_period_end * 1000 : undefined;
+        const rawPlan = subscription.metadata?.plan_tier || subscription.metadata?.plan || "GROWTH";
+        const planTier = (rawPlan.toUpperCase() === "STARTER" ? "STARTER" : rawPlan.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH") as "STARTER" | "GROWTH" | "ENTERPRISE";
 
         await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
           orgId: orgId || undefined,
@@ -75,7 +79,7 @@ export async function POST(req: Request) {
           stripeSubscriptionId: subscription.id,
           stripePriceId: priceId,
           userId: userId || undefined,
-          planTier: "GROWTH",
+          planTier: planTier,
           subscriptionStatus: status,
           trialEndsAt,
           currentPeriodEnd,
@@ -91,10 +95,23 @@ export async function POST(req: Request) {
         const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
 
         if (subscriptionId || customerId) {
+          // Retrieve plan tier from subscription metadata if we have subscriptionId
+          let planTier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH"; // default
+          if (subscriptionId) {
+            try {
+              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+              const raw = subscription.metadata?.plan_tier || subscription.metadata?.plan || "GROWTH";
+              planTier = raw.toUpperCase() === "STARTER" ? "STARTER" : raw.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH";
+            } catch (error) {
+              console.warn("Failed to retrieve subscription for plan tier:", error);
+              // Keep default
+            }
+          }
+
           await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
             stripeCustomerId: customerId || undefined,
             stripeSubscriptionId: subscriptionId || undefined,
-            planTier: "GROWTH",
+            planTier: planTier,
             subscriptionStatus: "ACTIVE",
           });
         }
@@ -123,18 +140,24 @@ export async function POST(req: Request) {
 
         if (subscriptionId || customerId) {
           let orgId = undefined;
+          let planTier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH"; // default
           try {
             if (subscriptionId) {
               const subscription = await stripe.subscriptions.retrieve(subscriptionId);
               orgId = subscription.metadata?.organization_id as any;
+              const raw = subscription.metadata?.plan_tier || subscription.metadata?.plan || "GROWTH";
+              planTier = raw.toUpperCase() === "STARTER" ? "STARTER" : raw.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH";
             }
-          } catch {}
+          } catch (error) {
+            console.warn("Failed to retrieve subscription for plan tier:", error);
+            // Keep defaults
+          }
 
           await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
             orgId: orgId || undefined,
             stripeCustomerId: customerId || undefined,
             stripeSubscriptionId: subscriptionId || undefined,
-            planTier: "GROWTH",
+            planTier: planTier,
             subscriptionStatus: "PAST_DUE",
           });
         }
