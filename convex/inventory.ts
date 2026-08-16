@@ -884,58 +884,152 @@ export const batchImportProducts = mutation({
     token: v.optional(v.string()),
     products: v.array(
       v.object({
+        // Accept string inputs from CSV that will be sanitized
         sku: v.string(),
         name: v.string(),
         unit: v.union(v.literal("pcs"), v.literal("kg"), v.literal("litre"), v.literal("box"), v.literal("ml")),
-        costPrice: v.number(),
-        sellingPrice: v.number(),
-        reorderPoint: v.number(),
-        safetyStock: v.number(),
-        trackBatches: v.optional(v.boolean()),
+        // Accept strings or numbers from CSV
+        costPrice: v.union(v.string(), v.number()),
+        sellingPrice: v.union(v.string(), v.number()),
+        reorderPoint: v.union(v.string(), v.number()),
+        safetyStock: v.union(v.string(), v.number()),
+        trackBatches: v.optional(v.union(v.boolean(), v.string())),
+        // Optional fields commonly in CSV
+        category: v.optional(v.string()),
+        minStockLevel: v.optional(v.union(v.string(), v.number())),
+        expiryDate: v.optional(v.string()),
       })
     ),
   },
   handler: async (ctx, args) => {
-    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    try {
+      const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
 
-    // Starter Plan Usage Check: 100 SKUs limit
-    const org: any = await ctx.db.get(orgId);
-    const planTier = (org?.planTier ?? (org?.plan ? org.plan.toUpperCase() : "STARTER"));
-    const rawStatus = (org?.subscriptionStatus ?? "FREE").toUpperCase();
-    const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
-
-    let imported = 0;
-
-    for (const item of args.products) {
-      const allProducts = await ctx.db.query("products").collect();
-      const existing = allProducts.find((p) => p.sku === item.sku && (!p.orgId || p.orgId === orgId));
-      if (!existing) {
-        // Check plan limit before inserting each product
-        if (planTier === "STARTER" || !isPaidActive) {
-          const orgProducts = allProducts.filter((p) => p.orgId === orgId);
-          if (orgProducts.length >= 100) {
-            throw new Error("Starter Plan limit reached (100 SKUs max). Upgrade to Growth Plan for unlimited SKUs.");
-          }
-        }
-
-        await ctx.db.insert("products", {
-          orgId,
-          sku: item.sku,
-          name: item.name,
-          unit: item.unit,
-          costPrice: item.costPrice,
-          sellingPrice: item.sellingPrice,
-          reorderPoint: item.reorderPoint,
-          safetyStock: item.safetyStock,
-          trackBatches: item.trackBatches ?? false,
-          isActive: true,
-          createdAt: Date.now(),
-        });
-        imported++;
+      // Get organization info once
+      const org: any = await ctx.db.get(orgId);
+      if (!org) {
+        throw new Error("Organization not found");
       }
-    }
 
-    return { imported, importedCount: imported, skippedCount: args.products.length - imported };
+      const planTier = (org?.planTier ?? (org?.plan ? org.plan.toUpperCase() : "STARTER"));
+      const rawStatus = (org?.subscriptionStatus ?? "FREE").toUpperCase();
+      const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
+
+      // Get current product count for this organization
+      const allProducts = await ctx.db.query("products").collect();
+      const orgProducts = allProducts.filter((p) => p.orgId === orgId);
+      let currentProductCount = orgProducts.length;
+
+      // Track import results
+      let imported = 0;
+      let skipped = 0;
+      const errors = [];
+
+      // Process each product
+      for (let i = 0; i < args.products.length; i++) {
+        const item = args.products[i];
+        const rowNumber = i + 1;
+
+        try {
+          // Check if SKU already exists
+          const existing = allProducts.find((p) => p.sku === item.sku && (!p.orgId || p.orgId === orgId));
+          if (existing) {
+            skipped++;
+            continue;
+          }
+
+          // Check plan limit before inserting
+          if (planTier === "STARTER" || !isPaidActive) {
+            if (currentProductCount >= 100) {
+              throw new Error("Starter plan limit reached (100 SKUs max). Please upgrade to Growth plan for unlimited imports.");
+            }
+          }
+
+          // Sanitize and coerce data types
+          const sanitizedProduct = {
+            organizationId: orgId,
+            name: String(item.name).trim(),
+            sku: String(item.sku).toUpperCase().trim(),
+            category: String(item.category || "General").trim(),
+            unit: String(item.unit || "pcs").toLowerCase(),
+            costPrice: Number(item.costPrice) || 0,
+            sellingPrice: Number(item.sellingPrice) || 0,
+            reorderPoint: Number(item.reorderPoint) || 0,
+            safetyStock: Number(item.safetyStock) || 0,
+            minStockLevel: Number(item.minStockLevel || 5),
+            trackBatches:
+              item.trackBatches === undefined || item.trackBatches === null ||
+              item.trackBatches === "" || item.trackBatches === "false" ||
+              item.trackBatches === 0
+                ? false
+                : Boolean(item.trackBatches),
+            expiryDate: item.expiryDate ? new Date(item.expiryDate).getTime() : undefined,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+
+          // Validate required fields
+          if (!sanitizedProduct.name) {
+            throw new Error("Product name is required");
+          }
+          if (!sanitizedProduct.sku) {
+            throw new Error("SKU is required");
+          }
+          if (sanitizedProduct.costPrice < 0) {
+            throw new Error("Cost price cannot be negative");
+          }
+          if (sanitizedProduct.sellingPrice < 0) {
+            throw new Error("Selling price cannot be negative");
+          }
+          if (sanitizedProduct.reorderPoint < 0) {
+            throw new Error("Reorder point cannot be negative");
+          }
+          if (sanitizedProduct.safetyStock < 0) {
+            throw new Error("Safety stock cannot be negative");
+          }
+
+          // Check for duplicate SKU in this batch
+          const duplicateInBatch = allProducts.some(p =>
+            p.sku === sanitizedProduct.sku && (!p.orgId || p.orgId === orgId)
+          );
+          if (duplicateInBatch) {
+            errors.push(`Row ${rowNumber}: Duplicate SKU '${sanitizedProduct.sku}' in import batch`);
+            skipped++;
+            continue;
+          }
+
+          // Insert the product
+          await ctx.db.insert("products", sanitizedProduct);
+          imported++;
+          currentProductCount++; // Update count for limit checking
+
+        } catch (error) {
+          // Log detailed error for this row
+          console.error(`[CONVEX M(inventory:batchImportProducts)] Error processing row ${rowNumber}:`, {
+            error: error.message,
+            item: item,
+            stack: error.stack
+          });
+          errors.push(`Row ${rowNumber}: ${error.message}`);
+          skipped++;
+        }
+      }
+
+      // Return detailed result
+      return {
+        imported,
+        importedCount: imported,
+        skippedCount: skipped,
+        errors: errors.length > 0 ? errors : undefined
+      };
+    } catch (error) {
+      // Log any unexpected errors
+      console.error("[CONVEX M(inventory:batchImportProducts)] Server Error:", {
+        error: error.message,
+        stack: error.stack
+      });
+      throw new Error(`Import failed: ${error.message}`);
+    }
   },
 });
 
