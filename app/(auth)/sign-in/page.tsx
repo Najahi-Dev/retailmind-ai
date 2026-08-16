@@ -128,12 +128,7 @@ export default function SignInPage() {
     }
   };
 
-  const handleQuickLogin = (demoEmail: string, demoRole: string) => {
-    setEmail(demoEmail);
-    setPassword("admin123");
-    setMode("signin");
-  };
-
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 relative overflow-hidden py-12 px-4">
       {/* Background Animated Overlay */}
@@ -296,47 +291,7 @@ export default function SignInPage() {
             </Button>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-            <p className="text-[11px] font-semibold text-slate-400 text-center uppercase tracking-wider">
-              Quick Demo Accounts
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("admin@retailmind.com", "admin")}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-slate-700 text-[11px] text-left transition-all"
-              >
-                <span className="font-bold text-indigo-600 dark:text-indigo-400 block">Admin</span>
-                <span className="text-slate-500 text-[10px] block truncate">admin@retailmind.com</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("najinajahi1@gmail.com", "manager")}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-slate-800 text-[11px] text-left transition-all"
-              >
-                <span className="font-bold text-purple-600 dark:text-purple-400 block">Manager</span>
-                <span className="text-slate-500 text-[10px] block truncate">najinajahi1@gmail.com</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("mohamedashan070@gmail.com", "staff")}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-slate-800 text-[11px] text-left transition-all"
-              >
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 block">Staff</span>
-                <span className="text-slate-500 text-[10px] block truncate">mohamedashan070@gmail.com</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("ahmednajahi2003@gmail.com", "supplier")}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-slate-800 text-[11px] text-left transition-all"
-              >
-                <span className="font-bold text-amber-600 dark:text-amber-400 block">Supplier</span>
-                <span className="text-slate-500 text-[10px] block truncate">ahmednajahi2003@gmail.com</span>
-              </button>
-            </div>
-          </div>
-        </div>
+                  </div>
       </div>
 
       {/* ── PENDING APPROVAL POPUP MODAL ── */}
