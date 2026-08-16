@@ -55,7 +55,12 @@ export async function POST(req: Request) {
       customerId = newCustomer.id;
     }
 
-    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // Derive the app origin from the incoming request URL.
+    // req.url is always the full URL on Vercel (e.g. https://retailmind-ai-sage.vercel.app/api/...)
+    // This is more reliable than the "origin" header (not sent on same-origin requests)
+    // and eliminates the need for a NEXT_PUBLIC_APP_URL env var.
+    const reqUrl = new URL(req.url);
+    const origin = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
 
     const cookieStore = await cookies();
     const token = cookieStore.get("retailmind_token")?.value;

@@ -28,7 +28,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No active Stripe customer account associated with this workspace." }, { status: 400 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const reqUrl = new URL(req.url);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: org.stripeCustomerId,

@@ -25,7 +25,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Access Denied: Only Workspace Admins can initiate subscription checkout." }, { status: 403 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const reqUrl = new URL(req.url);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
     let stripeCustomerId = org.stripeCustomerId;
 
     // Check or create Stripe Customer
