@@ -240,7 +240,7 @@ export const approveSuggestion = mutation({
     }
 
     // Derive initial payment status
-    let paymentStatus: string = "PENDING_ON_DELIVERY";
+    let paymentStatus: "PENDING_ON_DELIVERY" | "CHEQUE_PENDING" | "DUE" = "PENDING_ON_DELIVERY";
     if (args.paymentMethod === "CHEQUE") paymentStatus = "CHEQUE_PENDING";
     else if (args.paymentMethod === "CREDIT") paymentStatus = "DUE";
 

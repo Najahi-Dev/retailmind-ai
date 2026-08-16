@@ -192,7 +192,7 @@ export const createPurchaseOrder = mutation({
 
     const totalValue = formattedLines.reduce((sum, line) => sum + line.lineTotal, 0);
 
-    let initialPaymentStatus: string | undefined;
+    let initialPaymentStatus: "PENDING_ON_DELIVERY" | "CHEQUE_PENDING" | "DUE" | undefined;
     if (args.paymentMethod === "CASH_ON_DELIVERY") initialPaymentStatus = "PENDING_ON_DELIVERY";
     else if (args.paymentMethod === "CHEQUE") initialPaymentStatus = "CHEQUE_PENDING";
     else if (args.paymentMethod === "CREDIT") initialPaymentStatus = "DUE";
@@ -365,7 +365,7 @@ export const setPOPaymentMethod = mutation({
     if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
 
     // Derive initial payment status based on method
-    let paymentStatus: string;
+    let paymentStatus: "PENDING_ON_DELIVERY" | "CHEQUE_PENDING" | "DUE";
     if (args.paymentMethod === "CASH_ON_DELIVERY") {
       paymentStatus = "PENDING_ON_DELIVERY";
     } else if (args.paymentMethod === "CHEQUE") {
@@ -445,7 +445,7 @@ export const recordPOPayment = mutation({
 
     const totalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    let paymentStatus: string;
+    let paymentStatus: "PAID" | "PARTIALLY_PAID" | "CHEQUE_PENDING" | "DUE" | "PENDING_ON_DELIVERY";
     if (totalPaid >= po.totalValue) {
       paymentStatus = "PAID";
     } else if (totalPaid > 0) {

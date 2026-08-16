@@ -17,7 +17,7 @@ type ApiRef = Parameters<typeof useQuery>[0];
 /**
  * Resolve a string like "purchaseOrders:getPayments" to the
  * corresponding typed api reference. Falls back to the raw string
- * (cast) when the path cannot be resolved at runtime.
+ * (cast) when the path cannot be resolved at runtime. 
  */
 function resolveApiRef(nameOrRef: string | ApiRef): ApiRef {
   if (typeof nameOrRef !== 'string') return nameOrRef;
