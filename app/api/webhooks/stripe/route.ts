@@ -37,8 +37,36 @@ export async function POST(req: Request) {
         const userId = session.metadata?.userId;
         const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
         const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-        const rawPlan = session.metadata?.plan_tier || session.metadata?.plan || "GROWTH";
-        const planTier = (rawPlan.toUpperCase() === "STARTER" ? "STARTER" : rawPlan.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH") as "STARTER" | "GROWTH" | "ENTERPRISE";
+
+        // Determine plan tier from metadata with proper validation
+        let planTier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH"; // default
+        const rawPlanTier = session.metadata?.plan_tier;
+        const rawPlan = session.metadata?.plan;
+
+        // Check plan_tier first (what we actually set in checkout)
+        if (typeof rawPlanTier === "string" && rawPlanTier.trim() !== "") {
+          const upper = rawPlanTier.toUpperCase();
+          if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+            planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+          }
+        }
+        // If plan_tier is invalid, check plan as fallback
+        else if (typeof rawPlan === "string" && rawPlan.trim() !== "") {
+          const upper = rawPlan.toUpperCase();
+          if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+            planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+          }
+        }
+        // If both are invalid, we keep the default (GROWTH) but log a warning
+        else {
+          console.warn("Stripe checkout session metadata missing or invalid plan_tier/plan", {
+            sessionId: session.id,
+            hasPlanTier: !!session.metadata?.plan_tier,
+            planTierValue: session.metadata?.plan_tier,
+            hasPlan: !!session.metadata?.plan,
+            planValue: session.metadata?.plan
+          });
+        }
 
         await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
           orgId: orgId || undefined,
@@ -70,8 +98,36 @@ export async function POST(req: Request) {
         const trialEndsAt = subscription.trial_end ? subscription.trial_end * 1000 : undefined;
         const subAny = subscription as any;
         const currentPeriodEnd = subAny.current_period_end ? subAny.current_period_end * 1000 : undefined;
-        const rawPlan = subscription.metadata?.plan_tier || subscription.metadata?.plan || "GROWTH";
-        const planTier = (rawPlan.toUpperCase() === "STARTER" ? "STARTER" : rawPlan.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH") as "STARTER" | "GROWTH" | "ENTERPRISE";
+
+        // Determine plan tier from metadata with proper validation
+        let planTier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH"; // default
+        const rawPlanTier = subscription.metadata?.plan_tier;
+        const rawPlan = subscription.metadata?.plan;
+
+        // Check plan_tier first (what we actually set in subscription_data)
+        if (typeof rawPlanTier === "string" && rawPlanTier.trim() !== "") {
+          const upper = rawPlanTier.toUpperCase();
+          if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+            planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+          }
+        }
+        // If plan_tier is invalid, check plan as fallback
+        else if (typeof rawPlan === "string" && rawPlan.trim() !== "") {
+          const upper = rawPlan.toUpperCase();
+          if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+            planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+          }
+        }
+        // If both are invalid, we keep the default (GROWTH) but log a warning
+        else {
+          console.warn("Stripe subscription metadata missing or invalid plan_tier/plan", {
+            subscriptionId: subscription.id,
+            hasPlanTier: !!subscription.metadata?.plan_tier,
+            planTierValue: subscription.metadata?.plan_tier,
+            hasPlan: !!subscription.metadata?.plan,
+            planValue: subscription.metadata?.plan
+          });
+        }
 
         await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
           orgId: orgId || undefined,
@@ -95,13 +151,50 @@ export async function POST(req: Request) {
         const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
 
         if (subscriptionId || customerId) {
-          // Retrieve plan tier from subscription metadata if we have subscriptionId
+          // Determine plan tier from price ID (most reliable) or metadata
           let planTier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH"; // default
           if (subscriptionId) {
             try {
               const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-              const raw = subscription.metadata?.plan_tier || subscription.metadata?.plan || "GROWTH";
-              planTier = raw.toUpperCase() === "STARTER" ? "STARTER" : raw.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH";
+              const priceId = subscription.items.data[0]?.price?.id;
+
+              // Determine plan from price ID (authoritative source)
+              if (priceId === process.env.STRIPE_STARTER_PRICE_ID) {
+                planTier = "STARTER";
+              } else if (priceId === process.env.STRIPE_GROWTH_PRICE_ID) {
+                planTier = "GROWTH";
+                // Note: ENTERPRISE price ID check would go here if we had it
+              } else {
+                // Fall back to metadata if price ID doesn't match our known plans
+                const rawPlanTier = subscription.metadata?.plan_tier;
+                const rawPlan = subscription.metadata?.plan;
+
+                // Check plan_tier first
+                if (typeof rawPlanTier === "string" && rawPlanTier.trim() !== "") {
+                  const upper = rawPlanTier.toUpperCase();
+                  if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+                    planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+                  }
+                }
+                // If plan_tier is invalid, check plan as fallback
+                else if (typeof rawPlan === "string" && rawPlan.trim() !== "") {
+                  const upper = rawPlan.toUpperCase();
+                  if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+                    planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+                  }
+                }
+                // If both are invalid, we keep the default (GROWTH) but log a warning
+                else {
+                  console.warn("Stripe subscription metadata missing or invalid plan_tier/plan", {
+                    subscriptionId: subscription.id,
+                    hasPlanTier: !!subscription.metadata?.plan_tier,
+                    planTierValue: subscription.metadata?.plan_tier,
+                    hasPlan: !!subscription.metadata?.plan,
+                    planValue: subscription.metadata?.plan,
+                    priceId: priceId
+                  });
+                }
+              }
             } catch (error) {
               console.warn("Failed to retrieve subscription for plan tier:", error);
               // Keep default
@@ -140,17 +233,43 @@ export async function POST(req: Request) {
 
         if (subscriptionId || customerId) {
           let orgId = undefined;
+          // Determine plan tier from metadata with proper validation
           let planTier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH"; // default
-          try {
-            if (subscriptionId) {
+          if (subscriptionId) {
+            try {
               const subscription = await stripe.subscriptions.retrieve(subscriptionId);
               orgId = subscription.metadata?.organization_id as any;
-              const raw = subscription.metadata?.plan_tier || subscription.metadata?.plan || "GROWTH";
-              planTier = raw.toUpperCase() === "STARTER" ? "STARTER" : raw.toUpperCase() === "ENTERPRISE" ? "ENTERPRISE" : "GROWTH";
+              const rawPlanTier = subscription.metadata?.plan_tier;
+              const rawPlan = subscription.metadata?.plan;
+
+              // Check plan_tier first
+              if (typeof rawPlanTier === "string" && rawPlanTier.trim() !== "") {
+                const upper = rawPlanTier.toUpperCase();
+                if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+                  planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+                }
+              }
+              // If plan_tier is invalid, check plan as fallback
+              else if (typeof rawPlan === "string" && rawPlan.trim() !== "") {
+                const upper = rawPlan.toUpperCase();
+                if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+                  planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+                }
+              }
+              // If both are invalid, we keep the default (GROWTH) but log a warning
+              else {
+                console.warn("Stripe subscription metadata missing or invalid plan_tier/plan", {
+                  subscriptionId: subscription.id,
+                  hasPlanTier: !!subscription.metadata?.plan_tier,
+                  planTierValue: subscription.metadata?.plan_tier,
+                  hasPlan: !!subscription.metadata?.plan,
+                  planValue: subscription.metadata?.plan
+                });
+              }
+            } catch (error) {
+              console.warn("Failed to retrieve subscription for plan tier:", error);
+              // Keep defaults
             }
-          } catch (error) {
-            console.warn("Failed to retrieve subscription for plan tier:", error);
-            // Keep defaults
           }
 
           await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {

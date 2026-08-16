@@ -3,6 +3,7 @@
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useRef } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -56,6 +57,7 @@ interface ParsedProduct {
 export default function ImportProductsDialog({ open, onOpenChange }: Props) {
   const batchImport = useMutation(api.inventory.batchImportProducts);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { token } = useAuth();
 
   const [file, setFile] = useState<File | null>(null);
   const [parsedProducts, setParsedProducts] = useState<ParsedProduct[]>([]);
@@ -243,17 +245,17 @@ export default function ImportProductsDialog({ open, onOpenChange }: Props) {
     setImporting(true);
     try {
       const res = await batchImport({
+        token: token ?? undefined,
         products: validItems.map((p) => ({
           sku: p.sku,
           name: p.name,
-          description: p.description,
-          categoryName: p.categoryName,
+          category: p.categoryName || undefined,
           unit: p.unit,
           costPrice: p.costPrice,
           sellingPrice: p.sellingPrice,
           reorderPoint: p.reorderPoint,
           safetyStock: p.safetyStock,
-          initialStock: p.initialStock,
+          minStockLevel: p.initialStock,
         })),
       });
 

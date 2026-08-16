@@ -915,9 +915,22 @@ export const batchImportProducts = mutation({
       const rawStatus = (org?.subscriptionStatus ?? "FREE").toUpperCase();
       const isPaidActive = ["ACTIVE", "TRIALING", "TRIAL"].includes(rawStatus);
 
-      // Get current product count for this organization
-      const allProducts = await ctx.db.query("products").collect();
-      const orgProducts = allProducts.filter((p) => p.orgId === orgId);
+      // Get organization-scoped products using index for efficiency
+      const orgProducts = await ctx.db
+        .query("products")
+        .withIndex("by_organization", (q) => q.eq("organizationId", orgId))
+        .collect();
+
+      // Create normalized SKU set for efficient duplicate lookup (trimmed, lowercase)
+      const existingSkuSet = new Set(
+        orgProducts
+          .map((p) => p.sku?.trim().toLowerCase())
+          .filter((sku): sku is string => sku !== null && sku !== undefined && sku !== "")
+      );
+
+      // Track SKUs within this import batch to catch duplicates
+      const batchSkuSet = new Set<string>();
+
       let currentProductCount = orgProducts.length;
 
       // Track import results
@@ -931,9 +944,10 @@ export const batchImportProducts = mutation({
         const rowNumber = i + 1;
 
         try {
-          // Check if SKU already exists
-          const existing = allProducts.find((p) => p.sku === item.sku && (!p.orgId || p.orgId === orgId));
-          if (existing) {
+          // Check if SKU already exists in this organization (normalized comparison)
+          const normalizedSku = item.sku?.trim().toLowerCase() || "";
+          if (existingSkuSet.has(normalizedSku)) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Duplicate SKU in organization`);
             skipped++;
             continue;
           }
@@ -941,28 +955,36 @@ export const batchImportProducts = mutation({
           // Check plan limit before inserting
           if (planTier === "STARTER" || !isPaidActive) {
             if (currentProductCount >= 100) {
+              console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Plan limit reached`);
               throw new Error("Starter plan limit reached (100 SKUs max). Please upgrade to Growth plan for unlimited imports.");
             }
           }
 
-          // Sanitize and coerce data types
+          // Normalize and sanitize incoming CSV fields
+          const validUnits = ["pcs", "kg", "litre", "box", "ml"];
+          const rawUnit = String(item.unit || "pcs").toLowerCase().trim();
+          const unit = validUnits.includes(rawUnit) ? rawUnit : "pcs";
+
           const sanitizedProduct = {
             organizationId: orgId,
             name: String(item.name).trim(),
-            sku: String(item.sku).toUpperCase().trim(),
+            sku: String(item.sku).trim().toLowerCase(), // Store normalized (lowercase, trimmed)
             category: String(item.category || "General").trim(),
-            unit: String(item.unit || "pcs").toLowerCase(),
-            costPrice: Number(item.costPrice) || 0,
-            sellingPrice: Number(item.sellingPrice) || 0,
-            reorderPoint: Number(item.reorderPoint) || 0,
-            safetyStock: Number(item.safetyStock) || 0,
-            minStockLevel: Number(item.minStockLevel || 5),
+            unit,
+            costPrice: parseFloat(String(item.costPrice || "0")) || 0,
+            sellingPrice: parseFloat(String(item.sellingPrice || "0")) || 0,
+            reorderPoint: parseFloat(String(item.reorderPoint || "0")) || 0,
+            safetyStock: parseFloat(String(item.safetyStock || "0")) || 0,
+            minStockLevel: parseFloat(String(item.minStockLevel || "0")) || 0,
             trackBatches:
-              item.trackBatches === undefined || item.trackBatches === null ||
-              item.trackBatches === "" || item.trackBatches === "false" ||
-              item.trackBatches === 0
+              item.trackBatches === undefined ||
+              item.trackBatches === null ||
+              item.trackBatches === "" ||
+              item.trackBatches === false ||
+              item.trackBatches === 0 ||
+              String(item.trackBatches).toLowerCase() === "false"
                 ? false
-                : Boolean(item.trackBatches),
+                : true,
             expiryDate: item.expiryDate ? new Date(item.expiryDate).getTime() : undefined,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -970,38 +992,45 @@ export const batchImportProducts = mutation({
 
           // Validate required fields
           if (!sanitizedProduct.name) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Missing product name`);
             throw new Error("Product name is required");
           }
           if (!sanitizedProduct.sku) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Missing SKU`);
             throw new Error("SKU is required");
           }
           if (sanitizedProduct.costPrice < 0) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative cost price`);
             throw new Error("Cost price cannot be negative");
           }
           if (sanitizedProduct.sellingPrice < 0) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative selling price`);
             throw new Error("Selling price cannot be negative");
           }
           if (sanitizedProduct.reorderPoint < 0) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative reorder point`);
             throw new Error("Reorder point cannot be negative");
           }
           if (sanitizedProduct.safetyStock < 0) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative safety stock`);
             throw new Error("Safety stock cannot be negative");
           }
 
-          // Check for duplicate SKU in this batch
-          const duplicateInBatch = allProducts.some(p =>
-            p.sku === sanitizedProduct.sku && (!p.orgId || p.orgId === orgId)
-          );
-          if (duplicateInBatch) {
+          // Check for duplicate SKU in this batch (using normalized SKUs)
+          if (batchSkuSet.has(sanitizedProduct.sku)) {
+            console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Duplicate SKU in import batch`);
             errors.push(`Row ${rowNumber}: Duplicate SKU '${sanitizedProduct.sku}' in import batch`);
             skipped++;
             continue;
           }
+          // Add to batch set to track duplicates within this import
+          batchSkuSet.add(sanitizedProduct.sku);
 
           // Insert the product
           await ctx.db.insert("products", sanitizedProduct);
           imported++;
           currentProductCount++; // Update count for limit checking
+          console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Successfully imported`);
 
         } catch (error) {
           // Log detailed error for this row

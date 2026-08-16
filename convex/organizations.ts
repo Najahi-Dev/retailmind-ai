@@ -373,7 +373,23 @@ export const updateSubscriptionFromStripeInternal = mutation({
       return { success: false, reason: "Organization not found" };
     }
 
-    const tier = args.planTier || "GROWTH";
+    // Handle planTier with proper validation - default to GROWTH only if invalid/missing
+    let tier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH";
+    if (args.planTier !== undefined && args.planTier !== null) {
+      const raw = String(args.planTier).trim();
+      if (raw !== "") {
+        const upper = raw.toUpperCase();
+        if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+          tier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+        } else {
+          console.warn(`Invalid planTier value received: ${args.planTier}, defaulting to GROWTH`);
+        }
+      } else {
+        console.warn(`Empty planTier value received, defaulting to GROWTH`);
+      }
+    } else {
+      console.warn(`planTier is undefined or null, defaulting to GROWTH`);
+    }
     const legacyPlan = tier.toLowerCase() as "starter" | "growth" | "enterprise";
 
     await ctx.db.patch(targetOrg._id, {
