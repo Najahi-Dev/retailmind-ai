@@ -918,7 +918,7 @@ export const batchImportProducts = mutation({
       // Get organization-scoped products using index for efficiency
       const orgProducts = await ctx.db
         .query("products")
-        .withIndex("by_organization", (q) => q.eq("organizationId", orgId))
+        .withIndex("by_org", (q) => q.eq("organizationId", orgId))
         .collect();
 
       // Create normalized SKU set for efficient duplicate lookup (trimmed, lowercase)
