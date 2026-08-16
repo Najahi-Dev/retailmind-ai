@@ -138,6 +138,9 @@ export default function Home() {
             <a href="#about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               About
             </a>
+            {/* <a href="/docs" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              Docs
+            </a> */}
           </nav>
 
           {/* Desktop Auth CTA & Theme Toggle */}
@@ -209,6 +212,13 @@ export default function Home() {
               >
                 About
               </a>
+              {/* <a
+                href="/docs"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-indigo-400 transition-colors py-1"
+              >
+                Docs
+              </a> */}
             </div>
             <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3">
               <Button variant="outline" asChild className="w-full border-slate-800 text-slate-200 hover:bg-slate-900">

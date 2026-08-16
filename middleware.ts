@@ -5,12 +5,13 @@ export function middleware(req: NextRequest) {
   const token = req.cookies.get("retailmind_token")?.value;
   const pathname = req.nextUrl.pathname;
 
-  // Allow landing page, sign-in, create-workspace, select-plan, and public API routes without token
+  // Allow landing page, sign-in, create-workspace, select-plan, docs, and public API routes without token
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/sign-in") ||
     pathname.startsWith("/create-workspace") ||
     pathname.startsWith("/select-plan") ||
+    pathname.startsWith("/docs") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/stripe");
 
