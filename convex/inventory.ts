@@ -938,6 +938,10 @@ export const batchImportProducts = mutation({
       let skipped = 0;
       const errors = [];
 
+
+      const validUnits = ["pcs", "kg", "litre", "box", "ml"] as const;
+      type UnitType = (typeof validUnits)[number];
+
       // Process each product
       for (let i = 0; i < args.products.length; i++) {
         const item = args.products[i];
@@ -961,16 +965,19 @@ export const batchImportProducts = mutation({
           }
 
           // Normalize and sanitize incoming CSV fields
-          const validUnits = ["pcs", "kg", "litre", "box", "ml"];
+          type AllowedUnit = "pcs" | "kg" | "litre" | "box" | "ml";
+          const allowedUnits = ["pcs", "kg", "litre", "box", "ml"] as const;
           const rawUnit = String(item.unit || "pcs").toLowerCase().trim();
-          const unit = validUnits.includes(rawUnit) ? rawUnit : "pcs";
+          const resolvedUnit: AllowedUnit = (allowedUnits as readonly string[]).includes(rawUnit)
+            ? (rawUnit as AllowedUnit)
+            : "pcs";
 
           const sanitizedProduct = {
             organizationId: orgId,
             name: String(item.name).trim(),
             sku: String(item.sku).trim().toLowerCase(), // Store normalized (lowercase, trimmed)
             category: String(item.category || "General").trim(),
-            unit,
+            unit: resolvedUnit,
             costPrice: parseFloat(String(item.costPrice || "0")) || 0,
             sellingPrice: parseFloat(String(item.sellingPrice || "0")) || 0,
             reorderPoint: parseFloat(String(item.reorderPoint || "0")) || 0,
@@ -1018,20 +1025,39 @@ export const batchImportProducts = mutation({
           // Add to batch set to track duplicates within this import
           batchSkuSet.add(sanitizedProduct.sku);
 
-          // Insert the product
-          await ctx.db.insert("products", sanitizedProduct);
-          imported++;
-          currentProductCount++; // Update count for limit checking
-          console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Successfully imported`);
+          const normalizedUnit = item.unit ? item.unit.toString().toLowerCase().trim() : "pcs";
+          const unit: UnitType = (validUnits as readonly string[]).includes(normalizedUnit)
+            ? (normalizedUnit as UnitType)
+            : "pcs";
 
-        } catch (error) {
+          // Insert the product
+          await ctx.db.insert("products", {
+            orgId: orgId,
+            name: String(item.name).trim(),
+            sku: String(item.sku).trim(),
+            categoryId: undefined,
+            unit: unit,
+            costPrice: parseFloat(String(item.costPrice)) || 0,
+            sellingPrice: parseFloat(String(item.sellingPrice)) || 0,
+            reorderPoint: parseFloat(String(item.reorderPoint)) || 0,
+            safetyStock: parseFloat(String(item.safetyStock)) || 0,
+            minStockLevel: parseFloat(String(item.minStockLevel || 5)) || 5,
+            trackBatches: Boolean(item.trackBatches),
+            isActive: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+        } catch (error: any) { // Quickest fix: type as any
+          const errMessage = error instanceof Error ? error.message : String(error);
+          const errStack = error instanceof Error ? error.stack : undefined;
+
           // Log detailed error for this row
           console.error(`[CONVEX M(inventory:batchImportProducts)] Error processing row ${rowNumber}:`, {
-            error: error.message,
+            error: errMessage,
             item: item,
-            stack: error.stack
+            stack: errStack,
           });
-          errors.push(`Row ${rowNumber}: ${error.message}`);
+          errors.push(`Row ${rowNumber}: ${errMessage}`);
           skipped++;
         }
       }
@@ -1043,13 +1069,13 @@ export const batchImportProducts = mutation({
         skippedCount: skipped,
         errors: errors.length > 0 ? errors : undefined
       };
-    } catch (error) {
-      // Log any unexpected errors
+    } catch (error: any) {
+      const errMessage = error instanceof Error ? error.message : String(error);
       console.error("[CONVEX M(inventory:batchImportProducts)] Server Error:", {
-        error: error.message,
-        stack: error.stack
+        error: errMessage,
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      throw new Error(`Import failed: ${error.message}`);
+      throw new Error(`Import failed: ${errMessage}`);
     }
   },
 });

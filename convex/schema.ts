@@ -139,6 +139,8 @@ export default defineSchema({
     barcode: v.optional(v.string()),
     isActive: v.boolean(),
     createdAt: v.number(),
+    minStockLevel: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_sku", ["sku"])
     .index("by_category", ["categoryId"])
