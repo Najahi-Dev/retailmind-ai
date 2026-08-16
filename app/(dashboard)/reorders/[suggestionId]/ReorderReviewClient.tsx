@@ -121,7 +121,7 @@ export default function ReorderReviewClient({
         : undefined;
 
       await approve({
-        token: token,
+        token: token ?? undefined,
         suggestionId: suggestionId as Id<"reorderSuggestions">,
         supplierId:   supplierId as Id<"suppliers">,
         quantity:     Number(quantity),
@@ -146,7 +146,7 @@ export default function ReorderReviewClient({
   };
 
   const handleDismiss = async () => {
-    await dismiss({ token: token, suggestionId: suggestionId as Id<"reorderSuggestions"> });
+    await dismiss({ token: token ?? undefined, suggestionId: suggestionId as Id<"reorderSuggestions"> });
     router.push("/reorders");
   };
 
