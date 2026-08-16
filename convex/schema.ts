@@ -16,7 +16,6 @@ export default defineSchema({
       v.literal("FREE"),
       v.literal("TRIALING"),
       v.literal("ACTIVE"),
-      v.literal("EXPIRED"),
       v.literal("PAST_DUE"),
       v.literal("CANCELED"),
       v.literal("trial"),
@@ -25,7 +24,6 @@ export default defineSchema({
       v.literal("past_due")
     )),
     trialEndsAt: v.optional(v.number()),
-    isTrialUsed: v.optional(v.boolean()),
     currentPeriodEnd: v.optional(v.number()),
     subscribedAt: v.optional(v.number()),
     logoUrl: v.optional(v.string()),
