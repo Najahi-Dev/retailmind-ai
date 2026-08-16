@@ -964,94 +964,78 @@ export const batchImportProducts = mutation({
             }
           }
 
-          // Normalize and sanitize incoming CSV fields
-          type AllowedUnit = "pcs" | "kg" | "litre" | "box" | "ml";
-          const allowedUnits = ["pcs", "kg", "litre", "box", "ml"] as const;
+          // 1. Normalize and sanitize unit type safely
+          const validUnits = ["pcs", "kg", "litre", "box", "ml"] as const;
+          type UnitType = (typeof validUnits)[number];
           const rawUnit = String(item.unit || "pcs").toLowerCase().trim();
-          const resolvedUnit: AllowedUnit = (allowedUnits as readonly string[]).includes(rawUnit)
-            ? (rawUnit as AllowedUnit)
+          const resolvedUnit: UnitType = (validUnits as readonly string[]).includes(rawUnit)
+            ? (rawUnit as UnitType)
             : "pcs";
 
-          const sanitizedProduct = {
-            organizationId: orgId,
-            name: String(item.name).trim(),
-            sku: String(item.sku).trim().toLowerCase(), // Store normalized (lowercase, trimmed)
-            category: String(item.category || "General").trim(),
-            unit: resolvedUnit,
-            costPrice: parseFloat(String(item.costPrice || "0")) || 0,
-            sellingPrice: parseFloat(String(item.sellingPrice || "0")) || 0,
-            reorderPoint: parseFloat(String(item.reorderPoint || "0")) || 0,
-            safetyStock: parseFloat(String(item.safetyStock || "0")) || 0,
-            minStockLevel: parseFloat(String(item.minStockLevel || "0")) || 0,
-            trackBatches: Boolean(item.trackBatches) === true ? true : false,
-            expiryDate: item.expiryDate ? new Date(item.expiryDate).getTime() : undefined,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
+          // 2. Build sanitized product fields
+          const name = String(item.name || "").trim();
+          const sku = String(item.sku || "").trim().toLowerCase();
+          const costPrice = parseFloat(String(item.costPrice || "0")) || 0;
+          const sellingPrice = parseFloat(String(item.sellingPrice || "0")) || 0;
+          const reorderPoint = parseFloat(String(item.reorderPoint || "0")) || 0;
+          const safetyStock = parseFloat(String(item.safetyStock || "0")) || 0;
+          const trackBatches = Boolean(item.trackBatches);
 
-          // Validate required fields
-          if (!sanitizedProduct.name) {
+          // 3. Validate required fields
+          if (!name) {
             console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Missing product name`);
             throw new Error("Product name is required");
           }
-          if (!sanitizedProduct.sku) {
+          if (!sku) {
             console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Missing SKU`);
             throw new Error("SKU is required");
           }
-          if (sanitizedProduct.costPrice < 0) {
+          if (costPrice < 0) {
             console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative cost price`);
             throw new Error("Cost price cannot be negative");
           }
-          if (sanitizedProduct.sellingPrice < 0) {
+          if (sellingPrice < 0) {
             console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative selling price`);
             throw new Error("Selling price cannot be negative");
           }
-          if (sanitizedProduct.reorderPoint < 0) {
+          if (reorderPoint < 0) {
             console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative reorder point`);
             throw new Error("Reorder point cannot be negative");
           }
-          if (sanitizedProduct.safetyStock < 0) {
+          if (safetyStock < 0) {
             console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Negative safety stock`);
             throw new Error("Safety stock cannot be negative");
           }
 
-          // Check for duplicate SKU in this batch (using normalized SKUs)
-          if (batchSkuSet.has(sanitizedProduct.sku)) {
+          // 4. Check for duplicate SKU within this import batch
+          if (batchSkuSet.has(sku)) {
             console.log(`Processing row ${rowNumber}: SKU=${item.sku}, Reason: Duplicate SKU in import batch`);
-            errors.push(`Row ${rowNumber}: Duplicate SKU '${sanitizedProduct.sku}' in import batch`);
+            errors.push(`Row ${rowNumber}: Duplicate SKU '${sku}' in import batch`);
             skipped++;
             continue;
           }
-          // Add to batch set to track duplicates within this import
-          batchSkuSet.add(sanitizedProduct.sku);
+          batchSkuSet.add(sku);
 
-          const normalizedUnit = item.unit ? item.unit.toString().toLowerCase().trim() : "pcs";
-          const unit: UnitType = (validUnits as readonly string[]).includes(normalizedUnit)
-            ? (normalizedUnit as UnitType)
-            : "pcs";
-
-          // Insert the product
+          // 5. Insert directly into the Convex products table
           await ctx.db.insert("products", {
             orgId: orgId,
-            name: String(item.name).trim(),
-            sku: String(item.sku).trim(),
+            name: name,
+            sku: String(item.sku || "").trim(),
             categoryId: undefined,
-            unit: unit,
-            costPrice: parseFloat(String(item.costPrice)) || 0,
-            sellingPrice: parseFloat(String(item.sellingPrice)) || 0,
-            reorderPoint: parseFloat(String(item.reorderPoint)) || 0,
-            safetyStock: parseFloat(String(item.safetyStock)) || 0,
-            minStockLevel: parseFloat(String(item.minStockLevel || 5)) || 5,
-            trackBatches: Boolean(item.trackBatches),
+            unit: resolvedUnit,
+            costPrice: costPrice,
+            sellingPrice: sellingPrice,
+            reorderPoint: reorderPoint,
+            safetyStock: safetyStock,
+            trackBatches: trackBatches,
             isActive: true,
             createdAt: Date.now(),
-            updatedAt: Date.now(),
           });
-        } catch (error: any) { // Quickest fix: type as any
+          imported++;
+        } catch (error: any) {
           const errMessage = error instanceof Error ? error.message : String(error);
           const errStack = error instanceof Error ? error.stack : undefined;
 
-          // Log detailed error for this row
           console.error(`[CONVEX M(inventory:batchImportProducts)] Error processing row ${rowNumber}:`, {
             error: errMessage,
             item: item,
@@ -1060,7 +1044,6 @@ export const batchImportProducts = mutation({
           errors.push(`Row ${rowNumber}: ${errMessage}`);
           skipped++;
         }
-      }
 
       // Return detailed result
       return {
