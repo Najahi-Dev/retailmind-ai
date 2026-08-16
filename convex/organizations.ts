@@ -16,7 +16,7 @@ export const getCurrentOrganization = query({
         userRole: user.role,
         isOwner: organization.ownerId === user._id,
       };
-    } catch (err) {
+    } catch (err: any) {
       // Log the error for debugging but return null to prevent UI crashes
       // The auth context will handle redirecting to sign-in if needed
       console.warn("getCurrentOrganization unauthorized:", err.message);
@@ -43,7 +43,7 @@ export const getUserOrganizations = query({
         ...org,
         isCurrent: user.orgId === org._id,
       }));
-    } catch (err) {
+    } catch (err: any) {
       // Log the error for debugging but return empty array to prevent UI crashes
       // The auth context will handle redirecting to sign-in if needed
       console.warn("getUserOrganizations unauthorized:", err.message);
@@ -180,7 +180,7 @@ export const getTrialStatus = query({
         currentPeriodEnd: org.currentPeriodEnd,
         isTrialUsed: org.isTrialUsed ?? false,
       };
-    } catch (err) {
+    } catch (err: any) {
       // Log the error for debugging but return null to prevent UI crashes
       // The auth context will handle redirecting to sign-in if needed
       console.warn("getTrialStatus unauthorized:", err.message);
