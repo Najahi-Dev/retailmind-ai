@@ -47,6 +47,7 @@ export default function AddProductClient() {
   const { token } = useAuth();
   const createProduct = useMutation(api.inventory.createProduct);
   const addLocation = useMutation(api.inventory.addLocation);
+  const addCategory = useMutation(api.inventory.addCategory);
   const locationsQ = useQuery(api.inventory.getStockInFormData, { token: token ?? undefined });
   const categoriesQ = useQuery(api.inventory.getCategories, { token: token ?? undefined });
   const suppliersQ = useQuery(api.inventory.getSuppliers, { token: token ?? undefined });
@@ -76,6 +77,12 @@ export default function AddProductClient() {
   const [newLocType, setNewLocType] = useState<"warehouse" | "store" | "distribution_center" | "supplier_site">("warehouse");
   const [savingLocation, setSavingLocation] = useState(false);
 
+  // Create new category inline state
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatDesc, setNewCatDesc] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+
   const locations = locationsQ?.locations ?? [];
   const categories = categoriesQ ?? [];
   const suppliers = suppliersQ ?? [];
@@ -103,6 +110,27 @@ export default function AddProductClient() {
     }
   };
 
+  const handleCreateCategory = async () => {
+    if (!newCatName.trim()) return;
+    setSavingCategory(true);
+    try {
+      const id = await addCategory({
+        token: token ?? undefined,
+        name: newCatName.trim(),
+        description: newCatDesc.trim() || undefined,
+      });
+      toast.success(`Category "${newCatName.trim()}" created!`);
+      setCategoryId(id as string);
+      setShowNewCategory(false);
+      setNewCatName("");
+      setNewCatDesc("");
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Failed to create category");
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
   useEffect(() => {
     if (!sku && nextSku) setSku(nextSku);
   }, [nextSku, sku]);
@@ -111,6 +139,7 @@ export default function AddProductClient() {
     setSaving(true);
     try {
       const id = await createProduct({
+        token: token ?? undefined,
         sku,
         name,
         description: description || undefined,
@@ -257,7 +286,14 @@ export default function AddProductClient() {
                   <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category</Label>
                   <Select
                     value={categoryId ?? "__none__"}
-                    onValueChange={(v) => setCategoryId(v === "__none__" ? undefined : v)}
+                    onValueChange={(v) => {
+                      if (v === "__create_new__") {
+                        setShowNewCategory(true);
+                      } else {
+                        setCategoryId(v === "__none__" ? undefined : v);
+                        setShowNewCategory(false);
+                      }
+                    }}
                   >
                     <SelectTrigger className="w-full text-xs rounded-xl border-slate-200 dark:border-slate-800">
                       <SelectValue placeholder="Choose Category" />
@@ -269,8 +305,69 @@ export default function AddProductClient() {
                           {category.name}
                         </SelectItem>
                       ))}
+                      <SelectItem value="__create_new__" className="text-indigo-600 dark:text-indigo-400 font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <PlusCircleIcon className="w-3.5 h-3.5" />
+                          Create new category…
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+
+                  {/* Inline new category form */}
+                  {showNewCategory && (
+                    <div className="mt-2 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/20 p-3.5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5" />
+                          New Category
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setShowNewCategory(false); setNewCatName(""); setNewCatDesc(""); }}
+                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        >
+                          <XIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Name <span className="text-red-500">*</span></Label>
+                        <Input
+                          placeholder="e.g. Food & Beverages, Electronics…"
+                          value={newCatName}
+                          onChange={(e) => setNewCatName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreateCategory(); } }}
+                          className="h-8 text-xs rounded-lg border-slate-200 dark:border-slate-700"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Description (Optional)</Label>
+                        <Input
+                          placeholder="Brief description of this category…"
+                          value={newCatDesc}
+                          onChange={(e) => setNewCatDesc(e.target.value)}
+                          className="h-8 text-xs rounded-lg border-slate-200 dark:border-slate-700"
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleCreateCategory}
+                        disabled={!newCatName.trim() || savingCategory}
+                        className="w-full h-8 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+                      >
+                        {savingCategory ? (
+                          <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Creating…</>
+                        ) : (
+                          <><PlusCircleIcon className="w-3.5 h-3.5 mr-1.5" /> Create & Select Category</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
