@@ -27,11 +27,16 @@ export async function POST(req: Request) {
 
     const userId = user.id;
     const body = await req.json().catch(() => ({}));
-    const priceId =
-      body.priceId ||
-      process.env.STRIPE_GROWTH_PRICE_ID ||
-      "price_growth_lkr4900";
-    const plan = body.plan || "growth";
+    const plan = (body.plan || "growth").toLowerCase();
+    
+    let priceId = body.priceId;
+    if (!priceId) {
+      if (plan === "starter") {
+        priceId = process.env.STRIPE_STARTER_PRICE_ID;
+      } else {
+        priceId = process.env.STRIPE_GROWTH_PRICE_ID || "price_growth_lkr4900";
+      }
+    }
 
     const userEmail = user.email || `${userId}@user.retailmind.ai`;
     const userName = user.name || userEmail;

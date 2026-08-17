@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { api }         from "@/convex/_generated/api";
 import { useState }    from "react";
 import { toast }       from "sonner";
+import { useAuth } from "@/lib/auth-context";
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
@@ -39,6 +40,8 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
   const set = (key: string, val: any) =>
     setForm(f => ({ ...f, [key]: val }));
 
+  const { token } = useAuth();
+
   const generatePassword = () => {
     // Generate a random password of length 12
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
@@ -54,6 +57,7 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
     setSubmitting(true);
     try {
       await createUser({
+        token: token ?? undefined,
         name:  form.name,
         email: form.email,
         phone: form.phone || undefined,

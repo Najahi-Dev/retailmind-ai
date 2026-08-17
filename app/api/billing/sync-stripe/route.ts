@@ -62,11 +62,35 @@ export async function POST(req: Request) {
     }
 
     if (activeSubscription) {
+      let planTier: "STARTER" | "GROWTH" | "ENTERPRISE" = "GROWTH"; // default fallback
+      const priceId = activeSubscription.items.data[0]?.price?.id;
+
+      if (priceId === process.env.STRIPE_STARTER_PRICE_ID) {
+        planTier = "STARTER";
+      } else if (priceId === process.env.STRIPE_GROWTH_PRICE_ID) {
+        planTier = "GROWTH";
+      } else {
+        const rawPlanTier = activeSubscription.metadata?.plan_tier;
+        const rawPlan = activeSubscription.metadata?.plan;
+        
+        if (typeof rawPlanTier === "string" && rawPlanTier.trim() !== "") {
+          const upper = rawPlanTier.toUpperCase();
+          if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+            planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+          }
+        } else if (typeof rawPlan === "string" && rawPlan.trim() !== "") {
+          const upper = rawPlan.toUpperCase();
+          if (upper === "STARTER" || upper === "GROWTH" || upper === "ENTERPRISE") {
+            planTier = upper as "STARTER" | "GROWTH" | "ENTERPRISE";
+          }
+        }
+      }
+
       await convex.mutation(api.organizations.updateSubscriptionFromStripeInternal, {
         orgId: org._id,
         stripeCustomerId: stripeCustomerId || undefined,
         stripeSubscriptionId: activeSubscription.id,
-        planTier: "GROWTH",
+        planTier: planTier,
         subscriptionStatus: "ACTIVE",
         currentPeriodEnd: activeSubscription.current_period_end
           ? activeSubscription.current_period_end * 1000
@@ -75,21 +99,16 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         success: true,
-        planTier: "GROWTH",
+        planTier: planTier,
         subscriptionStatus: "ACTIVE",
         message: "Stripe subscription synchronized successfully!",
       });
     }
 
-    // If direct sync was requested by workspace admin, also support fallback activation
-    await convex.mutation(api.organizations.syncCurrentOrgToGrowth, { token });
-
+    // If no active subscription is found, we should not blindly upgrade to growth
     return NextResponse.json({
-      success: true,
-      planTier: "GROWTH",
-      subscriptionStatus: "ACTIVE",
-      message: "Workspace upgraded to Growth Plan!",
-    });
+      error: "No active subscription found in Stripe to synchronize."
+    }, { status: 400 });
   } catch (err: any) {
     console.error("Sync Stripe error:", err);
     return NextResponse.json(
