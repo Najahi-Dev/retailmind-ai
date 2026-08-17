@@ -318,6 +318,14 @@ export const createUser = mutation({
     const rawPassword = args.password && args.password.trim() ? args.password : "retailmind123";
     const passwordHash = bcrypt.hashSync(rawPassword, 12);
 
+    let orgPlan = args.plan;
+    if (!orgPlan && orgId) {
+      const org: any = await ctx.db.get(orgId);
+      if (org && org.plan) {
+        orgPlan = org.plan;
+      }
+    }
+
     const userId = await ctx.db.insert("users", {
       orgId,
       email: emailClean,
@@ -326,6 +334,7 @@ export const createUser = mutation({
       passwordHash,
       role: args.role,
       isActive: true,
+      plan: orgPlan,
       createdAt: Date.now(),
     });
 

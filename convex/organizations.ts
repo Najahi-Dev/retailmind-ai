@@ -78,8 +78,8 @@ export const createOrganization = mutation({
       createdAt: Date.now(),
     });
 
-    // Switch user to new organization
-    await ctx.db.patch(user._id, { orgId });
+    // Switch user to new organization and sync plan
+    await ctx.db.patch(user._id, { orgId, plan: args.plan ?? "starter" });
 
     return { orgId, slug, inviteCode };
   },
@@ -104,7 +104,7 @@ export const joinOrganizationByInviteCode = mutation({
       throw new Error("Invalid or expired workspace invitation code.");
     }
 
-    await ctx.db.patch(user._id, { orgId: org._id });
+    await ctx.db.patch(user._id, { orgId: org._id, plan: org.plan });
 
     return {
       success: true,
@@ -127,7 +127,7 @@ export const switchActiveOrganization = mutation({
       throw new Error("Target workspace does not exist or is inactive.");
     }
 
-    await ctx.db.patch(user._id, { orgId: org._id });
+    await ctx.db.patch(user._id, { orgId: org._id, plan: org.plan });
     return { success: true };
   },
 });
@@ -205,6 +205,12 @@ export const activateSubscription = mutation({
       subscribedAt: Date.now(),
     });
 
+    // Sync plan to all users in the organization
+    const orgUsers = (await ctx.db.query("users").collect()).filter(u => u.orgId === orgId);
+    for (const u of orgUsers) {
+      await ctx.db.patch(u._id, { plan: args.plan });
+    }
+
     return { success: true };
   },
 });
@@ -231,6 +237,12 @@ export const activateFreeTrial = mutation({
       isTrialUsed: true,
       trialEndsAt: trialEndsAt,
     });
+
+    // Sync plan to all users in the organization
+    const orgUsers = (await ctx.db.query("users").collect()).filter(u => u.orgId === orgId);
+    for (const u of orgUsers) {
+      await ctx.db.patch(u._id, { plan: args.selectedPlan });
+    }
 
     return { success: true };
   },
@@ -404,6 +416,12 @@ export const updateSubscriptionFromStripeInternal = mutation({
       subscribedAt: args.subscriptionStatus === "ACTIVE" ? (targetOrg.subscribedAt || Date.now()) : targetOrg.subscribedAt,
     });
 
+    // Sync plan to all users in the organization
+    const orgUsers = (await ctx.db.query("users").collect()).filter(u => u.orgId === targetOrg._id);
+    for (const u of orgUsers) {
+      await ctx.db.patch(u._id, { plan: legacyPlan });
+    }
+
     return { success: true, orgId: targetOrg._id };
   },
 });
@@ -419,6 +437,12 @@ export const syncCurrentOrgToGrowth = mutation({
       subscriptionStatus: "ACTIVE",
       subscribedAt: Date.now(),
     });
+
+    // Sync plan to all users in the organization
+    const orgUsers = (await ctx.db.query("users").collect()).filter(u => u.orgId === orgId);
+    for (const u of orgUsers) {
+      await ctx.db.patch(u._id, { plan: "growth" });
+    }
     return { success: true };
   },
 });
@@ -427,6 +451,7 @@ export const forceUpgradeWorkspaceToGrowth = mutation({
   args: {},
   handler: async (ctx) => {
     const allOrgs = await ctx.db.query("organizations").collect();
+    const allUsers = await ctx.db.query("users").collect();
     for (const org of allOrgs) {
       await ctx.db.patch(org._id, {
         plan: "growth",
@@ -434,6 +459,11 @@ export const forceUpgradeWorkspaceToGrowth = mutation({
         subscriptionStatus: "ACTIVE",
         subscribedAt: Date.now(),
       });
+      
+      const orgUsers = allUsers.filter(u => u.orgId === org._id);
+      for (const u of orgUsers) {
+        await ctx.db.patch(u._id, { plan: "growth" });
+      }
     }
     return { count: allOrgs.length };
   },
@@ -468,6 +498,12 @@ export const downgradeSubscriptionInternal = mutation({
         plan: "starter",
         subscriptionStatus: "CANCELED",
       });
+
+      // Sync plan to all users in the organization
+      const orgUsers = (await ctx.db.query("users").collect()).filter(u => u.orgId === targetOrg._id);
+      for (const u of orgUsers) {
+        await ctx.db.patch(u._id, { plan: "starter" });
+      }
     }
   },
 });

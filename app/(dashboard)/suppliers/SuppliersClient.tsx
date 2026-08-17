@@ -1,6 +1,6 @@
 // app/(dashboard)/suppliers/SuppliersClient.tsx
 "use client";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -79,12 +79,14 @@ export default function SuppliersClient() {
     token: token ?? undefined,
   });
 
+  const deleteSupplier = useMutation(api.suppliers.deleteSupplier);
+
   const handleDeleteSupplier = async (supplierId: string) => {
     setDeletingSupplierId(supplierId);
     try {
-      await api.suppliers.deleteSupplier({
+      await deleteSupplier({
         token: token ?? undefined,
-        supplierId: supplierId,
+        supplierId: supplierId as any,
       });
       // Reset deleting state after successful deletion
       setDeletingSupplierId(null);
