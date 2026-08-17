@@ -27,6 +27,7 @@ const PAYMENT_TERMS = ["Net 30", "Net 15", "Net 60", "COD", "Prepaid"];
 
 export default function AddSupplierDialog({ open, onOpenChange }: Props) {
   const createSupplier = useMutation(api.suppliers.createSupplier);
+  const createUser = useMutation(api.users.createUser);
   const { token } = useAuth();
 
   const [form, setForm] = useState({
@@ -71,13 +72,14 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
 
       // Create a user record for this supplier so it appears in user management
       // The password will be hashed automatically by the createUser mutation
-      await api.users.createUser({
+      await createUser({
         token: token ?? undefined,
         name: form.name,
         email: form.email,
         phone: form.phone || undefined,
         password: password || undefined, // Use generated password or let system use default
         role: "supplier",
+        supplierId: supplierId, // Link the user to the newly created supplier
       });
 
       toast.success(`${form.name} added successfully!`);

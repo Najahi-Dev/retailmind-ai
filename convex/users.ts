@@ -296,6 +296,7 @@ export const createUser = mutation({
       v.literal("pending")
     ),
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
+    supplierId: v.optional(v.id("suppliers")),
   },
   handler: async (ctx, args) => {
     let orgId = undefined;
