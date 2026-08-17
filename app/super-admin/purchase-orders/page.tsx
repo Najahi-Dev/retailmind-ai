@@ -27,9 +27,12 @@ export default function SuperAdminPurchaseOrders() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Purchase Orders (Global View)</h1>
-        <p className="text-muted-foreground text-sm mt-1">Monitor and oversee all cross-tenant purchase orders and supplier fulfillment.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 p-6 rounded-xl text-white shadow-lg overflow-hidden relative">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold tracking-tight">Purchase Orders (Global View)</h1>
+          <p className="text-indigo-200 mt-1">Monitor and oversee all cross-tenant purchase orders and supplier fulfillment.</p>
+        </div>
       </div>
 
       <Card>

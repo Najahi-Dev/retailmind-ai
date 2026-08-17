@@ -57,8 +57,8 @@ export default function SuperAdminOverview() {
           <h1 className="text-3xl font-bold tracking-tight">Platform Command Center</h1>
           <p className="text-indigo-200 mt-1">Real-time overview of the RetailMind AI ecosystem.</p>
         </div>
-        <div className="relative z-10 flex gap-3">
-          <Badge variant="outline" className="border-indigo-400 text-indigo-100 bg-indigo-950/50 backdrop-blur-md px-3 py-1">
+        <div className="relative z-10 flex items-center gap-3">
+          <Badge variant="outline" className="flex items-center border-indigo-400 text-indigo-100 bg-indigo-950/50 backdrop-blur-md px-3 py-1">
             <span className="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse inline-block"></span>
             System Live
           </Badge>

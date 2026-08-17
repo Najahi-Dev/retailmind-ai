@@ -9,7 +9,7 @@ export default async function AdminBackupPage() {
     redirect("/sign-in");
   }
 
-  if (user.role !== "admin") {
+  if (user.role !== "admin" && user.role !== "owner") {
     redirect("/access-denied");
   }
 

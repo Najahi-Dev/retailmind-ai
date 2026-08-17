@@ -32,6 +32,7 @@ import {
   HeadphonesIcon,
   BellRing,
   BarChart3,
+  Database,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { useRouter } from "next/navigation"
@@ -129,6 +130,11 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
       title: "Audit Logs",
       url: "/super-admin/audit",
       icon: <FileKey className="size-4" />,
+    },
+    {
+      title: "Database Backup",
+      url: "/super-admin/backup",
+      icon: <Database className="size-4" />,
     },
   ];
 

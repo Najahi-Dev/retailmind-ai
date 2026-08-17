@@ -262,6 +262,12 @@ export const restoreFullDatabaseBackup = mutation({
     const idMap = new Map<string, any>();
     let insertedTotal = 0;
 
+    const getValidId = (table: string, id: any) => {
+      if (!id) return undefined;
+      const mapped = idMap.get(id) || id;
+      return ctx.db.normalizeId(table, mapped) || undefined;
+    };
+
     // 1. Locations
     if (Array.isArray(data.locations)) {
       for (const loc of data.locations) {
@@ -295,47 +301,22 @@ export const restoreFullDatabaseBackup = mutation({
     }
 
     // 3. Suppliers
-    if (Array.isArray(data.suppliers)) {
-      for (const sup of data.suppliers) {
-        const oldId = sup._id;
-        const newId = await ctx.db.insert("suppliers", {
-          orgId,
-          name: sup.name,
-          email: sup.email,
-          phone: sup.phone,
-          address: sup.address,
-          paymentTerms: sup.paymentTerms,
-          leadTimeDays: sup.leadTimeDays,
-          status: sup.status || "active",
-          reliabilityScore: sup.reliabilityScore,
-          isActive: sup.isActive ?? true,
-          createdAt: sup.createdAt || Date.now(),
-        });
-        if (oldId) idMap.set(oldId, newId);
-        insertedTotal++;
-      }
-    }
-
-    // 4. Products
     if (Array.isArray(data.products)) {
       for (const prod of data.products) {
         const oldId = prod._id;
-        const categoryId = idMap.get(prod.categoryId) || prod.categoryId;
-        const primarySupplierId = idMap.get(prod.primarySupplierId) || prod.primarySupplierId;
-
+        const categoryId = getValidId("categories", prod.categoryId);
+        const supplierId = getValidId("suppliers", prod.supplierId);
+        
         const newId = await ctx.db.insert("products", {
           orgId,
-          categoryId,
-          primarySupplierId,
-          sku: prod.sku,
           name: prod.name,
-          description: prod.description,
-          unit: prod.unit || "pcs",
-          costPrice: prod.costPrice,
-          sellingPrice: prod.sellingPrice,
-          reorderPoint: prod.reorderPoint,
-          safetyStock: prod.safetyStock,
-          trackBatches: prod.trackBatches ?? false,
+          sku: prod.sku,
+          barcode: prod.barcode,
+          categoryId,
+          supplierId,
+          leadTimeDays: prod.leadTimeDays,
+          status: prod.status || "active",
+          reliabilityScore: prod.reliabilityScore,
           isActive: prod.isActive ?? true,
           createdAt: prod.createdAt || Date.now(),
         });
@@ -347,10 +328,11 @@ export const restoreFullDatabaseBackup = mutation({
     // 5. Inventory
     if (Array.isArray(data.inventory)) {
       for (const inv of data.inventory) {
-        const productId = idMap.get(inv.productId) || inv.productId;
-        const locationId = idMap.get(inv.locationId) || inv.locationId;
+        const productId = getValidId("products", inv.productId);
+        const locationId = getValidId("locations", inv.locationId);
         if (productId && locationId) {
-          await ctx.db.insert("inventory", {
+          const oldId = inv._id;
+          const newId = await ctx.db.insert("inventory", {
             orgId,
             productId,
             locationId,
@@ -359,6 +341,7 @@ export const restoreFullDatabaseBackup = mutation({
             available: inv.available || 0,
             lastUpdated: inv.lastUpdated || Date.now(),
           });
+          if (oldId) idMap.set(oldId, newId);
           insertedTotal++;
         }
       }
@@ -367,16 +350,18 @@ export const restoreFullDatabaseBackup = mutation({
     // 6. Stock Movements
     if (Array.isArray(data.stockMovements)) {
       for (const sm of data.stockMovements) {
-        const productId = idMap.get(sm.productId) || sm.productId;
-        const locationId = idMap.get(sm.locationId) || sm.locationId;
+        const productId = getValidId("products", sm.productId);
+        const locationId = getValidId("locations", sm.locationId);
+        const userId = getValidId("users", sm.userId);
         if (productId && locationId) {
           await ctx.db.insert("stockMovements", {
             orgId,
             productId,
             locationId,
-            type: sm.type || "stock_in",
+            type: sm.type,
+            quantity: sm.quantity,
+            userId,
             reason: sm.reason || "Imported",
-            quantity: sm.quantity || 0,
             reference: sm.reference,
             createdAt: sm.createdAt || Date.now(),
           });
@@ -385,18 +370,16 @@ export const restoreFullDatabaseBackup = mutation({
       }
     }
 
-    // 7. Purchase Orders
     if (Array.isArray(data.purchaseOrders)) {
       for (const po of data.purchaseOrders) {
-        const supplierId = idMap.get(po.supplierId) || po.supplierId;
+        const supplierId = getValidId("suppliers", po.supplierId);
         if (supplierId) {
-          const lineItems = (po.lineItems || []).map((li: any) => ({
-            productId: idMap.get(li.productId) || li.productId,
-            quantityOrdered: li.quantityOrdered,
-            quantityReceived: li.quantityReceived ?? 0,
-            unitCost: li.unitCost,
-            lineTotal: li.lineTotal,
-          }));
+          const lineItems = (po.lineItems || [])
+            .map((li: any) => ({
+              ...li,
+              productId: getValidId("products", li.productId),
+            }))
+            .filter((li: any) => !!li.productId);
 
           await ctx.db.insert("purchaseOrders", {
             orgId,
@@ -414,11 +397,10 @@ export const restoreFullDatabaseBackup = mutation({
       }
     }
 
-    // 8. Reorder Suggestions
     if (Array.isArray(data.reorderSuggestions)) {
       for (const rs of data.reorderSuggestions) {
-        const productId = idMap.get(rs.productId) || rs.productId;
-        const preferredSupplierId = idMap.get(rs.preferredSupplierId) || rs.preferredSupplierId;
+        const productId = getValidId("products", rs.productId);
+        const preferredSupplierId = getValidId("suppliers", rs.preferredSupplierId);
         if (productId && preferredSupplierId) {
           await ctx.db.insert("reorderSuggestions", {
             orgId,
