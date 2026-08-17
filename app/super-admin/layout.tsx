@@ -7,6 +7,7 @@ import { Activity } from "lucide-react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SuperAdminSidebar } from "@/components/super-admin-sidebar";
 import { SiteHeader } from "@/components/site-header";
+import { SystemBanners } from "@/components/system-banners";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -31,11 +32,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     <SidebarProvider>
       <SuperAdminSidebar />
       <SidebarInset>
+        <SystemBanners />
         <SiteHeader />
         <div className="flex flex-1 flex-col p-4 lg:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto w-full">
-            {children}
-          </div>
+          {children}
         </div>
       </SidebarInset>
       <Toaster />

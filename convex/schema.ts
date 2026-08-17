@@ -3,6 +3,45 @@ import { v } from "convex/values";
 
 export default defineSchema({
   // ── Multi-Tenant Organizations / Workspaces ──
+  subscriptionPlans: defineTable({
+    name: v.string(), // e.g. "Starter", "Growth", "Enterprise"
+    tier: v.union(v.literal("STARTER"), v.literal("GROWTH"), v.literal("ENTERPRISE")),
+    description: v.string(),
+    monthlyPriceLkr: v.number(),
+    yearlyPriceLkr: v.number(),
+    stripeProductId: v.optional(v.string()),
+    stripeMonthlyPriceId: v.optional(v.string()),
+    stripeYearlyPriceId: v.optional(v.string()),
+    features: v.object({
+      activeSkuLimit: v.union(v.number(), v.literal("unlimited")),
+      storeLimit: v.union(v.number(), v.literal("unlimited")),
+      staffUserLimit: v.union(v.number(), v.literal("unlimited")),
+      aiDemandForecasting: v.boolean(),
+      automatedReorder: v.boolean(),
+      dynamicPricing: v.boolean(),
+      supplierPortal: v.boolean(),
+      fullRbac: v.boolean(),
+    }),
+    isRecommended: v.boolean(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_tier", ["tier"]),
+
+  aiOperationalSettings: defineTable({
+    // Forecasting
+    forecastHorizonDays: v.number(),
+    retrainingSchedule: v.string(), // e.g. "weekly", "daily"
+    // Pricing
+    globalMinProfitMarginPercent: v.number(),
+    globalMaxDiscountPercent: v.number(),
+    globalMaxDailyPriceChangePercent: v.number(),
+    requireApprovalForHighRisk: v.boolean(),
+    // Inventory
+    globalSafetyStockDays: v.number(),
+    globalExpiryWarningDays: v.number(),
+    updatedAt: v.number(),
+  }),
+
   organizations: defineTable({
     name: v.string(),
     slug: v.string(),
@@ -30,6 +69,14 @@ export default defineSchema({
     logoUrl: v.optional(v.string()),
     ownerId: v.optional(v.id("users")),
     isActive: v.boolean(),
+    limits: v.optional(
+      v.object({
+        maxSkus: v.number(),
+        maxApi: v.number(),
+        maxBranches: v.number(),
+      })
+    ),
+    paymentMethod: v.optional(v.union(v.literal("stripe"), v.literal("offline"))),
     createdAt: v.number(),
   })
     .index("by_slug", ["slug"])
@@ -71,7 +118,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_token", ["token"])
-    .index("by_org", ["orgId"]),
+    .index("by_org", ["orgId"])
+    .index("by_user", ["userId"]),
 
   // ── Locations ──────────────────────────────────
   locations: defineTable({
@@ -87,6 +135,40 @@ export default defineSchema({
     isActive: v.boolean(),
     createdAt: v.number(),
   }).index("by_org", ["orgId"]),
+
+  // ── Approvals (High-Risk Actions) ─────────────
+  approvals: defineTable({
+    orgId: v.optional(v.id("organizations")),
+    requesterId: v.optional(v.id("users")),
+    actionType: v.string(), // e.g. "PRICE_CHANGE", "LARGE_PO"
+    details: v.any(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    reviewedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org", ["orgId"]).index("by_status", ["status"]),
+
+  // ── Integrations ───────────────────────────────
+  integrations: defineTable({
+    orgId: v.id("organizations"),
+    provider: v.string(), // e.g. "xero", "quickbooks", "shopify"
+    status: v.union(v.literal("active"), v.literal("error"), v.literal("disconnected")),
+    lastSyncAt: v.optional(v.number()),
+    config: v.any(), // Encrypted keys or tokens would go here in a real app
+    createdAt: v.number(),
+  }).index("by_org", ["orgId"]),
+
+
+  // ── Notification Templates ─────────────────────
+  notificationTemplates: defineTable({
+    name: v.string(), // e.g. "LOW_STOCK_ALERT", "BILLING_FAILED"
+    channel: v.union(v.literal("email"), v.literal("sms"), v.literal("in_app")),
+    subjectTemplate: v.optional(v.string()),
+    bodyTemplate: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_name", ["name"]),
 
   // ── Categories ─────────────────────────────────
   categories: defineTable({
@@ -490,4 +572,79 @@ export default defineSchema({
     resolved: v.boolean(),
     timestamp: v.number(),
   }).index("by_timestamp", ["timestamp"]).index("by_resolved", ["resolved"]),
+
+  // ── Admin Audit Logs ─────────────────────────
+  adminAuditLogs: defineTable({
+    adminId: v.id("users"),
+    action: v.string(), // e.g., "IMPERSONATE", "OVERRIDE_LIMITS", "CLONE_TENANT"
+    targetOrgId: v.optional(v.id("organizations")),
+    targetUserId: v.optional(v.id("users")),
+    details: v.optional(v.string()),
+    ipAddress: v.optional(v.string()),
+    timestamp: v.number(),
+  }).index("by_admin", ["adminId"]).index("by_org", ["targetOrgId"]),
+
+  // ── AI Model Telemetry ───────────────────────
+  aiUsageLogs: defineTable({
+    orgId: v.optional(v.id("organizations")),
+    model: v.string(), // e.g., "gemini-1.5-pro", "gemini-1.5-flash"
+    action: v.string(), // e.g., "DEMAND_FORECAST", "OCR"
+    tokensIn: v.number(),
+    tokensOut: v.number(),
+    costUsd: v.number(),
+    latencyMs: v.optional(v.number()),
+    isFallback: v.optional(v.boolean()),
+    timestamp: v.number(),
+  }).index("by_org", ["orgId"]).index("by_timestamp", ["timestamp"]),
+
+  // ── System Prompt Registry ───────────────────
+  systemPrompts: defineTable({
+    name: v.string(), // e.g., "DEMAND_FORECASTER"
+    description: v.optional(v.string()),
+    systemPrompt: v.string(),
+    userPromptTemplate: v.optional(v.string()),
+    defaultModel: v.string(),
+    fallbackModel: v.optional(v.string()),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_name", ["name"]),
+
+  // ── Stripe Webhook DLQ ───────────────────────
+  stripeWebhookFailures: defineTable({
+    eventId: v.string(),
+    eventType: v.string(),
+    payload: v.string(),
+    error: v.string(),
+    status: v.union(v.literal("pending"), v.literal("retried"), v.literal("resolved")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_status", ["status"]).index("by_event_id", ["eventId"]),
+
+  // ── Dunning Logs ─────────────────────────────
+  dunningLogs: defineTable({
+    orgId: v.id("organizations"),
+    status: v.union(v.literal("warning_1"), v.literal("warning_3"), v.literal("warning_7"), v.literal("suspended")),
+    sentAt: v.number(),
+  }).index("by_org", ["orgId"]),
+
+  // ── Global System Banners ────────────────────
+  systemBanners: defineTable({
+    message: v.string(),
+    type: v.union(v.literal("info"), v.literal("warning"), v.literal("error")),
+    isActive: v.boolean(),
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_active", ["isActive"]),
+
+  // ── Security Events ──────────────────────────
+  securityEvents: defineTable({
+    orgId: v.optional(v.id("organizations")),
+    userId: v.optional(v.id("users")),
+    eventType: v.string(), // "KILL_SWITCH_ACTIVATED", "MULTIPLE_FAILED_LOGINS", "ANOMALOUS_API_USAGE"
+    description: v.string(),
+    ipAddress: v.optional(v.string()),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    resolved: v.boolean(),
+    timestamp: v.number(),
+  }).index("by_timestamp", ["timestamp"]).index("by_resolved", ["resolved"]).index("by_org", ["orgId"]),
 });

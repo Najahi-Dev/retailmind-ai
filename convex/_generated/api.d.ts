@@ -9,15 +9,18 @@
  */
 
 import type * as adminBackup from "../adminBackup.js";
+import type * as aiOperationsAdmin from "../aiOperationsAdmin.js";
 import type * as alerts from "../alerts.js";
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
 import type * as authInternal from "../authInternal.js";
+import type * as billingEngine from "../billingEngine.js";
 import type * as crons from "../crons.js";
 import type * as inventory from "../inventory.js";
 import type * as lib_roleGuard from "../lib/roleGuard.js";
 import type * as migrations_multiTenantMigration from "../migrations/multiTenantMigration.js";
 import type * as organizations from "../organizations.js";
+import type * as plansAdmin from "../plansAdmin.js";
 import type * as pricing from "../pricing.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as reorder from "../reorder.js";
@@ -26,8 +29,12 @@ import type * as subscriptions from "../subscriptions.js";
 import type * as superAdmin from "../superAdmin.js";
 import type * as suppliers from "../suppliers.js";
 import type * as supportTickets from "../supportTickets.js";
+import type * as systemPrompts from "../systemPrompts.js";
+import type * as telemetry from "../telemetry.js";
 import type * as users from "../users.js";
+import type * as usersAdmin from "../usersAdmin.js";
 import type * as wipeDb from "../wipeDb.js";
+import type * as workflowAdmin from "../workflowAdmin.js";
 
 import type {
   ApiFromModules,
@@ -37,15 +44,18 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   adminBackup: typeof adminBackup;
+  aiOperationsAdmin: typeof aiOperationsAdmin;
   alerts: typeof alerts;
   audit: typeof audit;
   auth: typeof auth;
   authInternal: typeof authInternal;
+  billingEngine: typeof billingEngine;
   crons: typeof crons;
   inventory: typeof inventory;
   "lib/roleGuard": typeof lib_roleGuard;
   "migrations/multiTenantMigration": typeof migrations_multiTenantMigration;
   organizations: typeof organizations;
+  plansAdmin: typeof plansAdmin;
   pricing: typeof pricing;
   purchaseOrders: typeof purchaseOrders;
   reorder: typeof reorder;
@@ -54,8 +64,12 @@ declare const fullApi: ApiFromModules<{
   superAdmin: typeof superAdmin;
   suppliers: typeof suppliers;
   supportTickets: typeof supportTickets;
+  systemPrompts: typeof systemPrompts;
+  telemetry: typeof telemetry;
   users: typeof users;
+  usersAdmin: typeof usersAdmin;
   wipeDb: typeof wipeDb;
+  workflowAdmin: typeof workflowAdmin;
 }>;
 
 /**

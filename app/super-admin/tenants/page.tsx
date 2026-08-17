@@ -6,6 +6,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Table,
@@ -15,8 +17,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { LogIn, Ban, CheckCircle, Activity, Edit2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { LogIn, Ban, CheckCircle, Activity, Copy, Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function SuperAdminTenants() {
   const { token, impersonateUser } = useAuth();
@@ -25,10 +36,26 @@ export default function SuperAdminTenants() {
   const orgs = useQuery(api.superAdmin.getAllOrganizations, { token: token ?? undefined });
   const generateImpersonationToken = useMutation(api.superAdmin.generateImpersonationToken);
   const updateOrganizationStatus = useMutation(api.superAdmin.updateOrganizationStatus);
+  const cloneTenantDatabase = useMutation(api.superAdmin.cloneTenantDatabase);
+  
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Limits Modal State
+  const [limitsOrg, setLimitsOrg] = useState<any>(null);
+  const [maxSkus, setMaxSkus] = useState("1000");
+  const [maxApi, setMaxApi] = useState("10000");
+  const [maxBranches, setMaxBranches] = useState("1");
 
   const handleImpersonate = async (ownerId: string) => {
+    const reason = window.prompt("Security Audit: Please enter the reason for impersonating this tenant:");
+    if (!reason) return;
+
     try {
-      const result = await generateImpersonationToken({ token: token ?? undefined, targetUserId: ownerId as any });
+      const result = await generateImpersonationToken({ 
+        token: token ?? undefined, 
+        targetUserId: ownerId as any,
+        reason 
+      });
       impersonateUser(result.token);
       toast.success(`Impersonating ${result.user.name}`);
       router.push("/dashboard");
@@ -49,6 +76,58 @@ export default function SuperAdminTenants() {
     } catch (err: any) {
       toast.error(err.message || "Failed to update status");
     }
+  };
+
+  const handleCloneTenant = async (sourceOrgId: string) => {
+    const targetOrgId = window.prompt("Enter the exact ID of the Target Organization you want to clone data into:");
+    if (!targetOrgId) return;
+
+    if (!window.confirm("Are you sure? This will dump the source org's demo data into the target org.")) return;
+
+    try {
+      setIsUpdating(true);
+      await cloneTenantDatabase({
+        token: token ?? undefined,
+        sourceOrgId: sourceOrgId as any,
+        targetOrgId: targetOrgId as any,
+      });
+      toast.success("Tenant data cloned successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to clone tenant");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveLimits = async () => {
+    if (!limitsOrg) return;
+    try {
+      setIsUpdating(true);
+      await updateOrganizationStatus({
+        token: token ?? undefined,
+        orgId: limitsOrg._id as any,
+        updates: {
+          limits: {
+            maxSkus: parseInt(maxSkus) || 1000,
+            maxApi: parseInt(maxApi) || 10000,
+            maxBranches: parseInt(maxBranches) || 1,
+          } as any
+        }
+      });
+      toast.success("Organization limits updated!");
+      setLimitsOrg(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update limits");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const openLimitsModal = (org: any) => {
+    setLimitsOrg(org);
+    setMaxSkus(org.limits?.maxSkus?.toString() || "1000");
+    setMaxApi(org.limits?.maxApi?.toString() || "10000");
+    setMaxBranches(org.limits?.maxBranches?.toString() || "1");
   };
 
   if (!orgs) {
@@ -75,7 +154,7 @@ export default function SuperAdminTenants() {
                 <TableHead>Organization</TableHead>
                 <TableHead>Owner</TableHead>
                 <TableHead>Plan</TableHead>
-                <TableHead>Users</TableHead>
+                <TableHead>Limits / Users</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -84,7 +163,15 @@ export default function SuperAdminTenants() {
               {orgs.map((org: any) => (
                 <TableRow key={org._id}>
                   <TableCell>
-                    <div className="font-medium">{org.name}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {org.name}
+                      <Button variant="ghost" size="icon" className="h-4 w-4 opacity-50 hover:opacity-100" onClick={() => {
+                        navigator.clipboard.writeText(org._id);
+                        toast.success("Org ID copied");
+                      }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <div className="text-xs text-muted-foreground">/{org.slug}</div>
                   </TableCell>
                   <TableCell>
@@ -96,8 +183,11 @@ export default function SuperAdminTenants() {
                       {org.planTier || "STARTER"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {org.userCount}
+                  <TableCell className="text-muted-foreground text-sm">
+                    <div className="font-medium text-slate-700 dark:text-slate-300">{org.userCount} Users</div>
+                    <div className="text-xs">
+                      SKUs: {org.limits?.maxSkus || "Default"}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge className={
@@ -109,16 +199,34 @@ export default function SuperAdminTenants() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1">
                       <Button 
                         size="sm" 
                         variant="ghost" 
                         className="h-8 px-2 text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-500/10"
-                        title="Impersonate Owner"
+                        title="Impersonate Owner (Requires Audit Reason)"
                         onClick={() => org.ownerId && handleImpersonate(org.ownerId)}
                         disabled={!org.ownerId}
                       >
                         <LogIn className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 px-2 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10"
+                        title="Override Quotas & Limits"
+                        onClick={() => openLimitsModal(org)}
+                      >
+                        <Settings2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 px-2 text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-500/10"
+                        title="Clone Demo Data from this Org"
+                        onClick={() => handleCloneTenant(org._id)}
+                      >
+                        <Copy className="w-4 h-4" />
                       </Button>
                       <Button 
                         size="sm" 
@@ -144,6 +252,36 @@ export default function SuperAdminTenants() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!limitsOrg} onOpenChange={(open) => !open && setLimitsOrg(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Override Tenant Quotas</DialogTitle>
+            <DialogDescription>
+              Adjust granular limits for <strong>{limitsOrg?.name}</strong>. These bypass standard plan defaults.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Max SKUs</Label>
+              <Input type="number" value={maxSkus} onChange={e => setMaxSkus(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Max API Requests / Day</Label>
+              <Input type="number" value={maxApi} onChange={e => setMaxApi(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Max Branches / Warehouses</Label>
+              <Input type="number" value={maxBranches} onChange={e => setMaxBranches(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLimitsOrg(null)}>Cancel</Button>
+            <Button onClick={handleSaveLimits} disabled={isUpdating}>Save Overrides</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

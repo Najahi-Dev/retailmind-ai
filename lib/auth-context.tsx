@@ -321,8 +321,8 @@ export function useRole() {
 
   const isSuperAdmin = role === "super_admin" || currentUser?.email === "admin@retailmind.com";
   const isAdmin = role === "admin" || isSuperAdmin;
-  const isManager = role === "manager";
-  const isStaff = role === "staff";
+  const isManager = role === "manager" || isAdmin;
+  const isStaff = role === "staff" || isManager;
   const isSupplier = role === "supplier";
 
   const canViewFinancials = isAdmin || isManager;

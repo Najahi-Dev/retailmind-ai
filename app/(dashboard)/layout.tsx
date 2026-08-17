@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { getServerUser } from "@/lib/get-server-user";
 
 import { TrialBanner } from "@/components/trial-banner";
+import { SystemBanners } from "@/components/system-banners";
 import { PushNotificationWatcher } from "@/components/push-notification-watcher";
 
 export default async function DashboardLayout({
@@ -23,6 +24,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
+        <SystemBanners />
         <SiteHeader />
         <TrialBanner />
         <div className="flex flex-1 flex-col">{children}</div>

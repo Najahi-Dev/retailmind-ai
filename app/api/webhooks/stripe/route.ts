@@ -290,6 +290,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   } catch (err: any) {
     console.error(`Stripe Webhook Processing Error: ${err?.message}`);
+    
+    // Log to DLQ
+    try {
+      if (event) {
+        await convex.mutation(api.billingEngine.logStripeWebhookFailure, {
+          eventId: event.id,
+          eventType: event.type,
+          payload: JSON.stringify(event),
+          error: err?.message || "Unknown error",
+        });
+      }
+    } catch (dlqErr) {
+      console.error("Failed to log to DLQ", dlqErr);
+    }
+    
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 }

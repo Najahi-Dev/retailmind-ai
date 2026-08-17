@@ -19,6 +19,16 @@ import {
   SettingsIcon,
   ArrowLeftIcon,
   ShieldAlert,
+  BrainCircuit,
+  UserCog,
+  FileKey,
+  PackageSearch,
+  LineChart,
+  CircleDollarSign,
+  Layers,
+  ClipboardList,
+  CheckSquare,
+  Plug,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { useRouter } from "next/navigation"
@@ -43,14 +53,64 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
       icon: <CreditCardIcon className="size-4" />,
     },
     {
+      title: "Subscription Plans",
+      url: "/super-admin/plans",
+      icon: <PackageSearch className="size-4" />,
+    },
+    {
+      title: "Users & IAM",
+      url: "/super-admin/users",
+      icon: <UserCog className="size-4" />,
+    },
+    {
       title: "System Health",
       url: "/super-admin/health",
       icon: <ActivityIcon className="size-4" />,
     },
     {
-      title: "Global Settings",
+      title: "AI Telemetry",
+      url: "/super-admin/ai",
+      icon: <BrainCircuit className="size-4" />,
+    },
+    {
+      title: "Forecasting Admin",
+      url: "/super-admin/forecasting-admin",
+      icon: <LineChart className="size-4" />,
+    },
+    {
+      title: "Dynamic Pricing",
+      url: "/super-admin/dynamic-pricing",
+      icon: <CircleDollarSign className="size-4" />,
+    },
+    {
+      title: "Inventory Rules",
+      url: "/super-admin/inventory-rules",
+      icon: <Layers className="size-4" />,
+    },
+    {
+      title: "Purchase Orders",
+      url: "/super-admin/purchase-orders",
+      icon: <ClipboardList className="size-4" />,
+    },
+    {
+      title: "Approval Center",
+      url: "/super-admin/approvals",
+      icon: <CheckSquare className="size-4" />,
+    },
+    {
+      title: "Integrations",
+      url: "/super-admin/integrations",
+      icon: <Plug className="size-4" />,
+    },
+    {
+      title: "Security Center",
       url: "/super-admin/security",
-      icon: <SettingsIcon className="size-4" />,
+      icon: <ShieldAlert className="size-4" />,
+    },
+    {
+      title: "Audit Logs",
+      url: "/super-admin/audit",
+      icon: <FileKey className="size-4" />,
     },
   ];
 

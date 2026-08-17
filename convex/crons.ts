@@ -18,4 +18,10 @@ crons.daily(
   internal.pricing.generatePriceSuggestions
 );
 
+crons.daily(
+  "run-dunning-engine",
+  { hourUTC: 21, minuteUTC: 30 },  // 3:00 AM Sri Lanka
+  internal.billingEngine.runDunningEngine
+);
+
 export default crons;
