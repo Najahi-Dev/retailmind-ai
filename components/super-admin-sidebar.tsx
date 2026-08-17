@@ -29,6 +29,9 @@ import {
   ClipboardList,
   CheckSquare,
   Plug,
+  HeadphonesIcon,
+  BellRing,
+  BarChart3,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { useRouter } from "next/navigation"
@@ -101,6 +104,21 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
       title: "Integrations",
       url: "/super-admin/integrations",
       icon: <Plug className="size-4" />,
+    },
+    {
+      title: "Support Tickets",
+      url: "/super-admin/support",
+      icon: <HeadphonesIcon className="size-4" />,
+    },
+    {
+      title: "Notifications",
+      url: "/super-admin/notifications",
+      icon: <BellRing className="size-4" />,
+    },
+    {
+      title: "Platform Reports",
+      url: "/super-admin/reports",
+      icon: <BarChart3 className="size-4" />,
     },
     {
       title: "Security Center",

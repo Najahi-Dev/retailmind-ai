@@ -15,6 +15,7 @@ import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
 import type * as authInternal from "../authInternal.js";
 import type * as billingEngine from "../billingEngine.js";
+import type * as communicationsAdmin from "../communicationsAdmin.js";
 import type * as crons from "../crons.js";
 import type * as inventory from "../inventory.js";
 import type * as lib_roleGuard from "../lib/roleGuard.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authInternal: typeof authInternal;
   billingEngine: typeof billingEngine;
+  communicationsAdmin: typeof communicationsAdmin;
   crons: typeof crons;
   inventory: typeof inventory;
   "lib/roleGuard": typeof lib_roleGuard;
