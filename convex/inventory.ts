@@ -211,6 +211,78 @@ export const getCategories = query({
   },
 });
 
+// ── addCategory mutation (upsert by name) ──
+export const addCategory = mutation({
+  args: {
+    token: v.optional(v.string()),
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const trimmedName = args.name.trim();
+    if (!trimmedName) throw new Error("Category name is required");
+
+    // Check for existing category with same name (case-insensitive)
+    const existing = await ctx.db
+      .query("categories")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const duplicate = existing.find(
+      (c) => c.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (duplicate) return duplicate._id;
+
+    const id = await ctx.db.insert("categories", {
+      orgId,
+      name: trimmedName,
+      description: args.description?.trim() || undefined,
+      createdAt: Date.now(),
+    });
+    return id;
+  },
+});
+
+// ── addLocation mutation (upsert by name) ──
+export const addLocation = mutation({
+  args: {
+    token: v.optional(v.string()),
+    name: v.string(),
+    address: v.optional(v.string()),
+    type: v.optional(v.union(
+      v.literal("warehouse"),
+      v.literal("store"),
+      v.literal("distribution_center"),
+      v.literal("supplier_site"),
+    )),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const trimmedName = args.name.trim();
+    if (!trimmedName) throw new Error("Location name is required");
+
+    // Check for existing location with same name (case-insensitive)
+    const existing = await ctx.db
+      .query("locations")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const duplicate = existing.find(
+      (l) => l.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (duplicate) return duplicate._id;
+
+    const id = await ctx.db.insert("locations", {
+      orgId,
+      name: trimmedName,
+      address: args.address?.trim() || undefined,
+      type: args.type ?? "warehouse",
+      isActive: true,
+      createdAt: Date.now(),
+    });
+    return id;
+  },
+});
+
 export const getSuppliers = query({
   args: {
     token: v.optional(v.string()),
@@ -938,6 +1010,16 @@ export const batchImportProducts = mutation({
       let skipped = 0;
       const errors = [];
 
+      // Build a category name → id cache to avoid repeated DB lookups
+      const categoryCache = new Map<string, Id<"categories">>();
+      const existingCategories = await ctx.db
+        .query("categories")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect();
+      for (const c of existingCategories) {
+        categoryCache.set(c.name.toLowerCase(), c._id);
+      }
+
 
       const validUnits = ["pcs", "kg", "litre", "box", "ml"] as const;
       type UnitType = (typeof validUnits)[number];
@@ -1021,7 +1103,20 @@ export const batchImportProducts = mutation({
             orgId: orgId,
             name: name,
             sku: String(item.sku || "").trim(),
-            categoryId: undefined,
+            categoryId: await (async () => {
+              const rawCat = (item.category ?? "").trim();
+              if (!rawCat) return undefined;
+              const key = rawCat.toLowerCase();
+              if (categoryCache.has(key)) return categoryCache.get(key)!;
+              // Create the category on-the-fly
+              const newId = await ctx.db.insert("categories", {
+                orgId,
+                name: rawCat,
+                createdAt: Date.now(),
+              });
+              categoryCache.set(key, newId);
+              return newId;
+            })(),
             unit: resolvedUnit,
             costPrice: costPrice,
             sellingPrice: sellingPrice,

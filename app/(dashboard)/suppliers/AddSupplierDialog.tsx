@@ -3,6 +3,7 @@
 import { useMutation } from "convex/react";
 import { api }         from "@/convex/_generated/api";
 import { useState }    from "react";
+import { useAuth }     from "@/lib/auth-context";
 import { toast }       from "sonner";
 import {
   Dialog, DialogContent, DialogDescription,
@@ -26,6 +27,7 @@ const PAYMENT_TERMS = ["Net 30", "Net 15", "Net 60", "COD", "Prepaid"];
 
 export default function AddSupplierDialog({ open, onOpenChange }: Props) {
   const createSupplier = useMutation(api.suppliers.createSupplier);
+  const { token } = useAuth();
 
   const [form, setForm] = useState({
     name:         "",
@@ -45,6 +47,7 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
     setSubmitting(true);
     try {
       await createSupplier({
+        token:        token ?? undefined,
         name:         form.name,
         email:        form.email,
         phone:        form.phone   || undefined,

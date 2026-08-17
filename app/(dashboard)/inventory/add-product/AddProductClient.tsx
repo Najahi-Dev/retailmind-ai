@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -35,6 +34,9 @@ import {
   CheckCircle2,
   BrainCircuit,
   Upload,
+  PlusCircleIcon,
+  XIcon,
+  MapPinIcon,
 } from "lucide-react";
 import ImportProductsDialog from "../ImportProductsDialog";
 
@@ -44,6 +46,7 @@ export default function AddProductClient() {
   const router = useRouter();
   const { token } = useAuth();
   const createProduct = useMutation(api.inventory.createProduct);
+  const addLocation = useMutation(api.inventory.addLocation);
   const locationsQ = useQuery(api.inventory.getStockInFormData, { token: token ?? undefined });
   const categoriesQ = useQuery(api.inventory.getCategories, { token: token ?? undefined });
   const suppliersQ = useQuery(api.inventory.getSuppliers, { token: token ?? undefined });
@@ -66,9 +69,39 @@ export default function AddProductClient() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
+  // Create new location inline state
+  const [showNewLocation, setShowNewLocation] = useState(false);
+  const [newLocName, setNewLocName] = useState("");
+  const [newLocAddress, setNewLocAddress] = useState("");
+  const [newLocType, setNewLocType] = useState<"warehouse" | "store" | "distribution_center" | "supplier_site">("warehouse");
+  const [savingLocation, setSavingLocation] = useState(false);
+
   const locations = locationsQ?.locations ?? [];
   const categories = categoriesQ ?? [];
   const suppliers = suppliersQ ?? [];
+
+  const handleCreateLocation = async () => {
+    if (!newLocName.trim()) return;
+    setSavingLocation(true);
+    try {
+      const id = await addLocation({
+        token: token ?? undefined,
+        name: newLocName.trim(),
+        address: newLocAddress.trim() || undefined,
+        type: newLocType,
+      });
+      toast.success(`Location "${newLocName.trim()}" created!`);
+      setInitialLocationId(id as string);
+      setShowNewLocation(false);
+      setNewLocName("");
+      setNewLocAddress("");
+      setNewLocType("warehouse");
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Failed to create location");
+    } finally {
+      setSavingLocation(false);
+    }
+  };
 
   useEffect(() => {
     if (!sku && nextSku) setSku(nextSku);
@@ -352,7 +385,17 @@ export default function AddProductClient() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Initial Location (Optional)</Label>
-                  <Select value={initialLocationId} onValueChange={(v) => setInitialLocationId(v || undefined)}>
+                  <Select
+                    value={initialLocationId ?? ""}
+                    onValueChange={(v) => {
+                      if (v === "__create_new__") {
+                        setShowNewLocation(true);
+                      } else {
+                        setInitialLocationId(v || undefined);
+                        setShowNewLocation(false);
+                      }
+                    }}
+                  >
                     <SelectTrigger className="w-full text-xs rounded-xl border-slate-200 dark:border-slate-800">
                       <SelectValue placeholder="Choose Starting Warehouse" />
                     </SelectTrigger>
@@ -362,8 +405,83 @@ export default function AddProductClient() {
                           {l.name}
                         </SelectItem>
                       ))}
+                      <SelectItem value="__create_new__" className="text-indigo-600 dark:text-indigo-400 font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <PlusCircleIcon className="w-3.5 h-3.5" />
+                          Create new location…
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+
+                  {/* Inline new location form */}
+                  {showNewLocation && (
+                    <div className="mt-2 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/20 p-3.5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                          <MapPinIcon className="w-3.5 h-3.5" />
+                          New Location
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setShowNewLocation(false); setNewLocName(""); setNewLocAddress(""); }}
+                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        >
+                          <XIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Name <span className="text-red-500">*</span></Label>
+                        <Input
+                          placeholder="e.g. Main Warehouse, Store A…"
+                          value={newLocName}
+                          onChange={(e) => setNewLocName(e.target.value)}
+                          className="h-8 text-xs rounded-lg border-slate-200 dark:border-slate-700"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Type</Label>
+                        <Select value={newLocType} onValueChange={(v) => setNewLocType(v as typeof newLocType)}>
+                          <SelectTrigger className="h-8 text-xs rounded-lg border-slate-200 dark:border-slate-700">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="warehouse">🏭 Warehouse</SelectItem>
+                            <SelectItem value="store">🏪 Retail Store</SelectItem>
+                            <SelectItem value="distribution_center">📦 Distribution Center</SelectItem>
+                            <SelectItem value="supplier_site">🚚 Supplier Site</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Address (Optional)</Label>
+                        <Input
+                          placeholder="e.g. 42 Industrial Zone, Colombo"
+                          value={newLocAddress}
+                          onChange={(e) => setNewLocAddress(e.target.value)}
+                          className="h-8 text-xs rounded-lg border-slate-200 dark:border-slate-700"
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleCreateLocation}
+                        disabled={!newLocName.trim() || savingLocation}
+                        className="w-full h-8 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+                      >
+                        {savingLocation ? (
+                          <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Creating…</>
+                        ) : (
+                          <><PlusCircleIcon className="w-3.5 h-3.5 mr-1.5" /> Create & Select Location</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
