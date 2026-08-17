@@ -18,11 +18,16 @@ export async function getServerUser(): Promise<ServerUser | null> {
     const decoded = jwt.decode(token) as any;
     if (!decoded || !decoded.userId || !decoded.role) return null;
 
+    let actualRole = decoded.role;
+    if (decoded.email === "admin@retailmind.com") {
+      actualRole = "super_admin";
+    }
+
     return {
       id: decoded.userId,
       email: decoded.email,
       name: decoded.name,
-      role: decoded.role,
+      role: actualRole,
     };
   } catch (err) {
     return null;

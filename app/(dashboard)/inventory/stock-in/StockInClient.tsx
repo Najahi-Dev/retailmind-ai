@@ -109,8 +109,8 @@ export default function StockInClient({ role }: Props) {
     <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
 
       {/* ── HERO BANNER ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white p-6 rounded-xl shadow-xl border border-emerald-500/20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 text-white p-6 rounded-xl shadow-xl border shadow-lg relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
 
         <div className="space-y-1.5 z-10">
           <div className="flex items-center gap-2">

@@ -216,7 +216,7 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
       {/* ── 1. HERO HEADER BANNER (MATCHING GET HELP PAGE) ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 rounded-xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 text-white p-6 sm:p-8 rounded-xl shadow-xl border shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">

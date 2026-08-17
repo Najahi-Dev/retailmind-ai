@@ -262,7 +262,7 @@ export const restoreFullDatabaseBackup = mutation({
     const idMap = new Map<string, any>();
     let insertedTotal = 0;
 
-    const getValidId = (table: string, id: any) => {
+    const getValidId = (table: any, id: any): any => {
       if (!id) return undefined;
       const mapped = idMap.get(id) || id;
       return ctx.db.normalizeId(table, mapped) || undefined;
@@ -301,22 +301,48 @@ export const restoreFullDatabaseBackup = mutation({
     }
 
     // 3. Suppliers
+    if (Array.isArray(data.suppliers)) {
+      for (const sup of data.suppliers) {
+        const oldId = sup._id;
+        const newId = await ctx.db.insert("suppliers", {
+          orgId,
+          name: sup.name,
+          email: sup.email,
+          phone: sup.phone,
+          address: sup.address,
+          paymentTerms: sup.paymentTerms,
+          leadTimeDays: sup.leadTimeDays,
+          status: sup.status || "active",
+          reliabilityScore: sup.reliabilityScore,
+          isActive: sup.isActive ?? true,
+          createdAt: sup.createdAt || Date.now(),
+        });
+        if (oldId) idMap.set(oldId, newId);
+        insertedTotal++;
+      }
+    }
+
+    // 4. Products
     if (Array.isArray(data.products)) {
       for (const prod of data.products) {
         const oldId = prod._id;
         const categoryId = getValidId("categories", prod.categoryId);
-        const supplierId = getValidId("suppliers", prod.supplierId);
+        const primarySupplierId = getValidId("suppliers", prod.primarySupplierId);
         
         const newId = await ctx.db.insert("products", {
           orgId,
-          name: prod.name,
-          sku: prod.sku,
-          barcode: prod.barcode,
           categoryId,
-          supplierId,
-          leadTimeDays: prod.leadTimeDays,
-          status: prod.status || "active",
-          reliabilityScore: prod.reliabilityScore,
+          primarySupplierId,
+          sku: prod.sku,
+          name: prod.name,
+          description: prod.description,
+          unit: prod.unit || "pcs",
+          costPrice: prod.costPrice,
+          sellingPrice: prod.sellingPrice,
+          reorderPoint: prod.reorderPoint,
+          safetyStock: prod.safetyStock,
+          trackBatches: prod.trackBatches ?? false,
+          barcode: prod.barcode,
           isActive: prod.isActive ?? true,
           createdAt: prod.createdAt || Date.now(),
         });

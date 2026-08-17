@@ -235,7 +235,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
       </div>
 
       {/* ── HERO HEADER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 text-white p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-800 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 text-white p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="flex items-start gap-4">
