@@ -24,6 +24,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   UsersIcon,
   UserPlusIcon,
   SearchIcon,
@@ -40,6 +51,7 @@ import {
   SlidersHorizontalIcon,
   EyeIcon,
   EditIcon,
+  TrashIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import AddUserModal from "./AddUserModal";
@@ -118,6 +130,7 @@ export default function UsersClient({ role: currentRole }: Props) {
   });
 
   const updateUserFullDetail = useMutation(api.users.updateUserFullDetail);
+  const removeUserMutation = useMutation(api.users.removeUser);
 
   const handleRoleChange = async (userRecord: any, newRole: string) => {
     setUpdatingId(userRecord._id);
@@ -153,6 +166,18 @@ export default function UsersClient({ role: currentRole }: Props) {
       toast.success("Account Status Updated Successfully");
     } catch (err: any) {
       toast.error(err?.message || "Failed to update status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleRemoveUser = async (u: any) => {
+    try {
+      setUpdatingId(u._id);
+      await removeUserMutation({ token: token ?? undefined, userId: u._id });
+      toast.success(`${u.name} removed successfully.`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove user");
     } finally {
       setUpdatingId(null);
     }
@@ -499,6 +524,40 @@ export default function UsersClient({ role: currentRole }: Props) {
                                 "Activate"
                               )}
                             </Button>
+
+                            {/* Remove User Button */}
+                            {currentUser?.role === "admin" && !isWorkspaceOwner && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isUpdating}
+                                    className="h-8 text-xs px-2.5 rounded-xl font-bold border text-red-600 dark:text-red-400 border-red-500/20 hover:bg-red-500/10 ml-1"
+                                    title="Remove user from workspace"
+                                  >
+                                    <TrashIcon className="size-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-slate-900 dark:text-white">Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
+                                      This will remove <span className="font-bold text-slate-800 dark:text-slate-200">{u.name}</span> from the workspace. Their account will be deactivated and they will lose all access.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel className="rounded-xl font-bold border-slate-200 dark:border-slate-800">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      className="rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white"
+                                      onClick={() => handleRemoveUser(u)}
+                                    >
+                                      Yes, remove user
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </td>
                       </tr>

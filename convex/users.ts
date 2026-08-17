@@ -465,6 +465,42 @@ export const updateUserProfileImage = mutation({
   },
 });
 
+export const removeUser = mutation({
+  args: {
+    token: v.optional(v.string()),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const caller = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token ?? ""))
+      .first()
+      .then(async (s) => (s ? await ctx.db.get(s.userId) : null));
+
+    if (!caller || !caller.orgId || caller.role !== "admin") {
+      throw new Error("Unauthorized");
+    }
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser || targetUser.orgId !== caller.orgId) {
+      throw new Error("User not found or not in your organization");
+    }
+
+    if (targetUser._id === caller._id) {
+      throw new Error("Cannot remove yourself from the workspace");
+    }
+
+    // Unset orgId and deactivate
+    await ctx.db.patch(args.userId, {
+      orgId: undefined,
+      isActive: false,
+      role: "pending",
+    });
+
+    return { success: true };
+  },
+});
+
 // Change Authentication Password
 export const changePassword = mutation({
   args: {
