@@ -81,14 +81,13 @@ export default function SuperAdminPlans() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 p-6 rounded-xl text-white shadow-lg overflow-hidden relative">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 p-6 rounded-xl text-white shadow-lg overflow-hidden relative">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="relative z-10">
           <h1 className="text-2xl font-bold tracking-tight">Subscription Plan Builder</h1>
           <p className="text-indigo-200 mt-1">Configure entitlements, usage limits, and monetization plans.</p>
         </div>
-      </div>
+        <div className="relative z-10 flex items-center gap-3">
 
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
@@ -178,9 +177,10 @@ export default function SuperAdminPlans() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {plans.map((plan: any) => (
           <Card key={plan._id} className={!plan.isActive ? "opacity-60" : ""}>
             <CardHeader>

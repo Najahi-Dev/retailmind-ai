@@ -221,43 +221,6 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
-      {/* Top Navigation / Breadcrumb */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors gap-1.5"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
-        </Link>
-        <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-xs font-bold px-3 py-1">
-          Admin Security Area
-        </Badge>
-      </div>
-
-      {/* ── HERO HEADER ── */}
-      <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 text-white p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-800 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          <div className="flex items-start gap-4">
-            <div className="size-14 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
-              <Database className="w-7 h-7 text-indigo-400" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                  Database Backup & System Maintenance
-                </h1>
-                <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/30 text-xs font-bold">
-                  Convex Engine
-                </Badge>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                Export complete system backups, restore datasets from JSON files, or perform permanent database reset operations. Restricted to Administrators.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ── REAL-TIME METRICS GRID ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
