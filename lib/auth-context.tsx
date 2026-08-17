@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
-export type Role = "admin" | "manager" | "staff" | "supplier";
+export type Role = "super_admin" | "admin" | "manager" | "staff" | "supplier";
 
 export interface AuthUser {
   id: string;
@@ -28,6 +28,9 @@ interface AuthContextType {
   loginWithToken: (newToken: string, user: AuthUser) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  impersonateUser: (token: string) => void;
+  exitImpersonation: () => void;
+  isImpersonating: boolean;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -35,6 +38,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = "retailmind_token";
+const IMPERSONATOR_TOKEN_KEY = "retailmind_super_token";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => {
@@ -44,6 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   });
 
+  const [isImpersonating, setIsImpersonating] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return !!sessionStorage.getItem(IMPERSONATOR_TOKEN_KEY);
+    }
+    return false;
+  });
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const validateSessionAction = useAction(api.auth.validateSession);
@@ -51,6 +62,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logoutUserAction = useAction(api.auth.logoutUser);
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  // Sync localStorage token to cookie to prevent middleware redirects on hard refresh
+  useEffect(() => {
+    if (typeof window !== "undefined" && token) {
+      if (!document.cookie.includes(`${TOKEN_KEY}=`)) {
+        document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=604800; SameSite=Lax`;
+      }
+    }
+  }, [token]);
 
   // ── REAL-TIME REACTIVE SUSPENSION & SESSION WATCHER ──
   const liveUserRecord = useQuery(api.users.getCurrentUserRecord, {
@@ -242,6 +262,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(user);
   };
 
+  const impersonateUser = (impersonationToken: string) => {
+    if (!token) return;
+    // Save current super admin token to session storage
+    sessionStorage.setItem(IMPERSONATOR_TOKEN_KEY, token);
+    setIsImpersonating(true);
+    // Overwrite standard token
+    localStorage.setItem(TOKEN_KEY, impersonationToken);
+    document.cookie = `${TOKEN_KEY}=${impersonationToken}; path=/; max-age=604800; SameSite=Lax`;
+    setToken(impersonationToken);
+    // User will be refreshed via useEffect
+  };
+
+  const exitImpersonation = () => {
+    const originalToken = sessionStorage.getItem(IMPERSONATOR_TOKEN_KEY);
+    if (originalToken) {
+      sessionStorage.removeItem(IMPERSONATOR_TOKEN_KEY);
+      setIsImpersonating(false);
+      localStorage.setItem(TOKEN_KEY, originalToken);
+      document.cookie = `${TOKEN_KEY}=${originalToken}; path=/; max-age=604800; SameSite=Lax`;
+      setToken(originalToken);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -252,6 +295,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithToken,
         logout,
         refreshUser,
+        impersonateUser,
+        exitImpersonation,
+        isImpersonating,
         isLoading,
         isAuthenticated: !!currentUser,
       }}
@@ -273,7 +319,8 @@ export function useRole() {
   const { currentUser, isLoading } = useAuth();
   const role = currentUser?.role ?? "staff";
 
-  const isAdmin = role === "admin";
+  const isSuperAdmin = role === "super_admin" || currentUser?.email === "admin@retailmind.com";
+  const isAdmin = role === "admin" || isSuperAdmin;
   const isManager = role === "manager";
   const isStaff = role === "staff";
   const isSupplier = role === "supplier";
@@ -295,6 +342,7 @@ export function useRole() {
     user: currentUser,
     role,
     isLoading,
+    isSuperAdmin,
     isAdmin,
     isManager,
     isStaff,

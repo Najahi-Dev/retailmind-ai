@@ -23,6 +23,7 @@ import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as reorder from "../reorder.js";
 import type * as seed from "../seed.js";
 import type * as subscriptions from "../subscriptions.js";
+import type * as superAdmin from "../superAdmin.js";
 import type * as suppliers from "../suppliers.js";
 import type * as supportTickets from "../supportTickets.js";
 import type * as users from "../users.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   reorder: typeof reorder;
   seed: typeof seed;
   subscriptions: typeof subscriptions;
+  superAdmin: typeof superAdmin;
   suppliers: typeof suppliers;
   supportTickets: typeof supportTickets;
   users: typeof users;

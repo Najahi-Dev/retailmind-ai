@@ -45,6 +45,7 @@ export default defineSchema({
     clerkId: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     role: v.union(
+      v.literal("super_admin"),
       v.literal("admin"),
       v.literal("manager"),
       v.literal("staff"),
@@ -472,4 +473,21 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"])
     .index("by_org", ["orgId"]),
+
+  // ── Global Platform Settings ─────────────────
+  globalSettings: defineTable({
+    maintenanceMode: v.boolean(),
+    globalFeatureFlags: v.any(),
+    updatedAt: v.number(),
+  }),
+
+  // ── System Alerts & Telemetry ────────────────
+  systemAlerts: defineTable({
+    level: v.union(v.literal("info"), v.literal("warning"), v.literal("error"), v.literal("critical")),
+    message: v.string(),
+    source: v.string(), // e.g. "LLM", "Auth", "Database"
+    details: v.optional(v.string()),
+    resolved: v.boolean(),
+    timestamp: v.number(),
+  }).index("by_timestamp", ["timestamp"]).index("by_resolved", ["resolved"]),
 });
