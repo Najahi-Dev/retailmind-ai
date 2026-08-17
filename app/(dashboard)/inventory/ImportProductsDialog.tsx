@@ -259,11 +259,13 @@ export default function ImportProductsDialog({ open, onOpenChange }: Props) {
         })),
       });
 
-      toast.success(
-        `Successfully imported ${res.importedCount} products! ${
-          res.skippedCount > 0 ? `(${res.skippedCount} skipped due to duplicate SKU or invalid fields)` : ""
-        }`
-      );
+      if (res) {
+        toast.success(
+          `Successfully imported ${res.importedCount} products! ${
+            res.skippedCount > 0 ? `(${res.skippedCount} skipped due to duplicate SKU or invalid fields)` : ""
+          }`
+        );
+      }
 
       // Reset state & close
       setFile(null);
