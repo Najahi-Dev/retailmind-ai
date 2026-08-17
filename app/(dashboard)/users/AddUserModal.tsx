@@ -15,7 +15,8 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { RefreshCwIcon, UserPlusIcon, CrownIcon, ShieldCheckIcon, UserCheckIcon, Building2Icon } from "lucide-react";
+import { RefreshCwIcon, UserPlusIcon, CrownIcon, ShieldCheckIcon, UserCheckIcon, Building2Icon,
+  EyeIcon, EyeOffIcon } from "lucide-react";
 
 interface Props {
   open:         boolean;
@@ -32,9 +33,21 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
     role:  "staff" as "admin" | "manager" | "staff" | "supplier",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const set = (key: string, val: any) =>
     setForm(f => ({ ...f, [key]: val }));
+
+  const generatePassword = () => {
+    // Generate a random password of length 12
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setPassword(password);
+  };
 
   const handleSubmit = async () => {
     if (!form.name || !form.email) return;
@@ -45,9 +58,12 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
         email: form.email,
         phone: form.phone || undefined,
         role:  form.role,
+        password: password || undefined,   // Add this line
       });
       toast.success(`User ${form.name} created successfully!`);
       setForm({ name: "", email: "", phone: "", role: "staff" });
+      setPassword("");   // Clear the password state
+      setShowPassword(false); // Reset the visibility
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create user");
@@ -108,6 +124,35 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
             </div>
           </div>
 
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Password <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-500"
+              >
+                {showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={generatePassword}
+              className="mt-2 w-full text-xs"
+            >
+              Generate Password
+            </Button>
+          </div>
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">System Role</Label>
             <Select value={form.role} onValueChange={(val) => set("role", val)}>

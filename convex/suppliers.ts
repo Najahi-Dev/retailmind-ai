@@ -240,6 +240,36 @@ export const updateSupplier = mutation({
   },
 });
 
+export const deleteSupplier = mutation({
+  args: {
+    token: v.optional(v.string()),
+    supplierId: v.id("suppliers"),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const supplier = await ctx.db.get(args.supplierId);
+    if (!supplier) throw new Error("Supplier not found");
+
+    if (orgId && supplier.orgId && supplier.orgId !== orgId) {
+      throw new Error("Access Denied: Supplier belongs to another workspace.");
+    }
+
+    // Delete associated user if exists (users with supplierId pointing to this supplier)
+    const associatedUsers = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("supplierId"), args.supplierId))
+      .collect();
+
+    // Delete the associated users
+    for (const user of associatedUsers) {
+      await ctx.db.delete(user._id);
+    }
+
+    // Delete the supplier
+    await ctx.db.delete(args.supplierId);
+  },
+});
+
 export const getActiveSuppliers = query({
   args: {
     token: v.optional(v.string()),

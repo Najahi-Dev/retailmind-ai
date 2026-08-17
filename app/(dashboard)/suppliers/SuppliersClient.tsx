@@ -34,7 +34,9 @@ import {
   XCircleIcon,
   ChevronRightIcon,
   SparklesIcon,
+  Trash2Icon,
 } from "lucide-react";
+import { toast } from "sonner";
 import AddSupplierDialog from "./AddSupplierDialog";
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; border: string; icon: any }> = {
@@ -66,6 +68,7 @@ export default function SuppliersClient() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [deletingSupplierId, setDeletingSupplierId] = useState<string | null>(null);
 
   const { token } = useAuth();
   const suppliers = useQuery(api.suppliers.getSuppliers, {
@@ -75,6 +78,21 @@ export default function SuppliersClient() {
   const stats = useQuery(api.suppliers.getSupplierStats, {
     token: token ?? undefined,
   });
+
+  const handleDeleteSupplier = async (supplierId: string) => {
+    setDeletingSupplierId(supplierId);
+    try {
+      await api.suppliers.deleteSupplier({
+        token: token ?? undefined,
+        supplierId: supplierId,
+      });
+      // Reset deleting state after successful deletion
+      setDeletingSupplierId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete supplier");
+      setDeletingSupplierId(null);
+    }
+  };
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-LK", {
@@ -267,7 +285,7 @@ export default function SuppliersClient() {
                     <th className="px-5 py-3.5 font-bold hidden lg:table-cell text-right">Total Value</th>
                     <th className="px-5 py-3.5 font-bold hidden xl:table-cell text-center">On-Time Rate</th>
                     <th className="px-5 py-3.5 font-bold">Status</th>
-                    <th className="px-3 py-3.5 w-10" />
+                    <th className="px-3 py-3.5 w-10">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -337,9 +355,20 @@ export default function SuppliersClient() {
                           </Badge>
                         </td>
 
-                        {/* Arrow */}
+                        {/* Actions */}
                         <td className="px-3 py-3.5 text-right">
-                          <ChevronRightIcon className="w-4 h-4 text-slate-400" />
+                          {deletingSupplierId === s._id ? (
+                            <><RefreshCwIcon className="animate-spin size-3.5 mr-1.5" /> Deleting...</>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteSupplier(s._id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2Icon className="w-4 h-4" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );

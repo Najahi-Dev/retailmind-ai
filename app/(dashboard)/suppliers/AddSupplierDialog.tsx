@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { RefreshCwIcon, Building2Icon } from "lucide-react";
+import { RefreshCwIcon, Building2Icon, EyeIcon, EyeOffIcon } from "lucide-react";
 
 interface Props {
   open:         boolean;
@@ -38,6 +38,18 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
     leadTimeDays: "7",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const generatePassword = () => {
+    // Generate a random password of length 12
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setPassword(password);
+  };
 
   const set = (key: string, val: string) =>
     setForm(f => ({ ...f, [key]: val }));
@@ -46,7 +58,8 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
     if (!form.name || !form.email) return;
     setSubmitting(true);
     try {
-      await createSupplier({
+      // Create the supplier record
+      const supplierId = await createSupplier({
         token:        token ?? undefined,
         name:         form.name,
         email:        form.email,
@@ -55,8 +68,22 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
         paymentTerms: form.paymentTerms || undefined,
         leadTimeDays: Number(form.leadTimeDays) || 7,
       });
+
+      // Create a user record for this supplier so it appears in user management
+      // The password will be hashed automatically by the createUser mutation
+      await api.users.createUser({
+        token: token ?? undefined,
+        name: form.name,
+        email: form.email,
+        phone: form.phone || undefined,
+        password: password || undefined, // Use generated password or let system use default
+        role: "supplier",
+      });
+
       toast.success(`${form.name} added successfully!`);
       setForm({ name: "", email: "", phone: "", address: "", paymentTerms: "Net 30", leadTimeDays: "7" });
+      setPassword(""); // Clear password after successful submission
+      setShowPassword(false); // Reset password visibility
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add supplier");
@@ -125,6 +152,36 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
                 className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
               />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Access Password <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-500"
+              >
+                {showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={generatePassword}
+              className="mt-2 w-full text-xs"
+            >
+              Generate Password
+            </Button>
           </div>
 
           <div className="space-y-1">

@@ -1,0 +1,2 @@
+- [Password generation feature for admin user creation](memory/task-completed-password-generation.md)
+- [Enhanced supplier management with password generation and removal options](memory/task-enhanced-supplier-management.md)
