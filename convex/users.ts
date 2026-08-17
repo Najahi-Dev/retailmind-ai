@@ -464,3 +464,40 @@ export const updateUserProfileImage = mutation({
     return { success: true, imageUrl: finalUrl };
   },
 });
+
+// Change Authentication Password
+export const changePassword = mutation({
+  args: {
+    token: v.optional(v.string()),
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!args.token) throw new Error("Unauthorized: No token provided");
+    
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token!))
+      .first();
+
+    if (!session || session.expiresAt < Date.now()) {
+      throw new Error("Unauthorized: Invalid or expired session");
+    }
+
+    const caller = await ctx.db.get(session.userId);
+    if (!caller) throw new Error("Unauthorized: User not found");
+
+    if (!caller.passwordHash) {
+      throw new Error("No password set for this account. Please contact administrator.");
+    }
+
+    const isValid = bcrypt.compareSync(args.currentPassword, caller.passwordHash);
+    if (!isValid) throw new Error("Incorrect current password.");
+
+    const newHash = bcrypt.hashSync(args.newPassword, 12);
+    
+    await ctx.db.patch(caller._id, { passwordHash: newHash });
+
+    return { success: true };
+  }
+});

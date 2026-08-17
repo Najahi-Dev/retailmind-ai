@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   UsersIcon,
   ChevronLeftIcon,
@@ -107,15 +108,19 @@ const PLAN_CONFIG: Record<string, { label: string; Icon: any; bg: string; color:
 
 export default function UserDetailClient({ userId, role: callerRole }: Props) {
   const router = useRouter();
-  const { refreshUser } = useAuth();
+  const { refreshUser, token } = useAuth();
   const canManageSystemRole = ["admin", "manager"].includes(callerRole);
 
   const user = useQuery(api.users.getUserById, {
     userId: userId as Id<"users">,
   });
 
+  const currentUser = useQuery(api.users.getCurrentUserRecord, { token: token ?? undefined });
+  const isCurrentUser = currentUser?._id === user?._id;
+
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const updateUserProfileImage = useMutation(api.users.updateUserProfileImage);
+  const changePassword = useMutation(api.users.changePassword);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -124,6 +129,11 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [userRole, setUserRole] = useState<"admin" | "manager" | "staff" | "supplier">("staff");
   const [isActive, setIsActive] = useState(true);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -163,6 +173,39 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
       toast.error(err instanceof Error ? err.message : "Failed to upload image");
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await changePassword({
+        token: token ?? undefined,
+        currentPassword,
+        newPassword,
+      });
+      toast.success("Password changed successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -344,8 +387,17 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
         </div>
       </div>
 
-      <div className="w-full">
-        {/* ── PROFILE & EDIT FORM ── */}
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="general">General Profile</TabsTrigger>
+          {isCurrentUser && (
+            <TabsTrigger value="security">Security Settings</TabsTrigger>
+          )}
+        </TabsList>
+        
+        <TabsContent value="general">
+          <div className="w-full">
+            {/* ── PROFILE & EDIT FORM ── */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
             <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -493,7 +545,74 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
             </div>
           </CardContent>
         </Card>
-      </div>
+          </div>
+        </TabsContent>
+      
+      {/* Security Settings Card */}
+      {isCurrentUser && (
+        <TabsContent value="security">
+          <div className="w-full">
+          <Card className="rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-slate-950">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <LockIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                Security Settings
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Update your authentication password
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-5 space-y-5">
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Current Password</Label>
+                  <Input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                    placeholder="Enter current password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">New Password</Label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Confirm New Password</Label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="w-full sm:w-auto h-10 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md"
+                >
+                  {changingPassword ? (
+                    <><RefreshCwIcon className="w-3.5 h-3.5 mr-2 animate-spin" /> Updating...</>
+                  ) : (
+                    <><KeyIcon className="w-3.5 h-3.5 mr-2" /> Change Password</>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+          </div>
+        </TabsContent>
+      )}
+      </Tabs>
     </div>
   );
 }

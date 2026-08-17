@@ -206,8 +206,8 @@ export default function SettingsPage() {
   ];
 
   const filteredSections = SETTINGS_SECTIONS.filter((s) => {
-    // Hide admin-only sections from staff and suppliers
-    if (isRestrictedUser && s.adminOnly) return false;
+    // Hide admin-only sections from non-admins
+    if (!isAdmin && s.adminOnly) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q);
@@ -259,8 +259,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {/* Manage Billing Quick Trigger — hidden from staff/supplier */}
-            {!isRestrictedUser && (
+            {/* Manage Billing Quick Trigger — admin only */}
+            {isAdmin && (
               <Link href="/settings/billing">
                 <Button className="h-10 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 px-4 shadow-lg border-0 cursor-pointer">
                   <CreditCard className="w-4 h-4 mr-2 text-emerald-300" />
@@ -269,8 +269,8 @@ export default function SettingsPage() {
               </Link>
             )}
 
-            {/* Database Backup Quick Trigger — hidden from staff/supplier */}
-            {!isRestrictedUser && (
+            {/* Database Backup Quick Trigger — admin only */}
+            {isAdmin && (
               <Link href="/settings/backup">
                 <Button
                   variant="ghost"
@@ -316,8 +316,8 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Manage Billing button — hidden from staff/supplier */}
-            {!isRestrictedUser && (
+            {/* Manage Billing button — admin only */}
+            {isAdmin && (
               <Link href="/settings/billing">
                 <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm gap-1.5 cursor-pointer">
                   Manage Billing <ArrowRight className="size-3.5" />
