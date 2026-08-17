@@ -1024,6 +1024,23 @@ export const batchImportProducts = mutation({
       const validUnits = ["pcs", "kg", "litre", "box", "ml"] as const;
       type UnitType = (typeof validUnits)[number];
 
+      // Get or create a default location for inventory records
+      let defaultLocation = await ctx.db
+        .query("locations")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .first();
+
+      if (!defaultLocation) {
+        const locId = await ctx.db.insert("locations", {
+          orgId,
+          name: "Main Warehouse",
+          type: "warehouse",
+          isActive: true,
+          createdAt: Date.now(),
+        });
+        defaultLocation = await ctx.db.get(locId);
+      }
+
       // Process each product
       for (let i = 0; i < args.products.length; i++) {
         const item = args.products[i];
@@ -1099,7 +1116,7 @@ export const batchImportProducts = mutation({
           batchSkuSet.add(sku);
 
           // 5. Insert directly into the Convex products table
-          await ctx.db.insert("products", {
+          const productId = await ctx.db.insert("products", {
             orgId: orgId,
             name: name,
             sku: String(item.sku || "").trim(),
@@ -1126,6 +1143,31 @@ export const batchImportProducts = mutation({
             isActive: true,
             createdAt: Date.now(),
           });
+          
+          const initialStock = parseFloat(String(item.minStockLevel || "0")) || 0;
+          await ctx.db.insert("inventory", {
+            orgId: orgId,
+            productId: productId,
+            locationId: defaultLocation!._id,
+            onHand: initialStock,
+            reserved: 0,
+            available: initialStock,
+            lastUpdated: Date.now(),
+          });
+
+          if (initialStock > 0) {
+            await ctx.db.insert("stockMovements", {
+              orgId,
+              productId: productId,
+              locationId: defaultLocation!._id,
+              userId: caller?._id,
+              type: "stock_in",
+              reason: "Initial import",
+              quantity: initialStock,
+              reference: "CSV_IMPORT",
+              createdAt: Date.now(),
+            });
+          }
           imported++;
         } catch (error: any) {
           const errMessage = error instanceof Error ? error.message : String(error);
