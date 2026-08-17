@@ -38,6 +38,7 @@ export function NavMain({
                 "/inventory/adjustment",
                 "/forecasting/pricing",  
                 "/forecasting",
+                "/super-admin",
               ];
               if (exactOnly.includes(item.url)) {
                 return pathname === item.url;

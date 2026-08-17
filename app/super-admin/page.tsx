@@ -12,7 +12,7 @@ export default function SuperAdminOverview() {
 
   if (!metrics) {
     return (
-      <div className="flex h-64 items-center justify-center text-slate-400">
+      <div className="flex h-64 items-center justify-center text-muted-foreground">
         <Activity className="animate-spin w-6 h-6 text-indigo-500 mr-2" />
         Loading Platform Metrics...
       </div>
@@ -21,50 +21,50 @@ export default function SuperAdminOverview() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white tracking-tight">Platform Overview</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Platform Overview</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-slate-900 border-slate-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Tenants</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Tenants</CardTitle>
             <Building2 className="w-4 h-4 text-indigo-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{metrics.totalOrgs}</div>
-            <p className="text-xs text-slate-500 mt-1">{metrics.activeOrgs} active subscriptions</p>
+            <div className="text-2xl font-bold">{metrics.totalOrgs}</div>
+            <p className="text-xs text-muted-foreground mt-1">{metrics.activeOrgs} active subscriptions</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
             <Users className="w-4 h-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{metrics.totalUsers}</div>
-            <p className="text-xs text-slate-500 mt-1">{metrics.activeUsers} active accounts</p>
+            <div className="text-2xl font-bold">{metrics.totalUsers}</div>
+            <p className="text-xs text-muted-foreground mt-1">{metrics.activeUsers} active accounts</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Estimated MRR</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Estimated MRR</CardTitle>
             <DollarSign className="w-4 h-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${metrics.mrr}</div>
-            <p className="text-xs text-slate-500 mt-1">Based on active growth/enterprise tiers</p>
+            <div className="text-2xl font-bold">${metrics.mrr}</div>
+            <p className="text-xs text-muted-foreground mt-1">Based on active growth/enterprise tiers</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">System Health</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Platform Health</CardTitle>
             <Activity className="w-4 h-4 text-violet-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">Optimal</div>
-            <p className="text-xs text-slate-500 mt-1">All services operational</p>
+            <div className="text-2xl font-bold">Stable</div>
+            <p className="text-xs text-muted-foreground mt-1">All systems operational</p>
           </CardContent>
         </Card>
       </div>

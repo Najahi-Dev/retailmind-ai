@@ -34,6 +34,11 @@ const PAGE_TITLES: Record<string, string> = {
   "/settings/profile":         "My Profile",
   "/data":                     "Data Library",
   "/forecasting/pricing":      "AI Dynamic Pricing",
+  "/super-admin":              "Platform Overview",
+  "/super-admin/tenants":      "Tenants & Orgs",
+  "/super-admin/billing":      "Global Billing",
+  "/super-admin/health":       "System Health",
+  "/super-admin/security":     "Global Settings",
 }
 
 const ROLE_CONFIG: Record<string, { label: string; icon: any; className: string }> = {
