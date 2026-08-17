@@ -1044,6 +1044,7 @@ export const batchImportProducts = mutation({
           errors.push(`Row ${rowNumber}: ${errMessage}`);
           skipped++;
         }
+      } // end for loop
 
       // Return detailed result
       return {
