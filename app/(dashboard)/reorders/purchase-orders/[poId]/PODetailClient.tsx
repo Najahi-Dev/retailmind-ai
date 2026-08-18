@@ -411,7 +411,7 @@ export default function PODetailClient({
               View / Print Invoice
             </Button>
 
-            {canEdit && (
+            {canEdit && (po.status === "draft" || po.status === "sent") && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button

@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -76,6 +77,7 @@ export default function SupplierDetailClient({
   supplierId: string;
 }) {
   const router = useRouter();
+  const { token } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<EditForm>({
@@ -90,6 +92,7 @@ export default function SupplierDetailClient({
 
   const detail = useQuery(api.suppliers.getSupplierDetail, {
     supplierId: supplierId as Id<"suppliers">,
+    token: token ?? undefined,
   });
   const updateSupplier = useMutation(api.suppliers.updateSupplier);
 
@@ -146,6 +149,7 @@ export default function SupplierDetailClient({
       }
 
       await updateSupplier({
+        token: token ?? undefined,
         supplierId: supplierId as Id<"suppliers">,
         name: editForm.name,
         email: editForm.email,
