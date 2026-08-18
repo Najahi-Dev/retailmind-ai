@@ -383,9 +383,9 @@ export default function PurchaseOrdersClient({ role }: Props) {
                           </Badge>
                         </td>
 
-                        {/* Payment Status Badge (admin/manager only) */}
-                        {canViewFinancials && (
-                          <td className="px-5 py-3.5 hidden lg:table-cell">
+                        {/* Payment Status Badge */}
+                        <td className="px-5 py-3.5 hidden lg:table-cell">
+                          <div className="flex flex-col items-start gap-1">
                             {(po as any).paymentStatus ? (() => {
                               const ps = (po as any).paymentStatus as string;
                               const pmCfg: Record<string, { cls: string; label: string }> = {
@@ -404,8 +404,13 @@ export default function PurchaseOrdersClient({ role }: Props) {
                                 <Badge className={`text-[10px] font-bold px-2 py-0.5 border ${cfg.cls}`}>{cfg.label}</Badge>
                               ) : null;
                             })() : <span className="text-xs text-slate-400">—</span>}
-                          </td>
-                        )}
+                            {(po as any).paymentMethod && (
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize">
+                                {String((po as any).paymentMethod).replace(/_/g, " ").toLowerCase()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
                         {/* Item Count */}
                         <td className="px-5 py-3.5 text-right hidden md:table-cell text-sm text-slate-600 dark:text-slate-400 font-medium">

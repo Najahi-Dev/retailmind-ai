@@ -229,7 +229,7 @@ export const createAlert = mutation({
     actionUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "supplier"]);
     return await ctx.db.insert("alerts", {
       orgId,
       type: args.type,

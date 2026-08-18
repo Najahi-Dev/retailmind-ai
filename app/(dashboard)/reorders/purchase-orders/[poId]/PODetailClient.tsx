@@ -122,7 +122,10 @@ export default function PODetailClient({
   const recordPayment   = useMutation(api.purchaseOrders.recordPOPayment);
   const setPayMethodMutation = useMutation(api.purchaseOrders.setPOPaymentMethod);
   const updateChequeStatus = useMutation(api.purchaseOrders.updateChequeStatus);
+  const createAlert = useMutation(api.alerts.createAlert);
   const [updatingCheque, setUpdatingCheque] = useState(false);
+  const [codAmount, setCodAmount] = useState("");
+  const [collectingCod, setCollectingCod] = useState(false);
 
   const isSupplier = role === "supplier";
   const canEdit = ["admin", "manager"].includes(role);
@@ -195,6 +198,38 @@ export default function PODetailClient({
       toast.error(err?.message || "Failed to record payment");
     } finally {
       setRecordingPayment(false);
+    }
+  };
+
+  const handleCollectCod = async () => {
+    if (!po) return;
+    const amount = parseFloat(codAmount) || Math.max(0, po.totalValue - ((po as any).amountPaid ?? 0));
+    if (amount <= 0) { toast.error("Enter a valid COD amount."); return; }
+    
+    setCollectingCod(true);
+    try {
+      const res = await recordPayment({
+        token: token ?? undefined,
+        poId: poId as Id<"purchaseOrders">,
+        method: "CASH_ON_DELIVERY",
+        amount,
+        notes: "Collected by Supplier upon delivery",
+      });
+      
+      // Notify Admin
+      await createAlert({
+        token: token ?? undefined,
+        type: "system",
+        priority: "high",
+        message: `Payment received and Order delivered successfully for PO ${po.poNumber}. Amount collected: ${formatCurrency(amount)}`,
+      });
+      
+      toast.success(`Payment of ${formatCurrency(amount)} received.`);
+      setCodAmount("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to record COD payment");
+    } finally {
+      setCollectingCod(false);
     }
   };
 
@@ -942,6 +977,54 @@ export default function PODetailClient({
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── SUPPLIER COLLECT COD SECTION ── */}
+      {isSupplier && po.status === "delivered" && ((po as any).paymentMethod === "CASH_ON_DELIVERY" || (po as any).paymentMethod === "cash_on_delivery") && !isPaid && (
+        <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 rounded-xl shadow-sm overflow-hidden">
+          <CardHeader className="border-b border-emerald-100 dark:border-emerald-900/30 pb-4 bg-emerald-100/50 dark:bg-emerald-900/10">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
+                <BanknoteIcon className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-emerald-900 dark:text-emerald-400 flex items-center gap-2.5">
+                  Confirm COD Payment
+                </CardTitle>
+                <CardDescription className="text-xs text-emerald-700 dark:text-emerald-500 mt-0.5">
+                  Record the cash received from the supermarket upon delivery.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 space-y-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-emerald-900 dark:text-emerald-300">Amount Received (LKR)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder={`Default: ${formatCurrency(Math.max(0, po.totalValue - ((po as any).amountPaid ?? 0)))}`}
+                    value={codAmount}
+                    onChange={(e) => setCodAmount(e.target.value)}
+                    className="h-10 text-sm rounded-xl border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+              <Button
+                onClick={handleCollectCod}
+                disabled={collectingCod}
+                className="w-full sm:w-auto h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl gap-2 px-6 shadow-md"
+              >
+                {collectingCod ? (
+                  <><RefreshCwIcon className="size-4 animate-spin" /> Recording...</>
+                ) : (
+                  <><CheckCircleIcon className="size-4" /> Payment Received</>
+                )}
+              </Button>
           </CardContent>
         </Card>
       )}

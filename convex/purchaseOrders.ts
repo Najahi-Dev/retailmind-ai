@@ -416,10 +416,21 @@ export const recordPOPayment = mutation({
     chequeStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "supplier"]);
     const po = await ctx.db.get(args.poId);
     if (!po) throw new Error("Purchase order not found");
-    if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+    
+    if (caller.role === "supplier") {
+      const userSupplier = await getSupplierForUser(ctx, caller);
+      if (!userSupplier || po.supplierId !== userSupplier._id) {
+        throw new Error("Access Denied: PO belongs to another supplier.");
+      }
+      if (args.method !== "CASH_ON_DELIVERY" && args.method !== "cash_on_delivery") {
+        throw new Error("Suppliers can only record Cash on Delivery payments.");
+      }
+    } else {
+      if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+    }
 
     // Insert payment record
     await ctx.db.insert("poPayments", {
