@@ -1,4 +1,15 @@
 "use client"
+import { useState } from "react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 import {
   Avatar,
@@ -36,6 +47,7 @@ export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, logout } = useAuth()
   const router = useRouter()
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false)
 
   if (!user) return null
 
@@ -131,8 +143,9 @@ export function NavUser() {
             <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
 
             <DropdownMenuItem
-              onClick={async () => {
-                await logout();
+              onSelect={(e) => {
+                e.preventDefault();
+                setShowSignOutDialog(true);
               }}
               className="rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer py-2 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400"
             >
@@ -142,6 +155,30 @@ export function NavUser() {
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+
+      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <AlertDialogContent className="rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-900 dark:text-white">Sign Out</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
+              Are you sure you want to sign out of your account? You will need to log in again to access the dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await logout();
+              }}
+              className="rounded-lg bg-red-600 hover:bg-red-500 text-white border-0"
+            >
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarMenu>
   )
 }

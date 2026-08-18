@@ -2,7 +2,7 @@
 // convex/auth.ts
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
@@ -44,12 +44,12 @@ export const loginUser = action({
           isActive: true,
         };
       } else {
-        throw new Error("Invalid email or password. Click 'Create Account' to register.");
+        throw new ConvexError("Invalid email or password. Click 'Create Account' to register.");
       }
     }
 
     if (user.role === "pending") {
-      throw new Error("Your user role is not assigned. Waiting for the admin approval.");
+      throw new ConvexError("Your user role is not assigned. Waiting for the admin approval.");
     }
 
     if (user.isActive === false) {
@@ -71,7 +71,7 @@ export const loginUser = action({
 
     const isValidPassword = bcrypt.compareSync(args.password, user.passwordHash);
     if (!isValidPassword) {
-      throw new Error("Invalid email or password");
+      throw new ConvexError("Invalid email or password");
     }
 
     const expiresAt = Date.now() + SESSION_DURATION;

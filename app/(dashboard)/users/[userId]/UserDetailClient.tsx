@@ -503,10 +503,20 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Workspace Subscription</Label>
                 <div className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <SparklesIcon className="size-4 text-indigo-500" />
-                    <span className="text-xs font-bold text-slate-900 dark:text-white capitalize">
-                      {user.plan || "Starter"} Plan
-                    </span>
+                    {(() => {
+                      const rawTier = (user as any).planTier || user.plan || "starter";
+                      const planKey = String(rawTier).toLowerCase();
+                      const planStyle = PLAN_CONFIG[planKey] ?? PLAN_CONFIG.starter;
+                      const PlanIcon = planStyle.Icon;
+                      return (
+                        <>
+                          <PlanIcon className={`size-4 ${planStyle.color}`} />
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            {planStyle.label}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
                   <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     Inherited

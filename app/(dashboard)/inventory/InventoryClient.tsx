@@ -213,7 +213,9 @@ export default function InventoryClient({ role }: Props) {
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    alert(`File selected: ${file.name}\nFull CSV batch import coming in Phase 2!`);
+    toast.info("CSV Import Scheduled", {
+      description: `File selected: ${file.name}. Full CSV batch import coming in Phase 2!`
+    });
     e.target.value = "";
   };
 

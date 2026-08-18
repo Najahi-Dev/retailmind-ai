@@ -22,6 +22,9 @@ import {
   Bell,
   Smartphone,
   TestTube,
+  Zap,
+  Rocket,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -334,7 +337,13 @@ export default function SettingsPage() {
                 Current Plan
               </span>
               <span className="text-xl font-extrabold text-slate-900 dark:text-white capitalize flex items-center gap-1.5">
-                <Sparkles className="size-4 text-indigo-600 dark:text-indigo-400" />
+                {tier === "ENTERPRISE" ? (
+                  <Crown className="size-4 text-amber-600 dark:text-amber-400" />
+                ) : tier === "GROWTH" ? (
+                  <Rocket className="size-4 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Zap className="size-4 text-indigo-600 dark:text-indigo-400" />
+                )}
                 {planConfig.displayName}
               </span>
             </div>

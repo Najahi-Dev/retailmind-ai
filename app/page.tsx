@@ -709,42 +709,45 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 6. STATS SECTION (Dark Visual Flow Breaker) */}
-      <section className="py-20 bg-gradient-to-r from-slate-950 via-indigo-950/80 to-slate-950 border-y border-indigo-500/20 relative overflow-hidden text-slate-100">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.12)_0,transparent_70%)]" />
+      {/* 6. STATS SECTION */}
+      <section className="py-24 bg-indigo-50/50 dark:bg-slate-950 border-y border-indigo-100 dark:border-slate-800/80 relative overflow-hidden transition-colors duration-300">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.06)_0,transparent_70%)] dark:bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.12)_0,transparent_70%)]" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center items-center"
           >
             {/* Stat 1 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-lg bg-slate-900/90 border border-slate-800 backdrop-blur-sm space-y-2">
-              <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-300">
+            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 backdrop-blur-md space-y-2 shadow-lg shadow-slate-200/50 dark:shadow-none hover:-translate-y-1 transition-transform duration-300">
+              <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-300">
                 500+
               </p>
-              <h4 className="text-lg font-semibold text-white">Products Tracked</h4>
-              <p className="text-slate-400 text-sm">Empowering high-volume supermarket catalogs and multi-category retail inventory.</p>
+              <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Products Tracked</h4>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">Empowering high-volume supermarket catalogs and multi-category retail inventory.</p>
             </motion.div>
 
             {/* Stat 2 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-lg bg-slate-900/90 border border-indigo-500/30 backdrop-blur-sm space-y-2 shadow-xl shadow-indigo-500/10">
-              <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-indigo-200 dark:border-indigo-500/30 backdrop-blur-md space-y-2 shadow-xl shadow-indigo-100 dark:shadow-indigo-500/10 hover:-translate-y-1 transition-transform duration-300 md:scale-110 relative z-10">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge className="bg-indigo-600 hover:bg-indigo-500 text-white border-none shadow-md">Industry Best</Badge>
+              </div>
+              <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400 dark:from-emerald-400 dark:to-teal-300 pt-2">
                 97%
               </p>
-              <h4 className="text-lg font-semibold text-white">Test Pass Rate</h4>
-              <p className="text-slate-400 text-sm">Industry-leading demand prediction precision across all product categories.</p>
+              <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Test Pass Rate</h4>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">Industry-leading demand prediction precision across all product categories.</p>
             </motion.div>
 
             {/* Stat 3 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-lg bg-slate-900/90 border border-slate-800 backdrop-blur-sm space-y-2">
-              <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">
+            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 backdrop-blur-md space-y-2 shadow-lg shadow-slate-200/50 dark:shadow-none hover:-translate-y-1 transition-transform duration-300">
+              <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500 dark:from-purple-400 dark:to-pink-300">
                 30 Day
               </p>
-              <h4 className="text-lg font-semibold text-white">Demand Forecast</h4>
-              <p className="text-slate-400 text-sm">Continuous rolling AI projection window to prevent stockout emergencies.</p>
+              <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Demand Forecast</h4>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">Continuous rolling AI projection window to prevent stockout emergencies.</p>
             </motion.div>
           </motion.div>
         </div>
@@ -754,23 +757,133 @@ export default function Home() {
       <PricingSection />
 
       {/* 8. CTA SECTION */}
-      <section className="py-20 relative">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-xl bg-gradient-to-br from-indigo-900/90 via-slate-900 to-violet-950/90 border border-indigo-500/30 p-10 sm:p-16 text-center overflow-hidden shadow-2xl text-white">
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl pointer-events-none" />
+      <section className="py-24 relative overflow-hidden bg-indigo-50/40 dark:bg-slate-950 border-t border-indigo-100 dark:border-slate-800/80 transition-colors duration-300">
+        {/* Background Gradients */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] opacity-10 dark:opacity-20 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 blur-[100px] rounded-full" />
+        </div>
+        
+        {/* Ambient Subtle Grid Line Overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
-            <div className="relative z-10 space-y-6 max-w-2xl mx-auto">
-              <h2 className="font-heading text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
-                Ready to take control of your inventory?
+        <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left Content */}
+            <div className="space-y-8 max-w-2xl">
+              <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide gap-2">
+                <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>Supercharge Your Supermarket</span>
+              </Badge>
+              
+              <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.1]">
+                Ready to take <br className="hidden sm:block" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-500 to-violet-500 dark:from-indigo-400 dark:via-purple-400 dark:to-violet-400">
+                  control of your inventory?
+                </span>
               </h2>
-              <p className="text-slate-200 text-base sm:text-lg">
-                Join forward-thinking supermarket managers who eliminate stockouts and save hours weekly with RetailMind AI.
+              
+              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
+                Join forward-thinking supermarket managers who eliminate stockouts, reduce wastage, and save up to 15 hours weekly with RetailMind AI.
               </p>
-              <div className="pt-4">
-                <Button asChild size="lg" className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-xl shadow-indigo-600/40 px-10 h-14 text-lg rounded-xl">
-                  <Link href="/create-workspace">Start Free Trial</Link>
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Button asChild size="lg" className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-xl shadow-indigo-500/30 dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] px-8 h-14 text-base rounded-xl transition-all hover:scale-105">
+                  <Link href="/create-workspace">
+                    Start Free Trial
+                  </Link>
                 </Button>
+                <Button asChild variant="outline" size="lg" className="bg-white/50 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 font-medium px-8 h-14 text-base rounded-xl backdrop-blur-sm transition-all shadow-sm">
+                  <Link href="#about">
+                    Contact Sales
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                  <span>No credit card required</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                  <span>14-day free trial</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                  <span>Cancel anytime</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                  <span>24/7 expert support</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Interactive Element */}
+            <div className="relative lg:h-[500px] flex items-center justify-center group perspective-[1000px] mt-10 lg:mt-0">
+              {/* Glowing ring */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20 rounded-full blur-3xl group-hover:blur-2xl transition-all duration-700" />
+              
+              {/* Floating Cards Mockup */}
+              <div className="relative w-full max-w-md transform-gpu transition-transform duration-700 lg:group-hover:rotate-y-[-10deg] lg:group-hover:rotate-x-[5deg]">
+                <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 rounded-2xl blur opacity-20 dark:opacity-30 group-hover:opacity-40 dark:group-hover:opacity-70 transition duration-1000" />
+                
+                <div className="relative rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-700 shadow-2xl p-6 space-y-6 backdrop-blur-xl">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-slate-900 dark:text-white font-semibold text-sm">AI Auto-Reorder</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs">Triggered 2 mins ago</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">Active</Badge>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 w-[85%] animate-pulse" />
+                    </div>
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-slate-500 dark:text-slate-400">Accuracy Confidence</span>
+                      <span className="text-indigo-600 dark:text-indigo-400">99.2%</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <div className="p-3 rounded-lg bg-slate-50/80 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                      <span className="text-sm text-slate-700 dark:text-slate-300">Purchase Order #8932</span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">Sent</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Floating smaller cards */}
+                <div className="absolute -bottom-6 -left-6 sm:-bottom-10 sm:-left-10 bg-white/90 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700 p-4 rounded-xl shadow-xl backdrop-blur-md transform transition-transform duration-500 lg:group-hover:-translate-y-4 lg:group-hover:-translate-x-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-500/20 rounded-lg text-emerald-600 dark:text-emerald-400">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Revenue Saved</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">+$12,450</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute -top-6 -right-6 sm:-top-10 sm:-right-10 bg-white/90 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700 p-4 rounded-xl shadow-xl backdrop-blur-md transform transition-transform duration-500 lg:group-hover:translate-y-4 lg:group-hover:translate-x-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-50 dark:bg-purple-500/20 rounded-lg text-purple-600 dark:text-purple-400">
+                      <Boxes className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Stockouts Avoided</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">47 items</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -778,50 +891,50 @@ export default function Home() {
       </section>
 
       {/* 9. FOOTER */}
-      <footer id="about" className="bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800/80 pt-16 pb-12 transition-colors">
+      <footer id="about" className="bg-slate-950 border-t border-slate-800/80 pt-16 pb-12">
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-slate-200 dark:border-slate-800/60">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-slate-800/60">
             {/* Logo & Description Column */}
             <div className="space-y-4 md:col-span-1">
-              <Logo href="/" size="sm" layout="horizontal" />
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+              <Logo href="/" size="sm" layout="horizontal" textClassName="text-white group-hover:text-indigo-400" />
+              <p className="text-slate-400 text-sm leading-relaxed">
                 Smart inventory management and demand forecasting SaaS platform for supermarkets.
               </p>
             </div>
 
             {/* Product Column */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Product</h4>
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li><a href="#features" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Features</a></li>
-                <li><a href="#how-it-works" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Demand Forecasting</a></li>
-                <li><a href="#features" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Automated Reorders</a></li>
-                <li><a href="#pricing" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Pricing</a></li>
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Product</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="#features" className="hover:text-indigo-400 transition-colors">Features</a></li>
+                <li><a href="#how-it-works" className="hover:text-indigo-400 transition-colors">Demand Forecasting</a></li>
+                <li><a href="#features" className="hover:text-indigo-400 transition-colors">Automated Reorders</a></li>
+                <li><a href="#pricing" className="hover:text-indigo-400 transition-colors">Pricing</a></li>
               </ul>
             </div>
 
             {/* Company Column */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Company</h4>
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li><a href="#about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">About Us</a></li>
-                <li><a href="#about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Supermarket Stories</a></li>
-                <li><a href="#about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Careers</a></li>
-                <li><a href="#about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Contact</a></li>
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Company</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="#about" className="hover:text-indigo-400 transition-colors">About Us</a></li>
+                <li><a href="#about" className="hover:text-indigo-400 transition-colors">Supermarket Stories</a></li>
+                <li><a href="#about" className="hover:text-indigo-400 transition-colors">Careers</a></li>
+                <li><a href="#about" className="hover:text-indigo-400 transition-colors">Contact</a></li>
               </ul>
             </div>
 
             {/* Legal Column */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Legal</h4>
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Security</a></li>
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Legal</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="#" className="hover:text-indigo-400 transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-indigo-400 transition-colors">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-indigo-400 transition-colors">Security</a></li>
                 <li>
                   <button
                     onClick={() => window.dispatchEvent(new Event("open-cookie-preferences"))}
-                    className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left"
+                    className="hover:text-indigo-400 transition-colors text-left"
                   >
                     Cookie Settings
                   </button>
