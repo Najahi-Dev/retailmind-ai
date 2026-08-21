@@ -111,6 +111,7 @@ export default function SignInPage() {
         .replace(/\[CONVEX.*?\]\s*/g, "")
         .replace(/Server Error\s*/g, "")
         .replace(/Uncaught Error:\s*/g, "")
+        .replace(/Uncaught ConvexError:\s*/g, "")
         .replace(/at handler \(.*?\)/g, "")
         .trim();
 

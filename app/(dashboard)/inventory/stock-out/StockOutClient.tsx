@@ -82,6 +82,7 @@ export default function StockOutClient({ role }: Props) {
     setSubmitting(true);
     try {
       await recordStockOut({
+        token: token ?? undefined,
         productId: productId as Id<"products">,
         locationId: locationId as Id<"locations">,
         quantity: qtyNum,

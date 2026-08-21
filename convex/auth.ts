@@ -44,7 +44,7 @@ export const loginUser = action({
           isActive: true,
         };
       } else {
-        throw new ConvexError("Invalid email or password. Click 'Create Account' to register.");
+        throw new ConvexError("User not found. Click 'Create Account' to register.");
       }
     }
 
