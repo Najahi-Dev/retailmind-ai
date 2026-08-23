@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input }  from "@/components/ui/input";
 import { Label }  from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -36,6 +37,7 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
 
   const set = (key: string, val: any) =>
     setForm(f => ({ ...f, [key]: val }));
@@ -62,12 +64,14 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
         email: form.email,
         phone: form.phone || undefined,
         role:  form.role,
-        password: password || undefined,   // Add this line
+        password: password || undefined,
+        sendEmail: sendEmail,
       });
       toast.success(`User ${form.name} created successfully!`);
       setForm({ name: "", email: "", phone: "", role: "staff" });
-      setPassword("");   // Clear the password state
-      setShowPassword(false); // Reset the visibility
+      setPassword("");
+      setShowPassword(false);
+      setSendEmail(true);
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create user");
@@ -186,6 +190,20 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="flex items-center space-x-2 pt-2 border-t border-slate-100 dark:border-slate-800/60 mt-2">
+            <Checkbox
+              id="sendEmail"
+              checked={sendEmail}
+              onCheckedChange={(checked) => setSendEmail(checked === true)}
+            />
+            <Label
+              htmlFor="sendEmail"
+              className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Email credentials to user
+            </Label>
           </div>
         </div>
 

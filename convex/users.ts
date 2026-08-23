@@ -297,6 +297,7 @@ export const createUser = mutation({
     ),
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
     supplierId: v.optional(v.id("suppliers")),
+    sendEmail: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     let orgId = undefined;
@@ -319,10 +320,12 @@ export const createUser = mutation({
     const passwordHash = bcrypt.hashSync(rawPassword, 12);
 
     let orgPlan = args.plan;
-    if (!orgPlan && orgId) {
+    let orgName = undefined;
+    if (orgId) {
       const org: any = await ctx.db.get(orgId);
-      if (org && org.plan) {
-        orgPlan = org.plan;
+      if (org) {
+        if (!orgPlan && org.plan) orgPlan = org.plan;
+        orgName = org.name;
       }
     }
 
@@ -341,6 +344,16 @@ export const createUser = mutation({
     const createdUser = await ctx.db.get(userId);
     if (createdUser) {
       await syncSupplierForUserRole(ctx, userId, createdUser, args.role, args.name, orgId);
+    }
+
+    if (args.sendEmail) {
+      await ctx.scheduler.runAfter(0, api.communications.sendUserCredentialsEmail, {
+        targetEmail: emailClean,
+        userName: args.name.trim(),
+        password: rawPassword,
+        orgName,
+        role: args.role,
+      });
     }
 
     return userId;

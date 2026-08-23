@@ -74,3 +74,56 @@ export const sendTemplateEmail = action({
     }
   }
 });
+
+// Direct action to send user credentials (used when an admin creates a new user)
+export const sendUserCredentialsEmail = action({
+  args: {
+    targetEmail: v.string(),
+    userName: v.string(),
+    password: v.string(),
+    orgName: v.optional(v.string()),
+    role: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY is not configured in the backend.");
+      return; // Silently fail in dev if key is missing, or throw error depending on strictness
+    }
+
+    const resend = new Resend(resendApiKey);
+    const fromAddress = "RetailMind System <onboarding@resend.dev>";
+    
+    const subject = `Welcome to RetailMind - Your Account Details`;
+    const body = `Hello ${args.userName},
+
+An administrator has created an account for you on RetailMind${args.orgName ? ` for the organization ${args.orgName}` : ''}.
+
+Your Role: ${args.role.toUpperCase()}
+
+Your login credentials are:
+Email: ${args.targetEmail}
+Password: ${args.password}
+
+Please log in and change your password as soon as possible.
+
+Best regards,
+The RetailMind Team`;
+
+    try {
+      const response = await resend.emails.send({
+        from: fromAddress,
+        to: args.targetEmail,
+        subject: subject,
+        text: body,
+      });
+      
+      if (response.error) {
+         console.error("Resend API Error (Credentials):", response.error);
+      }
+      return { success: !response.error };
+    } catch (error: any) {
+      console.error("Credentials Email Sending Failed:", error);
+    }
+  }
+});
