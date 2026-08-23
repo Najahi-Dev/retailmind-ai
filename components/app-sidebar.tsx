@@ -60,12 +60,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const unreadCount = alertStats?.unread ?? 0;
   const alertBadge = unreadCount === 0 ? undefined : unreadCount > 99 ? "99+" : String(unreadCount);
 
+  // Supplier new PO count for badge
+  const supplierPOAlerts = useQuery(api.purchaseOrders.getSupplierPOAlerts, { token: token ?? undefined });
+  const newPOCount = supplierPOAlerts?.length ?? 0;
+  const poBadge = newPOCount === 0 ? undefined : newPOCount > 99 ? "99+" : String(newPOCount);
+
   // ── Supplier nav ──────────────────────────────
   const supplierMain = [
     {
       title: "Purchase Orders",
       url:   "/reorders/purchase-orders",
       icon:  <ShoppingCartIcon className="size-4" />,
+      badge: poBadge,
     },
   ]
 

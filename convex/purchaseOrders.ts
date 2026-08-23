@@ -337,6 +337,29 @@ export const updatePOStatus = mutation({
       updatedAt: Date.now(),
     });
 
+    // ── EMAIL NOTIFICATION: Notify supplier when PO is sent ──
+    if (args.status === "sent" && po.status !== "sent") {
+      const supplier = await ctx.db.get(po.supplierId);
+      if (supplier && supplier.email) {
+        const tenant = orgId ? await ctx.db.get(orgId) : null;
+        const tenantName = tenant ? (tenant as any).name : "RetailMind";
+        
+        // Use the new communications API to schedule the email action
+        const { api } = await import("./_generated/api");
+        await ctx.scheduler.runAfter(0, api.communications.sendTemplateEmail, {
+          templateName: "ORDER_CONFIRMED",
+          targetEmail: supplier.email,
+          variables: {
+            userName: supplier.name,
+            tenantName: tenantName,
+            poNumber: po.poNumber,
+            amount: po.totalValue.toString(),
+            link: "https://retailmind.ai/supplier-dashboard",
+          }
+        });
+      }
+    }
+
     return { success: true };
   },
 });

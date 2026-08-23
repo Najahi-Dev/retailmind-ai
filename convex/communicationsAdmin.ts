@@ -151,6 +151,29 @@ export const toggleTemplateStatus = mutation({
   }
 });
 
+export const deleteTemplate = mutation({
+  args: {
+    token: v.optional(v.string()),
+    templateId: v.id("notificationTemplates"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    const template = await ctx.db.get(args.templateId);
+    if (!template) throw new Error("Template not found");
+    
+    await ctx.db.delete(args.templateId);
+    
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "DELETE_TEMPLATE",
+      details: `Deleted notification template ${template.name}`,
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  }
+});
+
 // ── REPORTS & ANALYTICS ──
 export const getPlatformStats = query({
   args: { token: v.optional(v.string()) },
