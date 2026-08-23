@@ -167,3 +167,136 @@ export const toggleIntegrationStatus = mutation({
     return { success: true };
   }
 });
+
+// ── WEBHOOKS ──
+export const getWebhooks = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+    return await ctx.db.query("platformWebhooks").order("desc").collect();
+  }
+});
+
+export const createWebhook = mutation({
+  args: {
+    token: v.optional(v.string()),
+    url: v.string(),
+    secret: v.string(),
+    events: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    const id = await ctx.db.insert("platformWebhooks", {
+      url: args.url,
+      secret: args.secret,
+      events: args.events,
+      isActive: true,
+      createdAt: Date.now(),
+    });
+    
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "CREATE_WEBHOOK",
+      details: `Created global webhook for ${args.url}`,
+      timestamp: Date.now(),
+    });
+    
+    return id;
+  }
+});
+
+export const toggleWebhook = mutation({
+  args: {
+    token: v.optional(v.string()),
+    webhookId: v.id("platformWebhooks"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    await ctx.db.patch(args.webhookId, { isActive: args.isActive });
+    
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "TOGGLE_WEBHOOK",
+      details: `Marked webhook ${args.webhookId} active state to ${args.isActive}`,
+      timestamp: Date.now(),
+    });
+  }
+});
+
+export const deleteWebhook = mutation({
+  args: {
+    token: v.optional(v.string()),
+    webhookId: v.id("platformWebhooks"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    await ctx.db.delete(args.webhookId);
+    
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "DELETE_WEBHOOK",
+      details: `Deleted webhook ${args.webhookId}`,
+      timestamp: Date.now(),
+    });
+  }
+});
+
+// ── API KEYS ──
+export const getApiKeys = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+    return await ctx.db.query("platformApiKeys").order("desc").collect();
+  }
+});
+
+export const createApiKey = mutation({
+  args: {
+    token: v.optional(v.string()),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    
+    // In a real app we'd use a crypto library, but we just simulate it here for the UI.
+    const rawKey = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    const keyMasked = `sk_live_****${rawKey.slice(-4)}`;
+    const keyHash = `hash_${rawKey}`;
+    
+    const id = await ctx.db.insert("platformApiKeys", {
+      name: args.name,
+      keyMasked,
+      keyHash,
+      isActive: true,
+      createdAt: Date.now(),
+    });
+    
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "CREATE_API_KEY",
+      details: `Generated new global API key: ${args.name}`,
+      timestamp: Date.now(),
+    });
+    
+    return { id, rawKey };
+  }
+});
+
+export const revokeApiKey = mutation({
+  args: {
+    token: v.optional(v.string()),
+    keyId: v.id("platformApiKeys"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    await ctx.db.patch(args.keyId, { isActive: false });
+    
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "REVOKE_API_KEY",
+      details: `Revoked global API key ${args.keyId}`,
+      timestamp: Date.now(),
+    });
+  }
+});

@@ -50,6 +50,38 @@ export const updateTicketStatus = mutation({
   }
 });
 
+export const addAdminResponse = mutation({
+  args: {
+    token: v.optional(v.string()),
+    ticketId: v.id("supportTickets"),
+    response: v.string(),
+    status: v.optional(v.union(v.literal("open"), v.literal("in_progress"), v.literal("resolved"), v.literal("closed"))),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    
+    const patch: any = {
+      adminResponse: args.response,
+      respondedAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    if (args.status) {
+      patch.status = args.status;
+    }
+
+    await ctx.db.patch(args.ticketId, patch);
+
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "RESPOND_TICKET",
+      details: `Responded to support ticket ${args.ticketId}`,
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  }
+});
+
 // ── NOTIFICATION TEMPLATES ──
 export const getTemplates = query({
   args: { token: v.optional(v.string()) },

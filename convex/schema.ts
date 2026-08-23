@@ -158,6 +158,22 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_org", ["orgId"]),
 
+  platformWebhooks: defineTable({
+    url: v.string(),
+    secret: v.string(),
+    events: v.array(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  }),
+
+  platformApiKeys: defineTable({
+    name: v.string(),
+    keyMasked: v.string(),
+    keyHash: v.string(), // normally we'd hash the key here
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  }),
+
 
   // ── Notification Templates ─────────────────────
   notificationTemplates: defineTable({
