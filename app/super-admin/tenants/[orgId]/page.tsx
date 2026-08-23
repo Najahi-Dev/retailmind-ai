@@ -140,6 +140,7 @@ export default function SuperAdminTenantDetails() {
       password: "",
       role: user.role,
       isActive: user.isActive,
+      sendEmail: false, // Default to false when editing a user
     });
     setIsEditUserOpen(true);
   };
