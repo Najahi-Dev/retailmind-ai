@@ -9,16 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, PackageSearch, Save, Info } from "lucide-react";
+import { Plus, PackageSearch, Save, Info, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export default function SuperAdminPlans() {
   const { token } = useAuth();
   const plans = useQuery(api.plansAdmin.getPlans, { token: token ?? undefined });
   const createPlan = useMutation(api.plansAdmin.createPlan);
   const updatePlan = useMutation(api.plansAdmin.updatePlan);
+  const deletePlan = useMutation(api.plansAdmin.deletePlan);
 
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -102,7 +104,7 @@ export default function SuperAdminPlans() {
                 Set pricing and feature entitlements. Limits set to -1 will be treated as "unlimited".
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4 py-4 px-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Plan Name</label>
                 <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Starter" />
@@ -131,7 +133,7 @@ export default function SuperAdminPlans() {
                 <Input type="number" value={formData.yearlyPriceLkr} onChange={e => setFormData({ ...formData, yearlyPriceLkr: Number(e.target.value) })} />
               </div>
               
-              <div className="col-span-2 border-t mt-4 pt-4 mb-2"><h4 className="font-semibold text-sm">Usage Limits</h4></div>
+              <div className="col-span-2 border-t mt-2 pt-4 mb-1"><h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300">Usage Limits</h4></div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Active SKU Limit</label>
@@ -141,40 +143,43 @@ export default function SuperAdminPlans() {
                 <label className="text-sm font-medium">Store/Branch Limit</label>
                 <Input type="number" value={formData.storeLimit} onChange={e => setFormData({ ...formData, storeLimit: Number(e.target.value) })} />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2 md:col-span-1">
                 <label className="text-sm font-medium">Staff User Limit</label>
                 <Input type="number" value={formData.staffUserLimit} onChange={e => setFormData({ ...formData, staffUserLimit: Number(e.target.value) })} />
               </div>
 
-              <div className="col-span-2 border-t mt-4 pt-4 mb-2"><h4 className="font-semibold text-sm">Feature Entitlements</h4></div>
+              <div className="col-span-2 border-t mt-2 pt-4 mb-1"><h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300">Feature Entitlements</h4></div>
 
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <span className="text-sm font-medium">AI Demand Forecasting</span>
-                <Switch checked={formData.aiDemandForecasting} onCheckedChange={c => setFormData({ ...formData, aiDemandForecasting: c })} />
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <span className="text-sm font-medium">Automated Reorder</span>
-                <Switch checked={formData.automatedReorder} onCheckedChange={c => setFormData({ ...formData, automatedReorder: c })} />
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <span className="text-sm font-medium">AI Dynamic Pricing</span>
-                <Switch checked={formData.dynamicPricing} onCheckedChange={c => setFormData({ ...formData, dynamicPricing: c })} />
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <span className="text-sm font-medium">Supplier Portal</span>
-                <Switch checked={formData.supplierPortal} onCheckedChange={c => setFormData({ ...formData, supplierPortal: c })} />
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <span className="text-sm font-medium">Full RBAC Delegation</span>
-                <Switch checked={formData.fullRbac} onCheckedChange={c => setFormData({ ...formData, fullRbac: c })} />
-              </div>
-
-              <div className="col-span-2 mt-4">
-                <Button onClick={handleCreate} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isSubmitting}>
-                  <Save className="w-4 h-4 mr-2" /> Save Subscription Plan
-                </Button>
+              <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
+                  <span className="text-sm font-medium">AI Demand Forecasting</span>
+                  <Switch checked={formData.aiDemandForecasting} onCheckedChange={c => setFormData({ ...formData, aiDemandForecasting: c })} />
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
+                  <span className="text-sm font-medium">Automated Reorder</span>
+                  <Switch checked={formData.automatedReorder} onCheckedChange={c => setFormData({ ...formData, automatedReorder: c })} />
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
+                  <span className="text-sm font-medium">AI Dynamic Pricing</span>
+                  <Switch checked={formData.dynamicPricing} onCheckedChange={c => setFormData({ ...formData, dynamicPricing: c })} />
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
+                  <span className="text-sm font-medium">Supplier Portal</span>
+                  <Switch checked={formData.supplierPortal} onCheckedChange={c => setFormData({ ...formData, supplierPortal: c })} />
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
+                  <span className="text-sm font-medium">Full RBAC Delegation</span>
+                  <Switch checked={formData.fullRbac} onCheckedChange={c => setFormData({ ...formData, fullRbac: c })} />
+                </div>
               </div>
             </div>
+            
+            <DialogFooter className="border-t pt-4 mt-2">
+              <Button onClick={() => setIsOpen(false)} variant="outline" className="mr-auto">Cancel</Button>
+              <Button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[150px]" disabled={isSubmitting}>
+                <Save className="w-4 h-4 mr-2" /> Save Plan
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         </div>
@@ -242,21 +247,57 @@ export default function SuperAdminPlans() {
                 )}
               </div>
 
-              <Button 
-                variant="outline" 
-                className="w-full mt-auto"
-                onClick={async () => {
-                  try {
-                    await updatePlan({ token: token ?? undefined, planId: plan._id, updates: { isActive: !plan.isActive } });
-                    toast.success(plan.isActive ? "Plan archived" : "Plan activated");
-                  } catch (e: any) {
-                    console.error("Archive Plan Error:", e);
-                    toast.error(`Failed to update plan: ${e.message || "Unknown error"}`);
-                  }
-                }}
-              >
-                {plan.isActive ? "Archive Plan" : "Restore Plan"}
-              </Button>
+              <div className="flex gap-2 w-full mt-auto">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={async () => {
+                    try {
+                      await updatePlan({ token: token ?? undefined, planId: plan._id, updates: { isActive: !plan.isActive } });
+                      toast.success(plan.isActive ? "Plan archived" : "Plan activated");
+                    } catch (e: any) {
+                      console.error("Archive Plan Error:", e);
+                      toast.error(`Failed to update plan: ${e.message || "Unknown error"}`);
+                    }
+                  }}
+                >
+                  {plan.isActive ? "Archive Plan" : "Restore Plan"}
+                </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="icon" title="Delete Plan">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Subscription Plan</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete the "{plan.name}" plan? This action cannot be undone. 
+                        Note: Make sure no active organizations are currently using this plan.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={async () => {
+                          try {
+                            await deletePlan({ token: token ?? undefined, planId: plan._id });
+                            toast.success("Plan deleted successfully");
+                          } catch (e: any) {
+                            console.error("Delete Plan Error:", e);
+                            toast.error(`Failed to delete plan: ${e.message || "Unknown error"}`);
+                          }
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Delete Plan
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </CardContent>
           </Card>
         ))}

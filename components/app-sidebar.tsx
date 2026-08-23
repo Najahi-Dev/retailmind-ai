@@ -57,13 +57,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Alert count for badge
   const alertStats = useQuery(api.alerts.getAlertStats, { token: token ?? undefined });
-  const unreadCount = alertStats?.unread ?? 0;
-  const alertBadge = unreadCount === 0 ? undefined : unreadCount > 99 ? "99+" : String(unreadCount);
+  const alertBadge = alertStats?.unread && alertStats.unread > 0 ? alertStats.unread : undefined;
 
   // Supplier new PO count for badge
   const supplierPOAlerts = useQuery(api.purchaseOrders.getSupplierPOAlerts, { token: token ?? undefined });
-  const newPOCount = supplierPOAlerts?.length ?? 0;
-  const poBadge = newPOCount === 0 ? undefined : newPOCount > 99 ? "99+" : String(newPOCount);
+  const poBadge = supplierPOAlerts && supplierPOAlerts.length > 0 ? supplierPOAlerts.length : undefined;
 
   // ── Supplier nav ──────────────────────────────
   const supplierMain = [

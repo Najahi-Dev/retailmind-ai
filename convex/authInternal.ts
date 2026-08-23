@@ -21,6 +21,14 @@ export const getUserByEmail = query({
   },
 });
 
+// Query organization by ID
+export const getOrganizationById = query({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.orgId);
+  },
+});
+
 // Query user by ID
 export const getUserById = query({
   args: { userId: v.id("users") },
@@ -48,6 +56,9 @@ export const getSessionByToken = query({
     if (!user) return null;
 
     const organization = user.orgId ? await ctx.db.get(user.orgId) : null;
+    if (organization && organization.isActive === false) {
+      return null;
+    }
 
     return { session, user, organization };
   },

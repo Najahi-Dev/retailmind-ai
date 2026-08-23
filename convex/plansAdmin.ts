@@ -121,3 +121,29 @@ export const updatePlan = mutation({
     return { success: true };
   }
 });
+
+export const deletePlan = mutation({
+  args: {
+    token: v.optional(v.string()),
+    planId: v.id("subscriptionPlans"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    
+    const plan = await ctx.db.get(args.planId);
+    if (!plan) throw new Error("Plan not found");
+
+    // Optional: Add logic here to prevent deleting plans that have active organizations subscribed
+
+    await ctx.db.delete(args.planId);
+
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "DELETE_PLAN",
+      details: `Deleted ${plan.tier} plan (${plan.name})`,
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  }
+});

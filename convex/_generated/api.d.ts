@@ -11,6 +11,7 @@
 import type * as adminBackup from "../adminBackup.js";
 import type * as aiOperationsAdmin from "../aiOperationsAdmin.js";
 import type * as alerts from "../alerts.js";
+import type * as analyticsAdmin from "../analyticsAdmin.js";
 import type * as apply120Days from "../apply120Days.js";
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
@@ -21,6 +22,7 @@ import type * as communicationsAdmin from "../communicationsAdmin.js";
 import type * as crons from "../crons.js";
 import type * as debug from "../debug.js";
 import type * as forecasting from "../forecasting.js";
+import type * as getOrgsTest from "../getOrgsTest.js";
 import type * as guardrails from "../guardrails.js";
 import type * as inventory from "../inventory.js";
 import type * as lib_roleGuard from "../lib/roleGuard.js";
@@ -30,6 +32,7 @@ import type * as plansAdmin from "../plansAdmin.js";
 import type * as pricing from "../pricing.js";
 import type * as publicPlans from "../publicPlans.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
+import type * as reactivateOrgs from "../reactivateOrgs.js";
 import type * as reorder from "../reorder.js";
 import type * as seed from "../seed.js";
 import type * as seedMockForecasts from "../seedMockForecasts.js";
@@ -57,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   adminBackup: typeof adminBackup;
   aiOperationsAdmin: typeof aiOperationsAdmin;
   alerts: typeof alerts;
+  analyticsAdmin: typeof analyticsAdmin;
   apply120Days: typeof apply120Days;
   audit: typeof audit;
   auth: typeof auth;
@@ -67,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   debug: typeof debug;
   forecasting: typeof forecasting;
+  getOrgsTest: typeof getOrgsTest;
   guardrails: typeof guardrails;
   inventory: typeof inventory;
   "lib/roleGuard": typeof lib_roleGuard;
@@ -76,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   pricing: typeof pricing;
   publicPlans: typeof publicPlans;
   purchaseOrders: typeof purchaseOrders;
+  reactivateOrgs: typeof reactivateOrgs;
   reorder: typeof reorder;
   seed: typeof seed;
   seedMockForecasts: typeof seedMockForecasts;

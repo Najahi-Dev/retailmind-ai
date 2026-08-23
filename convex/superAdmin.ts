@@ -470,6 +470,13 @@ export const globalKillSwitch = mutation({
       await ctx.db.delete(session._id);
     }
 
+    // Permanently deactivate to prevent future logins
+    if (args.targetUserId) {
+      await ctx.db.patch(args.targetUserId, { isActive: false });
+    } else if (args.targetOrgId) {
+      await ctx.db.patch(args.targetOrgId, { isActive: false });
+    }
+
     await ctx.db.insert("securityEvents", {
       orgId: args.targetOrgId,
       userId: args.targetUserId,
@@ -511,6 +518,19 @@ export const resolveSecurityEvent = mutation({
   },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx, args.token);
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Security event not found");
+
+    if (event.eventType === "KILL_SWITCH_ACTIVATED") {
+      if (event.orgId) {
+        await ctx.db.patch(event.orgId, { isActive: true });
+      }
+      if (event.userId) {
+        await ctx.db.patch(event.userId, { isActive: true });
+      }
+    }
+
     await ctx.db.patch(args.eventId, { resolved: true });
     return { success: true };
   }
@@ -578,5 +598,16 @@ export const deleteSystemBanner = mutation({
     await requireSuperAdmin(ctx, args.token);
     await ctx.db.delete(args.bannerId);
     return { success: true };
+  }
+});
+export const emergencyReactivateOrgs = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organizations").collect();
+    for (const org of orgs) {
+      if (org.isActive === false) {
+        await ctx.db.patch(org._id, { isActive: true });
+      }
+    }
   }
 });

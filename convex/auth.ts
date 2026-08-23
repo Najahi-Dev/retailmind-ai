@@ -52,6 +52,13 @@ export const loginUser = action({
       throw new ConvexError("Your user role is not assigned. Waiting for the admin approval.");
     }
 
+    if (user.orgId) {
+      const org = await ctx.runQuery(api.authInternal.getOrganizationById, { orgId: user.orgId });
+      if (org && org.isActive === false) {
+        throw new ConvexError("Workspace suspended: Global Kill Switch is active. Contact Support.");
+      }
+    }
+
     if (user.isActive === false) {
       await ctx.runMutation(api.authInternal.updateUserStatus, {
         userId: user._id,
