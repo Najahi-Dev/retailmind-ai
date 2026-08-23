@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, PackageSearch, Save, Info, Trash2 } from "lucide-react";
+import { Plus, PackageSearch, Save, Info, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -21,9 +21,7 @@ export default function SuperAdminPlans() {
   const createPlan = useMutation(api.plansAdmin.createPlan);
   const updatePlan = useMutation(api.plansAdmin.updatePlan);
   const deletePlan = useMutation(api.plansAdmin.deletePlan);
-
-  const [isOpen, setIsOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     name: "",
     tier: "STARTER" as any,
     description: "",
@@ -38,9 +36,38 @@ export default function SuperAdminPlans() {
     dynamicPricing: false,
     supplierPortal: false,
     fullRbac: false,
-  });
+  };
 
+  const [isOpen, setIsOpen] = useState(false);
+  const [formData, setFormData] = useState(initialFormState);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setEditingPlanId(null);
+  };
+
+  const handleOpenEdit = (plan: any) => {
+    setFormData({
+      name: plan.name,
+      tier: plan.tier,
+      description: plan.description,
+      monthlyPriceLkr: plan.monthlyPriceLkr,
+      yearlyPriceLkr: plan.yearlyPriceLkr,
+      isRecommended: plan.isRecommended,
+      activeSkuLimit: plan.features.activeSkuLimit === "unlimited" ? -1 : plan.features.activeSkuLimit,
+      storeLimit: plan.features.storeLimit === "unlimited" ? -1 : plan.features.storeLimit,
+      staffUserLimit: plan.features.staffUserLimit === "unlimited" ? -1 : plan.features.staffUserLimit,
+      aiDemandForecasting: plan.features.aiDemandForecasting,
+      automatedReorder: plan.features.automatedReorder,
+      dynamicPricing: plan.features.dynamicPricing,
+      supplierPortal: plan.features.supplierPortal,
+      fullRbac: plan.features.fullRbac,
+    });
+    setEditingPlanId(plan._id);
+    setIsOpen(true);
+  };
 
   if (!plans) {
     return (
@@ -50,32 +77,48 @@ export default function SuperAdminPlans() {
     );
   }
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     try {
       setIsSubmitting(true);
-      await createPlan({
-        token: token ?? undefined,
+      
+      const payload = {
         name: formData.name,
-        tier: formData.tier,
         description: formData.description,
         monthlyPriceLkr: formData.monthlyPriceLkr,
         yearlyPriceLkr: formData.yearlyPriceLkr,
         isRecommended: formData.isRecommended,
         features: {
-          activeSkuLimit: formData.activeSkuLimit === -1 ? "unlimited" : formData.activeSkuLimit,
-          storeLimit: formData.storeLimit === -1 ? "unlimited" : formData.storeLimit,
-          staffUserLimit: formData.staffUserLimit === -1 ? "unlimited" : formData.staffUserLimit,
+          activeSkuLimit: formData.activeSkuLimit === -1 ? ("unlimited" as const) : Number(formData.activeSkuLimit),
+          storeLimit: formData.storeLimit === -1 ? ("unlimited" as const) : Number(formData.storeLimit),
+          staffUserLimit: formData.staffUserLimit === -1 ? ("unlimited" as const) : Number(formData.staffUserLimit),
           aiDemandForecasting: formData.aiDemandForecasting,
           automatedReorder: formData.automatedReorder,
           dynamicPricing: formData.dynamicPricing,
           supplierPortal: formData.supplierPortal,
           fullRbac: formData.fullRbac,
         }
-      });
-      toast.success("Plan created successfully!");
+      };
+
+      if (editingPlanId) {
+        await updatePlan({
+          token: token ?? undefined,
+          planId: editingPlanId as any,
+          updates: payload
+        });
+        toast.success("Plan updated successfully!");
+      } else {
+        await createPlan({
+          token: token ?? undefined,
+          tier: formData.tier,
+          ...payload
+        });
+        toast.success("Plan created successfully!");
+      }
+      
       setIsOpen(false);
+      resetForm();
     } catch (e: any) {
-      toast.error(e.message || "Failed to create plan");
+      toast.error(e.message || "Failed to save plan");
     } finally {
       setIsSubmitting(false);
     }
@@ -91,93 +134,147 @@ export default function SuperAdminPlans() {
         </div>
         <div className="relative z-10 flex items-center gap-3">
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" /> Create New Plan
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Configure Subscription Plan</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="border-b pb-4">
+              <DialogTitle className="text-2xl">{editingPlanId ? "Edit Subscription Plan" : "Configure Subscription Plan"}</DialogTitle>
+              <DialogDescription className="text-base mt-1">
                 Set pricing and feature entitlements. Limits set to -1 will be treated as "unlimited".
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-4 px-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Plan Name</label>
-                <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Starter" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Plan Tier</label>
-                <Select value={formData.tier} onValueChange={(val: any) => setFormData({ ...formData, tier: val })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STARTER">Starter</SelectItem>
-                    <SelectItem value="GROWTH">Growth</SelectItem>
-                    <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 col-span-2">
-                <label className="text-sm font-medium">Description</label>
-                <Input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Monthly Price (LKR)</label>
-                <Input type="number" value={formData.monthlyPriceLkr} onChange={e => setFormData({ ...formData, monthlyPriceLkr: Number(e.target.value) })} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Yearly Price (LKR)</label>
-                <Input type="number" value={formData.yearlyPriceLkr} onChange={e => setFormData({ ...formData, yearlyPriceLkr: Number(e.target.value) })} />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4 px-2">
               
-              <div className="col-span-2 border-t mt-2 pt-4 mb-1"><h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300">Usage Limits</h4></div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Active SKU Limit</label>
-                <Input type="number" value={formData.activeSkuLimit} onChange={e => setFormData({ ...formData, activeSkuLimit: Number(e.target.value) })} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Store/Branch Limit</label>
-                <Input type="number" value={formData.storeLimit} onChange={e => setFormData({ ...formData, storeLimit: Number(e.target.value) })} />
-              </div>
-              <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-sm font-medium">Staff User Limit</label>
-                <Input type="number" value={formData.staffUserLimit} onChange={e => setFormData({ ...formData, staffUserLimit: Number(e.target.value) })} />
+              {/* Left Column: Plan Details & Pricing */}
+              <div className="space-y-8">
+                <div>
+                  <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-4 flex items-center">
+                    <PackageSearch className="w-5 h-5 mr-2 text-indigo-500" /> Plan Details
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Plan Name</label>
+                        <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Starter" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Plan Tier</label>
+                        <Select value={formData.tier} onValueChange={(val: any) => setFormData({ ...formData, tier: val })} disabled={!!editingPlanId}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="STARTER">Starter</SelectItem>
+                            <SelectItem value="GROWTH">Growth</SelectItem>
+                            <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Description</label>
+                      <Input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Brief description of the plan" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-4 flex items-center">
+                    Pricing
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Monthly Price (LKR)</label>
+                      <Input type="number" value={formData.monthlyPriceLkr} onChange={e => setFormData({ ...formData, monthlyPriceLkr: Number(e.target.value) })} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Yearly Price (LKR)</label>
+                      <Input type="number" value={formData.yearlyPriceLkr} onChange={e => setFormData({ ...formData, yearlyPriceLkr: Number(e.target.value) })} />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="col-span-2 border-t mt-2 pt-4 mb-1"><h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300">Feature Entitlements</h4></div>
+              {/* Right Column: Limits & Features */}
+              <div className="space-y-8">
+                <div>
+                  <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-4 flex items-center">
+                    Usage Limits
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Active SKU Limit</label>
+                      <Input type="number" value={formData.activeSkuLimit} onChange={e => setFormData({ ...formData, activeSkuLimit: Number(e.target.value) })} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Store/Branch Limit</label>
+                      <Input type="number" value={formData.storeLimit} onChange={e => setFormData({ ...formData, storeLimit: Number(e.target.value) })} />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <label className="text-sm font-medium">Staff User Limit</label>
+                      <Input type="number" value={formData.staffUserLimit} onChange={e => setFormData({ ...formData, staffUserLimit: Number(e.target.value) })} />
+                    </div>
+                  </div>
+                </div>
 
-              <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
-                  <span className="text-sm font-medium">AI Demand Forecasting</span>
-                  <Switch checked={formData.aiDemandForecasting} onCheckedChange={c => setFormData({ ...formData, aiDemandForecasting: c })} />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
-                  <span className="text-sm font-medium">Automated Reorder</span>
-                  <Switch checked={formData.automatedReorder} onCheckedChange={c => setFormData({ ...formData, automatedReorder: c })} />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
-                  <span className="text-sm font-medium">AI Dynamic Pricing</span>
-                  <Switch checked={formData.dynamicPricing} onCheckedChange={c => setFormData({ ...formData, dynamicPricing: c })} />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
-                  <span className="text-sm font-medium">Supplier Portal</span>
-                  <Switch checked={formData.supplierPortal} onCheckedChange={c => setFormData({ ...formData, supplierPortal: c })} />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors">
-                  <span className="text-sm font-medium">Full RBAC Delegation</span>
-                  <Switch checked={formData.fullRbac} onCheckedChange={c => setFormData({ ...formData, fullRbac: c })} />
+                <div>
+                  <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-4 flex items-center">
+                    Feature Entitlements
+                  </h4>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between p-4 border rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors shadow-sm">
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">AI Demand Forecasting</span>
+                        <p className="text-xs text-slate-500">Enable predictive inventory analysis</p>
+                      </div>
+                      <Switch checked={formData.aiDemandForecasting} onCheckedChange={c => setFormData({ ...formData, aiDemandForecasting: c })} />
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors shadow-sm">
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Automated Replenishment</span>
+                        <p className="text-xs text-slate-500">Auto-generate POs for low stock</p>
+                      </div>
+                      <Switch checked={formData.automatedReorder} onCheckedChange={c => setFormData({ ...formData, automatedReorder: c })} />
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors shadow-sm">
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">AI Dynamic Pricing</span>
+                        <p className="text-xs text-slate-500">Algorithmic pricing recommendations</p>
+                      </div>
+                      <Switch checked={formData.dynamicPricing} onCheckedChange={c => setFormData({ ...formData, dynamicPricing: c })} />
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors shadow-sm">
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Supplier Portal</span>
+                        <p className="text-xs text-slate-500">Dedicated access for vendors</p>
+                      </div>
+                      <Switch checked={formData.supplierPortal} onCheckedChange={c => setFormData({ ...formData, supplierPortal: c })} />
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 transition-colors shadow-sm">
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Full RBAC Delegation</span>
+                        <p className="text-xs text-slate-500">Advanced role-based access control</p>
+                      </div>
+                      <Switch checked={formData.fullRbac} onCheckedChange={c => setFormData({ ...formData, fullRbac: c })} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
             
             <DialogFooter className="border-t pt-4 mt-2">
               <Button onClick={() => setIsOpen(false)} variant="outline" className="mr-auto">Cancel</Button>
-              <Button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[150px]" disabled={isSubmitting}>
-                <Save className="w-4 h-4 mr-2" /> Save Plan
+              <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[150px]" disabled={isSubmitting}>
+                <Save className="w-4 h-4 mr-2" /> {editingPlanId ? "Update Plan" : "Save Plan"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -248,6 +345,15 @@ export default function SuperAdminPlans() {
               </div>
 
               <div className="flex gap-2 w-full mt-auto">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  title="Edit Plan"
+                  onClick={() => handleOpenEdit(plan)}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+
                 <Button 
                   variant="outline" 
                   className="flex-1"
