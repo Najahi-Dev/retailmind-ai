@@ -319,7 +319,7 @@ export function useRole() {
   const { currentUser, isLoading } = useAuth();
   const role = currentUser?.role ?? "staff";
 
-  const isSuperAdmin = role === "super_admin" || currentUser?.email === "admin@retailmind.com";
+  const isSuperAdmin = role === "super_admin" || currentUser?.email === "admin@retailmind.com" || currentUser?.email === "ahmednajahi2003@gmail.com";
   const isAdmin = role === "admin" || isSuperAdmin;
   const isManager = role === "manager" || isAdmin;
   const isStaff = role === "staff" || isManager;

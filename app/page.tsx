@@ -61,9 +61,11 @@ import {
 import { Logo } from '@/components/logo';
 import { ModeToggle } from '@/components/mode-toggle';
 import { PricingSection } from '@/components/pricing-section';
+import { useRole } from '@/hooks/useRole';
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isSuperAdmin } = useRole();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
@@ -148,7 +150,9 @@ export default function Home() {
             <ModeToggle />
             {isAuthenticated ? (
               <Button asChild className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 font-medium px-5">
-                <Link href="/dashboard">Dashboard <ChevronRight className="w-4 h-4 ml-1" /></Link>
+                <Link href={isSuperAdmin ? "/super-admin" : "/dashboard"}>
+                  {isSuperAdmin ? "Super Admin" : "Dashboard"} <ChevronRight className="w-4 h-4 ml-1" />
+                </Link>
               </Button>
             ) : (
               <>
@@ -221,12 +225,22 @@ export default function Home() {
               </a> */}
             </div>
             <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3">
-              <Button variant="outline" asChild className="w-full border-slate-800 text-slate-200 hover:bg-slate-900">
-                <Link href="/sign-in">Sign In</Link>
-              </Button>
-              <Button asChild className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30">
-                <Link href="/create-workspace">Start Free Trial</Link>
-              </Button>
+              {isAuthenticated ? (
+                <Button asChild className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30">
+                  <Link href={isSuperAdmin ? "/super-admin" : "/dashboard"}>
+                    {isSuperAdmin ? "Super Admin" : "Dashboard"} <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" asChild className="w-full border-slate-800 text-slate-200 hover:bg-slate-900">
+                    <Link href="/sign-in">Sign In</Link>
+                  </Button>
+                  <Button asChild className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30">
+                    <Link href="/create-workspace">Start Free Trial</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </motion.div>
         )}

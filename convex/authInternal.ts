@@ -1,6 +1,6 @@
 // convex/authInternal.ts
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 
 // Query all users
 export const getAllUsers = query({
@@ -77,7 +77,7 @@ export const createUserRecord = mutation({
       .first();
 
     if (existing) {
-      throw new Error("User with this email already exists");
+      throw new ConvexError("User with this email already exists");
     }
 
     // Default org fallback
@@ -207,7 +207,7 @@ export const createWorkspaceAndOwnerRecord = mutation({
       .first();
 
     if (existingUser) {
-      throw new Error("An account with this email address already exists. Please sign in instead.");
+      throw new ConvexError("An account with this email address already exists. Please sign in instead.");
     }
 
     const inviteCode = `INV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;

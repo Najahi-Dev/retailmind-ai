@@ -1,13 +1,11 @@
 // app/api/send-credentials/route.ts
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { email, name, password, role } = body;
-
-    const apiKey = process.env.RESEND_API_KEY;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -50,31 +48,39 @@ export async function POST(req: Request) {
       </html>
     `;
 
-    if (!apiKey || apiKey === "re_dummy") {
+    const userEmail = process.env.GMAIL_EMAIL;
+    const userPass = process.env.GMAIL_APP_PASSWORD;
+
+    if (!userEmail || !userPass) {
       console.log(`[Email Credentials Mock Send] To: ${email}, Role: ${role}, Pwd: ${password}`);
       return NextResponse.json({
         success: true,
-        delivered: true,
+        delivered: false,
         mock: true,
-        message: "Email credentials logged (Resend API key pending in env)",
+        message: "Email logged. Configure GMAIL_EMAIL and GMAIL_APP_PASSWORD in .env.local to send real emails.",
       });
     }
 
-    const resend = new Resend(apiKey);
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: userEmail,
+        pass: userPass,
+      },
+      connectionTimeout: 10000, // 10 seconds timeout
+      socketTimeout: 10000,
+    });
 
-    const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev",
-      to: [email],
+    const info = await transporter.sendMail({
+      from: `"RetailMind AI" <${userEmail}>`,
+      to: email,
       subject: "Welcome to RetailMind AI - Your Account Credentials",
       html: htmlContent,
     });
 
-    if (error) {
-      console.error("Resend API Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, messageId: info.messageId });
   } catch (error) {
     console.error("Failed to send credentials email:", error);
     return NextResponse.json(

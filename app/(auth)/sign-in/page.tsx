@@ -68,7 +68,10 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && currentUser) {
-      const destination = ROLE_DESTINATIONS[currentUser.role] ?? "/dashboard";
+      let destination = ROLE_DESTINATIONS[currentUser.role] ?? "/dashboard";
+      if (currentUser.role === "super_admin" || currentUser.email === "admin@retailmind.com" || currentUser.email === "ahmednajahi2003@gmail.com") {
+        destination = "/super-admin";
+      }
       router.replace(destination);
     }
   }, [authLoading, isAuthenticated, currentUser, router]);

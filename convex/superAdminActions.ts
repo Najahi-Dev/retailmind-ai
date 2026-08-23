@@ -28,13 +28,22 @@ export const addTenantUser = action({
     const passwordHash = bcrypt.hashSync(args.password, 10);
 
     // 3. Create User Record via Internal Mutation
-    const userId: any = await ctx.runMutation(api.authInternal.createUserRecord, {
-      email: args.email.toLowerCase().trim(),
-      passwordHash,
-      name: args.name,
-      role: args.role as any,
-      orgId: args.orgId,
-    });
+    let userId: any;
+    try {
+      userId = await ctx.runMutation(api.authInternal.createUserRecord, {
+        email: args.email.toLowerCase().trim(),
+        passwordHash,
+        name: args.name,
+        role: args.role as any,
+        orgId: args.orgId,
+      });
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create user";
+      const cleanMessage = errorMessage.includes("already exists") 
+        ? "User with this email already exists" 
+        : "Failed to create user";
+      throw new ConvexError(cleanMessage);
+    }
 
     // 4. Activate User Immediately (since Super Admin created them)
     await ctx.runMutation(api.authInternal.updateUserStatus, {
