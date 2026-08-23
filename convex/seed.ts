@@ -270,12 +270,15 @@ export const seedMovementsBatch = mutation({
 
     let count = 0;
     for (const product of batchProds) {
-      for (let m = 0; m < 5; m++) {
-        const type     = pickMovementType();
-        const quantity = type === "stock_out"
-          ? -randInt(1, 50)
-          :  randInt(10, 200);
-        const ts = now - ninetyDays + Math.random() * ninetyDays;
+      // Create 120 days of history for each product
+      for (let i = 0; i < 120; i++) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        
+        // Predominantly stock_out for forecasting (80% out, 20% in)
+        const isStockOut = Math.random() < 0.8;
+        const type = isStockOut ? "stock_out" : "stock_in";
+        const quantity = isStockOut ? -randInt(5, 45) : randInt(100, 300);
 
         await ctx.db.insert("stockMovements", {
           productId:  product._id,
@@ -284,7 +287,7 @@ export const seedMovementsBatch = mutation({
           reason:     pick(["Sale","Restock","Damage","Return","Shrinkage"]),
           quantity,
           reference:  `REF-${randInt(10000, 99999)}`,
-          createdAt:  Math.floor(ts),
+          createdAt:  date.getTime(),
         });
         count++;
       }

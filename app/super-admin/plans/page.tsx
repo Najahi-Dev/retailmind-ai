@@ -182,7 +182,7 @@ export default function SuperAdminPlans() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {plans.map((plan: any) => (
-          <Card key={plan._id} className={!plan.isActive ? "opacity-60" : ""}>
+          <Card key={plan._id} className={`flex flex-col h-full ${!plan.isActive ? "opacity-60" : ""}`}>
             <CardHeader>
               <div className="flex justify-between items-start">
                 <CardTitle className="flex items-center gap-2">
@@ -194,11 +194,13 @@ export default function SuperAdminPlans() {
               </div>
               <CardDescription>{plan.description}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-col flex-grow space-y-4">
               <div className="flex justify-between items-end border-b pb-4">
                 <div>
-                  <div className="text-2xl font-bold">LKR {plan.monthlyPriceLkr.toLocaleString()}</div>
-                  <div className="text-xs text-muted-foreground">/ month</div>
+                  <div className="text-2xl font-bold">
+                    {plan.monthlyPriceLkr === 0 ? "Custom Pricing" : `LKR ${plan.monthlyPriceLkr.toLocaleString()}`}
+                  </div>
+                  {plan.monthlyPriceLkr !== 0 && <div className="text-xs text-muted-foreground">/ month</div>}
                 </div>
               </div>
               
@@ -217,7 +219,7 @@ export default function SuperAdminPlans() {
                 </div>
               </div>
 
-              <div className="space-y-2 pt-2 border-t">
+              <div className="space-y-2 pt-2 border-t flex-grow">
                 {plan.features.aiDemandForecasting && (
                   <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
                     <Info className="w-4 h-4" /> AI Demand Forecasting
@@ -242,13 +244,14 @@ export default function SuperAdminPlans() {
 
               <Button 
                 variant="outline" 
-                className="w-full mt-4"
+                className="w-full mt-auto"
                 onClick={async () => {
                   try {
                     await updatePlan({ token: token ?? undefined, planId: plan._id, updates: { isActive: !plan.isActive } });
                     toast.success(plan.isActive ? "Plan archived" : "Plan activated");
                   } catch (e: any) {
-                    toast.error("Failed to update plan");
+                    console.error("Archive Plan Error:", e);
+                    toast.error(`Failed to update plan: ${e.message || "Unknown error"}`);
                   }
                 }}
               >

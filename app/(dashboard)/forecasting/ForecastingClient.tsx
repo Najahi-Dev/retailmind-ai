@@ -11,10 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sparkles, ShieldCheck, Target, TrendingUp, AlertTriangle, TrendingDown, Search, Loader2, BrainCircuit, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 export function ForecastingClient() {
   const router = useRouter();
+  const { token } = useAuth();
   const overview = useQuery(api.forecasting.getForecastOverview);
+  const access = useQuery(api.subscriptions.checkFeatureAccess, { token: token ?? undefined });
   const generateForecasts = useAction(api.forecasting.generateAllForecasts);
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -33,7 +37,18 @@ export function ForecastingClient() {
     }
   };
 
-  if (!overview) {
+  if (access && !access.canAccessForecasting) {
+    return (
+      <div className="p-6">
+        <UpgradePrompt
+          title="AI Demand Forecasting Gated"
+          description="Hyper-accurate future demand predictions and automated safety stock planning are exclusive to RetailMind AI Growth & Enterprise plans."
+        />
+      </div>
+    );
+  }
+
+  if (!overview || !access) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

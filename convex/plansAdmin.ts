@@ -47,13 +47,14 @@ export const createPlan = mutation({
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
     
-    // Check if plan with tier already exists
+    // Check if an ACTIVE plan with this tier already exists
     const existing = await ctx.db.query("subscriptionPlans")
       .withIndex("by_tier", q => q.eq("tier", args.tier))
+      .filter(q => q.eq(q.field("isActive"), true))
       .first();
       
     if (existing) {
-      throw new Error(`A plan with tier ${args.tier} already exists.`);
+      throw new Error(`An active plan with tier ${args.tier} already exists. Please archive it first.`);
     }
 
     const planId = await ctx.db.insert("subscriptionPlans", {

@@ -116,7 +116,7 @@ export const generateAllForecasts = action({
         };
       }));
       
-      const validRequests = batchRequests.filter(Boolean);
+      const validRequests = batchRequests.filter((req): req is NonNullable<typeof req> => req !== null);
       if (validRequests.length === 0) continue;
       
       try {
@@ -131,7 +131,49 @@ export const generateAllForecasts = action({
         });
         
         if (!response.ok) {
-          console.error(`Batch error: ${response.statusText}`);
+          console.error(`Batch error: ${response.statusText}. Using fallback JS generation.`);
+          // FALLBACK LOGIC
+          const fallbackDataList = validRequests.map(req => {
+            const history_len = req.history.length;
+            let confidence = 0.4;
+            if (history_len >= 90) confidence = 0.75;
+            else if (history_len >= 30) confidence = 0.6;
+            
+            // simple naive forecast: average of history
+            const avgY = req.history.reduce((sum: number, h: any) => sum + h.y, 0) / history_len;
+            
+            const forecasts = [];
+            const lastDateStr = req.history[history_len - 1].ds;
+            const lastDate = new Date(lastDateStr);
+            
+            for (let d = 1; d <= req.horizon_days; d++) {
+               const nextDate = new Date(lastDate);
+               nextDate.setDate(lastDate.getDate() + d);
+               forecasts.push({
+                 ds: nextDate.toISOString().split("T")[0],
+                 yhat: avgY,
+                 yhat_upper: avgY * 1.2,
+                 yhat_lower: avgY * 0.8
+               });
+            }
+            
+            return {
+              product_id: req.product_id,
+              forecasts,
+              confidence_score: confidence,
+              model_used: "fallback-naive"
+            };
+          });
+          
+          for (const data of fallbackDataList) {
+            await ctx.runMutation(internal.forecasting.saveForecastBatch, {
+              productId: data.product_id as Id<"products">,
+              forecasts: data.forecasts,
+              confidenceScore: data.confidence_score,
+              modelUsed: data.model_used,
+              generatedAt: Date.now()
+            });
+          }
           continue;
         }
         
@@ -153,6 +195,47 @@ export const generateAllForecasts = action({
         }
       } catch (e) {
         console.error("Batch forecast failed:", e);
+        // JS FALLBACK ON CATCH
+        const fallbackDataList = validRequests.map(req => {
+            const history_len = req.history.length;
+            let confidence = 0.4;
+            if (history_len >= 90) confidence = 0.75;
+            else if (history_len >= 30) confidence = 0.6;
+            
+            const avgY = req.history.reduce((sum: number, h: any) => sum + h.y, 0) / history_len;
+            
+            const forecasts = [];
+            const lastDateStr = req.history[history_len - 1].ds;
+            const lastDate = new Date(lastDateStr);
+            
+            for (let d = 1; d <= req.horizon_days; d++) {
+               const nextDate = new Date(lastDate);
+               nextDate.setDate(lastDate.getDate() + d);
+               forecasts.push({
+                 ds: nextDate.toISOString().split("T")[0],
+                 yhat: avgY,
+                 yhat_upper: avgY * 1.2,
+                 yhat_lower: avgY * 0.8
+               });
+            }
+            
+            return {
+              product_id: req.product_id,
+              forecasts,
+              confidence_score: confidence,
+              model_used: "fallback-naive"
+            };
+        });
+        
+        for (const data of fallbackDataList) {
+          await ctx.runMutation(internal.forecasting.saveForecastBatch, {
+            productId: data.product_id as Id<"products">,
+            forecasts: data.forecasts,
+            confidenceScore: data.confidence_score,
+            modelUsed: data.model_used,
+            generatedAt: Date.now()
+          });
+        }
       }
     }
   }

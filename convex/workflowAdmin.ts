@@ -21,7 +21,38 @@ export const getPlatformPurchaseOrders = query({
   args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx, args.token);
-    return await ctx.db.query("purchaseOrders").order("desc").take(100);
+    const pos = await ctx.db.query("purchaseOrders").order("desc").take(100);
+    
+    return await Promise.all(
+      pos.map(async (po) => {
+        let orgName = "Unknown Tenant";
+        if (po.orgId) {
+          const org = await ctx.db.get(po.orgId);
+          if (org) {
+            orgName = org.name;
+          }
+        }
+        let supplierName = "Unknown Supplier";
+        if (po.supplierId) {
+          const supplier = await ctx.db.get(po.supplierId);
+          if (supplier) {
+            supplierName = supplier.name;
+          }
+        }
+
+        let lineItemsWithSkus = po.lineItems;
+        if (po.lineItems && po.lineItems.length > 0) {
+          lineItemsWithSkus = await Promise.all(
+            po.lineItems.map(async (item: any) => {
+              const product = await ctx.db.get(item.productId);
+              return { ...item, sku: product?.sku || "Unknown SKU" };
+            })
+          );
+        }
+        
+        return { ...po, orgName, supplierName, lineItems: lineItemsWithSkus };
+      })
+    );
   }
 });
 

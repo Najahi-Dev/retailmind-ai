@@ -21,8 +21,8 @@ export const generateDummyData = internalMutation({
     let createdCount = 0;
 
     for (const p of products) {
-      // Create 30 days of history
-      for (let i = 0; i < 30; i++) {
+      // Create 120 days of history for high AI confidence
+      for (let i = 0; i < 120; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         

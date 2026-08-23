@@ -56,7 +56,6 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
         { title: "Tenants & Orgs", url: "/super-admin/tenants", icon: <UsersIcon className="size-4" /> },
         { title: "Global Billing", url: "/super-admin/billing", icon: <CreditCardIcon className="size-4" /> },
         { title: "Subscription Plans", url: "/super-admin/plans", icon: <PackageSearch className="size-4" /> },
-        { title: "Users & IAM", url: "/super-admin/users", icon: <UserCog className="size-4" /> },
       ]
     },
     {
