@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useConfirm } from "@/hooks/use-confirm";
 
 export default function SuperAdminHealth() {
   const { token } = useAuth();
@@ -27,10 +28,16 @@ export default function SuperAdminHealth() {
   const banners = useQuery(api.superAdmin.getSystemBanners, { token: token ?? undefined });
   const createBanner = useMutation(api.superAdmin.createSystemBanner);
   const toggleBanner = useMutation(api.superAdmin.toggleSystemBanner);
+  const deleteBanner = useMutation(api.superAdmin.deleteSystemBanner);
 
   const [newBannerMsg, setNewBannerMsg] = useState("");
   const [newBannerType, setNewBannerType] = useState<"info"|"warning"|"error">("info");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ConfirmDialog, confirm] = useConfirm(
+    "Delete Banner",
+    "Are you sure you want to delete this banner? This action cannot be undone.",
+    "danger"
+  );
 
   if (!alerts || !banners) {
     return (
@@ -86,6 +93,7 @@ export default function SuperAdminHealth() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 p-6 rounded-xl text-white shadow-lg overflow-hidden relative">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="relative z-10">
@@ -166,17 +174,37 @@ export default function SuperAdminHealth() {
                       <p className="text-sm font-medium mt-1">{banner.message}</p>
                       <p className="text-xs text-muted-foreground">{new Date(banner.createdAt).toLocaleString()}</p>
                     </div>
-                    <Switch 
-                      checked={banner.isActive} 
-                      onCheckedChange={async (val) => {
-                        try {
-                          await toggleBanner({ token: token ?? undefined, bannerId: banner._id, isActive: val });
-                          toast.success(val ? "Banner activated" : "Banner disabled");
-                        } catch (e) {
-                          toast.error("Failed to toggle banner");
-                        }
-                      }}
-                    />
+                    <div className="flex items-center gap-3">
+                      <Switch 
+                        checked={banner.isActive} 
+                        onCheckedChange={async (val) => {
+                          try {
+                            await toggleBanner({ token: token ?? undefined, bannerId: banner._id, isActive: val });
+                            toast.success(val ? "Banner activated" : "Banner disabled");
+                          } catch (e) {
+                            toast.error("Failed to toggle banner");
+                          }
+                        }}
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+                        onClick={async () => {
+                          const ok = await confirm();
+                          if (ok) {
+                            try {
+                              await deleteBanner({ token: token ?? undefined, bannerId: banner._id });
+                              toast.success("Banner deleted successfully");
+                            } catch (e) {
+                              toast.error("Failed to delete banner");
+                            }
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}

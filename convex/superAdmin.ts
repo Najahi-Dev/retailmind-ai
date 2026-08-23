@@ -523,3 +523,15 @@ export const toggleSystemBanner = mutation({
     return { success: true };
   }
 });
+
+export const deleteSystemBanner = mutation({
+  args: {
+    token: v.optional(v.string()),
+    bannerId: v.id("systemBanners"),
+  },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+    await ctx.db.delete(args.bannerId);
+    return { success: true };
+  }
+});

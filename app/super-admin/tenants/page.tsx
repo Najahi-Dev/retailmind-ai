@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useConfirm } from "@/hooks/use-confirm";
 import { LogIn, Ban, CheckCircle, Activity, Copy, Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -45,6 +46,11 @@ export default function SuperAdminTenants() {
   const [maxSkus, setMaxSkus] = useState("1000");
   const [maxApi, setMaxApi] = useState("10000");
   const [maxBranches, setMaxBranches] = useState("1");
+  const [ConfirmDialog, confirm] = useConfirm(
+    "Clone Tenant Data",
+    "Are you sure? This will dump the source org's demo data into the target org.",
+    "warning"
+  );
 
   const handleImpersonate = async (ownerId: string) => {
     const reason = window.prompt("Security Audit: Please enter the reason for impersonating this tenant:");
@@ -82,7 +88,8 @@ export default function SuperAdminTenants() {
     const targetOrgId = window.prompt("Enter the exact ID of the Target Organization you want to clone data into:");
     if (!targetOrgId) return;
 
-    if (!window.confirm("Are you sure? This will dump the source org's demo data into the target org.")) return;
+    const ok = await confirm();
+    if (!ok) return;
 
     try {
       setIsUpdating(true);
@@ -141,6 +148,7 @@ export default function SuperAdminTenants() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 p-6 rounded-xl text-white shadow-lg overflow-hidden relative">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="relative z-10">
