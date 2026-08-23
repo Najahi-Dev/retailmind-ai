@@ -40,7 +40,6 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
 
   const generatePassword = () => {
     // Generate a random password of length 12
@@ -85,7 +84,6 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
       toast.success(`${form.name} added successfully!`);
       setForm({ name: "", email: "", phone: "", address: "", paymentTerms: "Net 30", leadTimeDays: "7" });
       setPassword(""); // Clear password after successful submission
-      setShowPassword(false); // Reset password visibility
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add supplier");
@@ -162,19 +160,12 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
             </Label>
             <div className="relative">
               <Input
-                type={showPassword ? "text" : "password"}
+                type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800 pr-10"
+                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-500"
-              >
-                {showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-              </button>
             </div>
             <Button
               variant="outline"

@@ -52,7 +52,7 @@ export default function SignInPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+
   const [role, setRole] = useState<string>("staff");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -254,26 +254,14 @@ export default function SignInPage() {
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Password</Label>
               <div className="relative">
                 <Input
-                  type={showPassword ? "text" : "password"}
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="h-11 text-xs rounded-xl pl-10 pr-10 border-slate-200 dark:border-slate-800"
+                  className="h-11 text-xs rounded-xl pl-10 border-slate-200 dark:border-slate-800"
                 />
                 <LockIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-0.5 rounded-md focus:outline-none"
-                  title={showPassword ? "Hide Password" : "Show Password"}
-                >
-                  {showPassword ? (
-                    <EyeOffIcon className="w-4 h-4" />
-                  ) : (
-                    <EyeIcon className="w-4 h-4" />
-                  )}
-                </button>
               </div>
             </div>
 

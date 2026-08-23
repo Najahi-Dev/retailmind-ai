@@ -36,7 +36,6 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
 
   const set = (key: string, val: any) =>
@@ -70,7 +69,6 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
       toast.success(`User ${form.name} created successfully!`);
       setForm({ name: "", email: "", phone: "", role: "staff" });
       setPassword("");
-      setShowPassword(false);
       setSendEmail(true);
       onOpenChange(false);
     } catch (err) {
@@ -138,19 +136,12 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
             </Label>
             <div className="relative">
               <Input
-                type={showPassword ? "text" : "password"}
+                type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800 pr-10"
+                className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-500"
-              >
-                {showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-              </button>
             </div>
             <Button
               variant="outline"
