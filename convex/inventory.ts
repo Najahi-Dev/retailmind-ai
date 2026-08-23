@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { GUARDRAIL_PRICE_DROP_PCT } from "./guardrails";
 import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
 
 // ── Stock Status Helper ───────────────────────────
@@ -655,13 +656,43 @@ export const updateProduct = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
     if (orgId && product.orgId && product.orgId !== orgId) {
       throw new Error("Access Denied: Product belongs to another workspace.");
     }
+
+    // ── GUARDRAIL: Block massive price drops for Super Admin approval ───
+    if (args.sellingPrice !== undefined) {
+      const currentPrice = product.sellingPrice;
+      if (currentPrice > 0) {
+        const dropPct = ((currentPrice - args.sellingPrice) / currentPrice) * 100;
+        if (dropPct >= GUARDRAIL_PRICE_DROP_PCT) {
+          const roundedDrop = Math.round(dropPct);
+          await ctx.runMutation(internal.guardrails.createPendingApproval, {
+            orgId,
+            requesterId: caller._id,
+            actionType: "PRICE_DROP",
+            details: {
+              productId:    args.productId,
+              productName:  product.name,
+              productSku:   product.sku,
+              currentPrice,
+              newPrice:     args.sellingPrice,
+              dropPct:      roundedDrop,
+              orgId,
+            },
+          });
+          return {
+            blocked: true,
+            reason: `Price drop of ${roundedDrop}% on "${product.name}" exceeds the safe limit of ${GUARDRAIL_PRICE_DROP_PCT}%. A Super Admin approval request has been submitted — the price will update once approved.`,
+          };
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     const { productId, token, ...updates } = args;
     const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([_, val]) => val !== undefined));

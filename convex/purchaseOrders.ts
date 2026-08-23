@@ -1,7 +1,9 @@
 // convex/purchaseOrders.ts
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireCallerOrg, getCallerUser, getSupplierForUser, requireRole, verifyEntityOrgAccess } from "./lib/roleGuard";
+import { GUARDRAIL_PO_THRESHOLD } from "./guardrails";
 
 export const getPurchaseOrders = query({
   args: {
@@ -191,6 +193,38 @@ export const createPurchaseOrder = mutation({
     }));
 
     const totalValue = formattedLines.reduce((sum, line) => sum + line.lineTotal, 0);
+
+    // ── GUARDRAIL: Block large POs for Super Admin approval ──────────────
+    if (totalValue > GUARDRAIL_PO_THRESHOLD) {
+      await ctx.runMutation(internal.guardrails.createPendingApproval, {
+        orgId,
+        requesterId: caller._id,
+        actionType: "LARGE_PO",
+        details: {
+          orgId,
+          requesterId: caller._id,
+          supplierId:        args.supplierId,
+          lineItems:         formattedLines,
+          totalValue,
+          poNumber,
+          notes:             args.notes,
+          requestedDelivery: args.requestedDelivery,
+          paymentMethod:     args.paymentMethod,
+          chequeNumber:      args.chequeNumber,
+          bankName:          args.bankName,
+          chequeAmount:      args.chequeAmount,
+          chequeDate:        args.chequeDate,
+          chequeStatus:      args.chequeStatus,
+          creditTermDays:    args.creditTermDays,
+          dueDate:           args.dueDate,
+        },
+      });
+      return {
+        blocked: true,
+        reason: `This purchase order (LKR ${totalValue.toLocaleString()}) exceeds the safety threshold of LKR ${GUARDRAIL_PO_THRESHOLD.toLocaleString()}. A Super Admin approval request has been submitted — the PO will be created once approved.`,
+      };
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     let initialPaymentStatus: "PENDING_ON_DELIVERY" | "CHEQUE_PENDING" | "DUE" | undefined;
     if (args.paymentMethod === "CASH_ON_DELIVERY") initialPaymentStatus = "PENDING_ON_DELIVERY";

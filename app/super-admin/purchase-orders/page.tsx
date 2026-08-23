@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BarcodeModal } from "@/app/(dashboard)/inventory/BarcodeModal";
 import { useState } from "react";
 
 export default function SuperAdminPurchaseOrders() {
@@ -19,6 +20,7 @@ export default function SuperAdminPurchaseOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPO, setSelectedPO] = useState<any>(null);
+  const [selectedBarcodeItem, setSelectedBarcodeItem] = useState<{ sku: string; name: string } | null>(null);
 
   if (pos === undefined) {
     return <div className="flex h-64 items-center justify-center text-muted-foreground">Loading Purchase Orders...</div>;
@@ -197,11 +199,24 @@ export default function SuperAdminPurchaseOrders() {
                   <TableBody>
                     {selectedPO?.lineItems?.map((item: any, i: number) => (
                       <TableRow key={i}>
-                        <TableCell className="font-medium flex items-center gap-2">
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                            <QrCode className="w-4 h-4" />
-                          </Button>
-                          {item.sku}
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 shrink-0"
+                              title="Generate & Print Shelf Barcode Label"
+                              onClick={() =>
+                                setSelectedBarcodeItem({
+                                  sku: item.sku,
+                                  name: item.productName || item.sku,
+                                })
+                              }
+                            >
+                              <QrCode className="w-4 h-4" />
+                            </Button>
+                            <span className="font-mono text-xs">{item.sku}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right font-medium">{item.quantityOrdered}</TableCell>
                         <TableCell className="text-right">{item.quantityReceived || 0}</TableCell>
@@ -221,6 +236,12 @@ export default function SuperAdminPurchaseOrders() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <BarcodeModal
+        open={!!selectedBarcodeItem}
+        onOpenChange={(open) => { if (!open) setSelectedBarcodeItem(null); }}
+        product={selectedBarcodeItem}
+      />
     </div>
   );
 }

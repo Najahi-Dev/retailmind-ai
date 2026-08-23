@@ -77,7 +77,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
   const handleSave = async () => {
     setSaving(true);
     try {
-      await edit({
+      const result = await edit({
         productId: productId as Id<"products">,
         sku,
         name,
@@ -90,6 +90,13 @@ export default function EditProductClient({ productId, role }: { productId: stri
         reorderPoint: Number(reorderPoint),
         safetyStock: Number(safetyStock),
       });
+
+      // ── GUARDRAIL: Price drop was blocked, pending super admin approval ──
+      if ((result as any)?.blocked) {
+        toast.warning((result as any).reason, { duration: 8000 });
+        return; // Stay on edit page — price not changed yet
+      }
+
       toast.success("Product SKU updated successfully");
       router.push(`/inventory/${productId}`);
     } catch (err) {

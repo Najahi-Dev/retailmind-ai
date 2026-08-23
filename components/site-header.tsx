@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ShieldCheckIcon, UserCheckIcon, CrownIcon, BellIcon, PackageIcon, ArrowRightIcon } from "lucide-react"
+import { ShieldCheckIcon, UserCheckIcon, CrownIcon, BellIcon, PackageIcon, ArrowRightIcon, ShieldIcon } from "lucide-react"
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard":                "Dashboard",
@@ -42,6 +42,11 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 const ROLE_CONFIG: Record<string, { label: string; icon: any; className: string }> = {
+  super_admin: {
+    label: "Super Admin",
+    icon: ShieldIcon,
+    className: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30",
+  },
   admin: {
     label: "Administrator",
     icon: CrownIcon,
@@ -65,7 +70,7 @@ const ROLE_CONFIG: Record<string, { label: string; icon: any; className: string 
 }
 
 export function SiteHeader() {
-  const { role } = useRole()
+  const { role, isSuperAdmin } = useRole()
   const { token } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -77,11 +82,13 @@ export function SiteHeader() {
 
   const activeAlertCount = supplierAlerts?.length ?? 0
 
-  const roleInfo = role ? (ROLE_CONFIG[role.toLowerCase()] ?? {
-    label: role.toUpperCase(),
-    icon: ShieldCheckIcon,
-    className: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700",
-  }) : null;
+  const roleInfo = isSuperAdmin
+    ? ROLE_CONFIG["super_admin"]
+    : role ? (ROLE_CONFIG[role.toLowerCase()] ?? {
+        label: role.toUpperCase(),
+        icon: ShieldCheckIcon,
+        className: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700",
+      }) : null;
 
   const RoleIcon = roleInfo?.icon;
 

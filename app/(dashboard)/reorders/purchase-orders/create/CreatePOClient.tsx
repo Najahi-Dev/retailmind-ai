@@ -174,7 +174,13 @@ export default function CreatePOClient() {
         dueDate:        computedDueDate,
       });
 
-      toast.success(`Purchase Order ${result.poNumber} created successfully!`);
+      // ── GUARDRAIL: PO was blocked, pending super admin approval ──
+      if ((result as any)?.blocked) {
+        toast.warning((result as any).reason, { duration: 8000 });
+        return; // Stay on page — no PO created yet
+      }
+
+      toast.success(`Purchase Order ${(result as any).poNumber} created successfully!`);
       router.push("/reorders/purchase-orders");
 
     } catch (err) {
@@ -186,6 +192,7 @@ export default function CreatePOClient() {
       setSubmitting(false);
     }
   };
+
 
   if (!suppliers || !products) {
     return (

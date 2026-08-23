@@ -20,6 +20,7 @@ import type * as communicationsAdmin from "../communicationsAdmin.js";
 import type * as crons from "../crons.js";
 import type * as debug from "../debug.js";
 import type * as forecasting from "../forecasting.js";
+import type * as guardrails from "../guardrails.js";
 import type * as inventory from "../inventory.js";
 import type * as lib_roleGuard from "../lib/roleGuard.js";
 import type * as migrations_multiTenantMigration from "../migrations/multiTenantMigration.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   debug: typeof debug;
   forecasting: typeof forecasting;
+  guardrails: typeof guardrails;
   inventory: typeof inventory;
   "lib/roleGuard": typeof lib_roleGuard;
   "migrations/multiTenantMigration": typeof migrations_multiTenantMigration;

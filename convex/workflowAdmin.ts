@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -64,7 +65,24 @@ export const getPlatformApprovals = query({
   args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx, args.token);
-    return await ctx.db.query("approvals").order("desc").take(100);
+    const approvals = await ctx.db.query("approvals").order("desc").take(100);
+
+    // Enrich with org name and requester name
+    return await Promise.all(
+      approvals.map(async (a) => {
+        let orgName = "Unknown Tenant";
+        if (a.orgId) {
+          const org = await ctx.db.get(a.orgId);
+          if (org) orgName = (org as any).name ?? orgName;
+        }
+        let requesterName = "Unknown User";
+        if (a.requesterId) {
+          const user = await ctx.db.get(a.requesterId);
+          if (user) requesterName = (user as any).name ?? requesterName;
+        }
+        return { ...a, orgName, requesterName };
+      })
+    );
   }
 });
 
@@ -78,15 +96,24 @@ export const updateApprovalStatus = mutation({
     const admin = await requireSuperAdmin(ctx, args.token);
     
     await ctx.db.patch(args.approvalId, {
-      status: args.status,
+      status:     args.status,
       reviewedBy: admin._id,
-      updatedAt: Date.now(),
+      updatedAt:  Date.now(),
     });
 
+    // ── EXECUTE: If approved, run the originally blocked action ────────
+    if (args.status === "approved") {
+      await ctx.runMutation(internal.guardrails.executeApprovedAction, {
+        approvalId: args.approvalId,
+        reviewerId: admin._id,
+      });
+    }
+    // ─────────────────────────────────────────────────────────
+
     await ctx.db.insert("adminAuditLogs", {
-      adminId: admin._id,
-      action: "REVIEW_APPROVAL",
-      details: `Marked approval ${args.approvalId} as ${args.status}`,
+      adminId:   admin._id,
+      action:    "REVIEW_APPROVAL",
+      details:   `Marked approval ${args.approvalId} as ${args.status}`,
       timestamp: Date.now(),
     });
 
