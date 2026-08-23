@@ -77,10 +77,10 @@ export default function SuperAdminAuditLogs() {
                       {getActionBadge(log.action)}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground font-mono">
-                    {log.targetOrgId && <div>Org: {log.targetOrgId}</div>}
-                    {log.targetUserId && <div>User: {log.targetUserId}</div>}
-                    {!log.targetOrgId && !log.targetUserId && <span>Global</span>}
+                  <TableCell className="text-xs text-muted-foreground">
+                    {log.targetOrgName && <div><span className="font-semibold text-slate-700 dark:text-slate-300">Org:</span> {log.targetOrgName}</div>}
+                    {log.targetUserName && <div><span className="font-semibold text-slate-700 dark:text-slate-300">User:</span> {log.targetUserName}</div>}
+                    {!log.targetOrgName && !log.targetUserName && <span>Global</span>}
                   </TableCell>
                   <TableCell className="text-sm max-w-[400px] truncate">
                     {log.details}

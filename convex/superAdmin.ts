@@ -106,15 +106,63 @@ export const getPlatformMetrics = query({
     const totalUsers = users.length;
     const activeUsers = users.filter((u: any) => u.isActive).length;
     
-    // Calculate current MRR
+    // Calculate current MRR and Distributions
     let mrr = 0;
+    const planDistribution = {
+      FREE: 0,
+      STARTER: 0,
+      GROWTH: 0,
+      ENTERPRISE: 0,
+    };
+    
+    const statusDistribution = {
+      ACTIVE: 0,
+      TRIALING: 0,
+      PAST_DUE: 0,
+      CANCELED: 0,
+      FREE: 0,
+    };
+
     orgs.forEach((o: any) => {
-      const status = o.subscriptionStatus || "FREE";
-      if (["ACTIVE", "active", "trial", "TRIALING"].includes(status)) {
-        if (o.planTier === "GROWTH") mrr += 49;
-        if (o.planTier === "ENTERPRISE") mrr += 199;
+      const status = (o.subscriptionStatus || "FREE").toUpperCase();
+      const tier = o.planTier || "FREE";
+      
+      // Update plan distribution
+      if (tier === "FREE") planDistribution.FREE++;
+      else if (tier === "STARTER") planDistribution.STARTER++;
+      else if (tier === "GROWTH") planDistribution.GROWTH++;
+      else if (tier === "ENTERPRISE") planDistribution.ENTERPRISE++;
+      
+      // Update status distribution
+      if (status === "ACTIVE") statusDistribution.ACTIVE++;
+      else if (status === "TRIALING" || status === "TRIAL") statusDistribution.TRIALING++;
+      else if (status === "PAST_DUE") statusDistribution.PAST_DUE++;
+      else if (status === "CANCELED") statusDistribution.CANCELED++;
+      else statusDistribution.FREE++;
+
+      if (["ACTIVE", "TRIAL", "TRIALING"].includes(status)) {
+        if (o.planTier === "STARTER") mrr += 2500;
+        if (o.planTier === "GROWTH") mrr += 4900;
+        if (o.planTier === "ENTERPRISE") mrr += 19900;
       }
     });
+
+    // Get total system items (can be slow if huge, but okay for this MVP dashboard)
+    const products = await ctx.db.query("products").collect();
+    const purchaseOrders = await ctx.db.query("purchaseOrders").collect();
+    
+    // Get recent organizations
+    const recentOrganizations = orgs
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5)
+      .map(o => ({
+        id: o._id,
+        name: o.name,
+        plan: o.planTier || "FREE",
+        status: o.subscriptionStatus || "FREE",
+        createdAt: o.createdAt,
+      }));
+
 
     // Generate chart data based on organization creation dates (last 7 months)
     const chartData = [];
@@ -126,15 +174,25 @@ export const getPlatformMetrics = query({
       
       let monthMrr = 0;
       let monthTenants = 0;
+      let monthPOs = 0;
       
       orgs.forEach((o: any) => {
         if (o.createdAt <= endOfMonth) {
           monthTenants++;
           const status = o.subscriptionStatus || "FREE";
           if (["ACTIVE", "active", "trial", "TRIALING"].includes(status)) {
-            if (o.planTier === "GROWTH") monthMrr += 49;
-            if (o.planTier === "ENTERPRISE") monthMrr += 199;
+            if (o.planTier === "STARTER") monthMrr += 2500;
+            if (o.planTier === "GROWTH") monthMrr += 4900;
+            if (o.planTier === "ENTERPRISE") monthMrr += 19900;
           }
+        }
+      });
+      
+      purchaseOrders.forEach((po: any) => {
+        // Only count POs created in this specific month for the volume chart
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth() - i, 1).getTime();
+        if (po.createdAt >= startOfMonth && po.createdAt <= endOfMonth) {
+          monthPOs++;
         }
       });
       
@@ -142,6 +200,7 @@ export const getPlatformMetrics = query({
         name: monthName,
         revenue: monthMrr,
         tenants: monthTenants,
+        purchaseOrders: monthPOs,
       });
     }
 
@@ -196,6 +255,11 @@ export const getPlatformMetrics = query({
       chartData,
       systemHealth,
       recentActivity,
+      planDistribution,
+      statusDistribution,
+      totalProducts: products.length,
+      totalPurchaseOrders: purchaseOrders.length,
+      recentOrganizations,
     };
   },
 });
@@ -230,19 +294,22 @@ export const getAuditLogs = query({
     const users = await ctx.db.query("users").collect();
 
     return logs.map(log => {
-      let targetName = "System";
+      let targetOrgName = undefined;
+      let targetUserName = undefined;
+
       if (log.targetOrgId) {
         const org = orgs.find((o: any) => o._id === log.targetOrgId);
-        targetName = org ? org.name : `Org ${log.targetOrgId.substring(0, 5)}...`;
+        targetOrgName = org ? org.name : `Org ${log.targetOrgId.substring(0, 5)}...`;
       }
       if (log.targetUserId) {
         const user = users.find((u: any) => u._id === log.targetUserId);
-        targetName = user ? user.name : `User ${log.targetUserId.substring(0, 5)}...`;
+        targetUserName = user ? user.name : `User ${log.targetUserId.substring(0, 5)}...`;
       }
       
       return {
         ...log,
-        targetName,
+        targetOrgName,
+        targetUserName,
       };
     });
   },
