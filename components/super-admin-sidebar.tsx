@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { NavMain } from "@/components/nav-main"
+import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -104,15 +105,8 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-slate-200 dark:border-slate-800 p-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => router.push("/dashboard")}>
-              <ArrowLeftIcon className="size-4 mr-2" />
-              <span className="font-medium">Return to App</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="border-t-0 pt-2">
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )

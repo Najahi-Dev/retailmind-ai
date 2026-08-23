@@ -16,6 +16,13 @@ async function requireSuperAdmin(ctx: any, token?: string) {
   return user;
 }
 
+export const verifySuperAdminToken = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    return await requireSuperAdmin(ctx, args.token);
+  },
+});
+
 // ── Super Admin IAM Queries & Mutations ──
 
 export const getAllPlatformUsers = query({
@@ -98,6 +105,81 @@ export const toggleUserStatus = mutation({
       targetUserId: args.userId,
       targetOrgId: user.orgId,
       details: args.isActive ? "Reactivated user account" : "Deactivated user account and revoked sessions",
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  }
+});
+
+export const updateTenantUser = mutation({
+  args: {
+    token: v.optional(v.string()),
+    userId: v.id("users"),
+    name: v.string(),
+    email: v.string(),
+    role: v.string(),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(args.userId, {
+      name: args.name,
+      email: args.email.toLowerCase().trim(),
+      role: args.role as any,
+      isActive: args.isActive,
+    });
+
+    if (!args.isActive) {
+      const sessions = await ctx.db.query("sessions")
+        .withIndex("by_user", q => q.eq("userId", args.userId))
+        .collect();
+      for (const s of sessions) {
+        await ctx.db.delete(s._id);
+      }
+    }
+
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "UPDATE_USER",
+      targetUserId: args.userId,
+      targetOrgId: user.orgId,
+      details: `Updated user ${args.email}`,
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  }
+});
+
+export const deleteTenantUser = mutation({
+  args: {
+    token: v.optional(v.string()),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+
+    const sessions = await ctx.db.query("sessions")
+      .withIndex("by_user", q => q.eq("userId", args.userId))
+      .collect();
+    for (const s of sessions) {
+      await ctx.db.delete(s._id);
+    }
+
+    await ctx.db.delete(args.userId);
+
+    await ctx.db.insert("adminAuditLogs", {
+      adminId: admin._id,
+      action: "DELETE_USER",
+      targetUserId: args.userId,
+      targetOrgId: user.orgId,
+      details: `Hard deleted user ${user.email}`,
       timestamp: Date.now(),
     });
 

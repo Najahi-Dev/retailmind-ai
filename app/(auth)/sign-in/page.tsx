@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 
 const ROLE_DESTINATIONS: Record<string, string> = {
+  super_admin: "/super-admin",
   admin: "/dashboard",
   manager: "/dashboard",
   staff: "/inventory",

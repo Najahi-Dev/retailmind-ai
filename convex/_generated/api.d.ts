@@ -30,6 +30,7 @@ import type * as seed from "../seed.js";
 import type * as seedMockForecasts from "../seedMockForecasts.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as superAdmin from "../superAdmin.js";
+import type * as superAdminActions from "../superAdminActions.js";
 import type * as suppliers from "../suppliers.js";
 import type * as supportTickets from "../supportTickets.js";
 import type * as systemPrompts from "../systemPrompts.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   seedMockForecasts: typeof seedMockForecasts;
   subscriptions: typeof subscriptions;
   superAdmin: typeof superAdmin;
+  superAdminActions: typeof superAdminActions;
   suppliers: typeof suppliers;
   supportTickets: typeof supportTickets;
   systemPrompts: typeof systemPrompts;

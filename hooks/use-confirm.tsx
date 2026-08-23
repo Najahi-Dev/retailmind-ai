@@ -16,7 +16,7 @@ export const useConfirm = (
   title: string,
   message: string,
   intent: ConfirmIntent = "default"
-): [() => JSX.Element, () => Promise<boolean>] => {
+): [() => any, () => Promise<boolean>] => {
   const [promise, setPromise] = useState<{ resolve: (value: boolean) => void } | null>(null);
 
   const confirm = () => new Promise<boolean>((resolve) => {

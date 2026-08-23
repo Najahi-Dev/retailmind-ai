@@ -68,6 +68,7 @@ export const createUserRecord = mutation({
       v.literal("pending"),
     ),
     imageUrl: v.optional(v.string()),
+    orgId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -81,9 +82,10 @@ export const createUserRecord = mutation({
 
     // Default org fallback
     const defaultOrg = await ctx.db.query("organizations").first();
+    const finalOrgId = args.orgId || defaultOrg?._id;
 
     const userId = await ctx.db.insert("users", {
-      orgId: defaultOrg?._id,
+      orgId: finalOrgId,
       email: args.email,
       name: args.name,
       phone: args.phone,

@@ -172,11 +172,16 @@ export default function SuperAdminTenants() {
             </TableHeader>
             <TableBody>
               {orgs.map((org: any) => (
-                <TableRow key={org._id}>
+                <TableRow 
+                  key={org._id} 
+                  className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50" 
+                  onClick={() => router.push(`/super-admin/tenants/${org._id}`)}
+                >
                   <TableCell>
                     <div className="font-medium flex items-center gap-2">
                       {org.name}
-                      <Button variant="ghost" size="icon" className="h-4 w-4 opacity-50 hover:opacity-100" onClick={() => {
+                      <Button variant="ghost" size="icon" className="h-4 w-4 opacity-50 hover:opacity-100" onClick={(e) => {
+                        e.stopPropagation();
                         navigator.clipboard.writeText(org._id);
                         toast.success("Org ID copied");
                       }}>
@@ -209,7 +214,7 @@ export default function SuperAdminTenants() {
                       {org.subscriptionStatus || "FREE"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                       <Button 
                         size="sm" 

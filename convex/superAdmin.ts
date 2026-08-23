@@ -40,10 +40,55 @@ export const getAllOrganizations = query({
         ownerEmail: owner?.email,
         ownerName: owner?.name,
         ownerId: owner?._id,
+        users: orgUsers.map((u: any) => ({
+          _id: u._id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          isActive: u.isActive,
+          createdAt: u.createdAt,
+          lastLogin: u.lastLogin,
+        })).sort((a: any, b: any) => b.createdAt - a.createdAt),
       };
     });
     
     return enrichedOrgs;
+  },
+});
+
+export const getOrganizationDetails = query({
+  args: { 
+    token: v.optional(v.string()),
+    orgId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+    
+    const org = await ctx.db.get(args.orgId);
+    if (!org) throw new Error("Organization not found");
+    
+    const users = await ctx.db.query("users")
+      .withIndex("by_org", (q: any) => q.eq("orgId", args.orgId))
+      .collect();
+      
+    const owner = users.find((u: any) => u.role === "admin");
+    
+    return {
+      ...org,
+      userCount: users.length,
+      ownerEmail: owner?.email,
+      ownerName: owner?.name,
+      ownerId: owner?._id,
+      users: users.map((u: any) => ({
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        isActive: u.isActive,
+        createdAt: u.createdAt,
+        lastLogin: u.lastLogin,
+      })).sort((a: any, b: any) => b.createdAt - a.createdAt),
+    };
   },
 });
 
