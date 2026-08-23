@@ -2,6 +2,7 @@
 
 import {
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
@@ -14,6 +15,7 @@ import { cn }          from "@/lib/utils"
 
 export function NavMain({
   items,
+  title,
 }: {
   items: {
     title:  string
@@ -21,11 +23,17 @@ export function NavMain({
     icon?:  React.ReactNode
     badge?: number
   }[]
+  title?: string
 }) {
   const pathname = usePathname()
 
   return (
     <SidebarGroup>
+      {title && (
+        <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 px-3">
+          {title}
+        </SidebarGroupLabel>
+      )}
       <SidebarGroupContent className="flex flex-col gap-1">
         <SidebarMenu>
           {items.map((item) => {

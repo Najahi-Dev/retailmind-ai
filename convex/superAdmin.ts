@@ -56,18 +56,90 @@ export const getPlatformMetrics = query({
     const users = await ctx.db.query("users").collect();
     
     const totalOrgs = orgs.length;
-    const activeOrgs = orgs.filter((o: any) => ["ACTIVE", "TRIALING", "FREE"].includes(o.subscriptionStatus || "FREE")).length;
+    const activeOrgs = orgs.filter((o: any) => ["ACTIVE", "TRIALING", "FREE", "active", "trial"].includes(o.subscriptionStatus || "FREE")).length;
     
     const totalUsers = users.length;
     const activeUsers = users.filter((u: any) => u.isActive).length;
     
-    // Mock MRR calculation based on active growth/enterprise tiers
+    // Calculate current MRR
     let mrr = 0;
     orgs.forEach((o: any) => {
-      if (o.subscriptionStatus === "ACTIVE") {
+      const status = o.subscriptionStatus || "FREE";
+      if (["ACTIVE", "active", "trial", "TRIALING"].includes(status)) {
         if (o.planTier === "GROWTH") mrr += 49;
         if (o.planTier === "ENTERPRISE") mrr += 199;
       }
+    });
+
+    // Generate chart data based on organization creation dates (last 7 months)
+    const chartData = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleString('default', { month: 'short' });
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59).getTime();
+      
+      let monthMrr = 0;
+      let monthTenants = 0;
+      
+      orgs.forEach((o: any) => {
+        if (o.createdAt <= endOfMonth) {
+          monthTenants++;
+          const status = o.subscriptionStatus || "FREE";
+          if (["ACTIVE", "active", "trial", "TRIALING"].includes(status)) {
+            if (o.planTier === "GROWTH") monthMrr += 49;
+            if (o.planTier === "ENTERPRISE") monthMrr += 199;
+          }
+        }
+      });
+      
+      chartData.push({
+        name: monthName,
+        revenue: monthMrr,
+        tenants: monthTenants,
+      });
+    }
+
+    // Generate system health from alerts
+    const alerts = await ctx.db.query("systemAlerts").filter(q => q.eq(q.field("resolved"), false)).collect();
+    const isDegraded = (source: string) => alerts.some(a => a.source.toLowerCase().includes(source.toLowerCase()));
+    
+    const systemHealth = [
+      { service: "Convex Database", status: isDegraded("database") ? "Degraded" : "Operational", uptime: isDegraded("database") ? "98.2%" : "99.99%" },
+      { service: "AI Demand Engine", status: isDegraded("ai") || isDegraded("llm") ? "Degraded" : "Operational", uptime: isDegraded("ai") ? "97.5%" : "99.95%" },
+      { service: "Stripe Billing", status: isDegraded("billing") || isDegraded("stripe") ? "Degraded" : "Operational", uptime: isDegraded("billing") ? "99.0%" : "100%" },
+      { service: "Notification Service", status: isDegraded("notification") ? "Degraded" : "Operational", uptime: isDegraded("notification") ? "95.0%" : "99.9%" },
+    ];
+
+    // Fetch recent activity from audit logs
+    const auditLogs = await ctx.db.query("adminAuditLogs").order("desc").take(5);
+    const recentActivity = auditLogs.map(log => {
+      // Calculate time ago
+      const diffMs = Date.now() - log.timestamp;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+      
+      let timeAgo = "Just now";
+      if (diffDays > 0) timeAgo = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      else if (diffHours > 0) timeAgo = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      else if (diffMins > 0) timeAgo = `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+      
+      let target = "System";
+      if (log.targetOrgId) {
+        const org = orgs.find((o: any) => o._id === log.targetOrgId);
+        target = org ? org.name : `Org ${log.targetOrgId.substring(0, 5)}...`;
+      }
+      if (log.targetUserId) {
+        const user = users.find((u: any) => u._id === log.targetUserId);
+        target = user ? user.name : `User ${log.targetUserId.substring(0, 5)}...`;
+      }
+
+      return {
+        time: timeAgo,
+        event: log.action.replace(/_/g, ' ') + (log.details ? `: ${log.details}` : ''),
+        target: target,
+      };
     });
 
     return {
@@ -76,6 +148,9 @@ export const getPlatformMetrics = query({
       totalUsers,
       activeUsers,
       mrr,
+      chartData,
+      systemHealth,
+      recentActivity,
     };
   },
 });
@@ -101,9 +176,30 @@ export const getAuditLogs = query({
   args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx, args.token);
-    return await ctx.db.query("adminAuditLogs")
+    const logs = await ctx.db.query("adminAuditLogs")
       .order("desc")
       .take(500); // Take the latest 500 audit logs
+      
+    // Fetch orgs and users to map names
+    const orgs = await ctx.db.query("organizations").collect();
+    const users = await ctx.db.query("users").collect();
+
+    return logs.map(log => {
+      let targetName = "System";
+      if (log.targetOrgId) {
+        const org = orgs.find((o: any) => o._id === log.targetOrgId);
+        targetName = org ? org.name : `Org ${log.targetOrgId.substring(0, 5)}...`;
+      }
+      if (log.targetUserId) {
+        const user = users.find((u: any) => u._id === log.targetUserId);
+        targetName = user ? user.name : `User ${log.targetUserId.substring(0, 5)}...`;
+      }
+      
+      return {
+        ...log,
+        targetName,
+      };
+    });
   },
 });
 

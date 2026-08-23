@@ -40,102 +40,46 @@ import { useRouter } from "next/navigation"
 export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
   
-  const superAdminNav = [
+  const navCategories = [
     {
-      title: "Overview",
-      url: "/super-admin",
-      icon: <ActivityIcon className="size-4" />,
+      title: "Platform",
+      items: [
+        { title: "Overview", url: "/super-admin", icon: <LayoutDashboardIcon className="size-4" /> },
+        { title: "System Health", url: "/super-admin/health", icon: <ActivityIcon className="size-4" /> },
+        { title: "AI Telemetry", url: "/super-admin/ai", icon: <BrainCircuit className="size-4" /> },
+      ]
     },
     {
-      title: "Tenants & Orgs",
-      url: "/super-admin/tenants",
-      icon: <UsersIcon className="size-4" />,
+      title: "Tenants & Billing",
+      items: [
+        { title: "Tenants & Orgs", url: "/super-admin/tenants", icon: <UsersIcon className="size-4" /> },
+        { title: "Global Billing", url: "/super-admin/billing", icon: <CreditCardIcon className="size-4" /> },
+        { title: "Subscription Plans", url: "/super-admin/plans", icon: <PackageSearch className="size-4" /> },
+        { title: "Users & IAM", url: "/super-admin/users", icon: <UserCog className="size-4" /> },
+      ]
     },
     {
-      title: "Global Billing",
-      url: "/super-admin/billing",
-      icon: <CreditCardIcon className="size-4" />,
+      title: "App Settings",
+      items: [
+        { title: "Forecasting Admin", url: "/super-admin/forecasting-admin", icon: <LineChart className="size-4" /> },
+        { title: "Dynamic Pricing", url: "/super-admin/dynamic-pricing", icon: <CircleDollarSign className="size-4" /> },
+        { title: "Inventory Rules", url: "/super-admin/inventory-rules", icon: <Layers className="size-4" /> },
+        { title: "Purchase Orders", url: "/super-admin/purchase-orders", icon: <ClipboardList className="size-4" /> },
+        { title: "Approval Center", url: "/super-admin/approvals", icon: <CheckSquare className="size-4" /> },
+      ]
     },
     {
-      title: "Subscription Plans",
-      url: "/super-admin/plans",
-      icon: <PackageSearch className="size-4" />,
-    },
-    {
-      title: "Users & IAM",
-      url: "/super-admin/users",
-      icon: <UserCog className="size-4" />,
-    },
-    {
-      title: "System Health",
-      url: "/super-admin/health",
-      icon: <ActivityIcon className="size-4" />,
-    },
-    {
-      title: "AI Telemetry",
-      url: "/super-admin/ai",
-      icon: <BrainCircuit className="size-4" />,
-    },
-    {
-      title: "Forecasting Admin",
-      url: "/super-admin/forecasting-admin",
-      icon: <LineChart className="size-4" />,
-    },
-    {
-      title: "Dynamic Pricing",
-      url: "/super-admin/dynamic-pricing",
-      icon: <CircleDollarSign className="size-4" />,
-    },
-    {
-      title: "Inventory Rules",
-      url: "/super-admin/inventory-rules",
-      icon: <Layers className="size-4" />,
-    },
-    {
-      title: "Purchase Orders",
-      url: "/super-admin/purchase-orders",
-      icon: <ClipboardList className="size-4" />,
-    },
-    {
-      title: "Approval Center",
-      url: "/super-admin/approvals",
-      icon: <CheckSquare className="size-4" />,
-    },
-    {
-      title: "Integrations",
-      url: "/super-admin/integrations",
-      icon: <Plug className="size-4" />,
-    },
-    {
-      title: "Support Tickets",
-      url: "/super-admin/support",
-      icon: <HeadphonesIcon className="size-4" />,
-    },
-    {
-      title: "Notifications",
-      url: "/super-admin/notifications",
-      icon: <BellRing className="size-4" />,
-    },
-    {
-      title: "Platform Reports",
-      url: "/super-admin/reports",
-      icon: <BarChart3 className="size-4" />,
-    },
-    {
-      title: "Security Center",
-      url: "/super-admin/security",
-      icon: <ShieldAlert className="size-4" />,
-    },
-    {
-      title: "Audit Logs",
-      url: "/super-admin/audit",
-      icon: <FileKey className="size-4" />,
-    },
-    {
-      title: "Database Backup",
-      url: "/super-admin/backup",
-      icon: <Database className="size-4" />,
-    },
+      title: "Support & Security",
+      items: [
+        { title: "Integrations", url: "/super-admin/integrations", icon: <Plug className="size-4" /> },
+        { title: "Support Tickets", url: "/super-admin/support", icon: <HeadphonesIcon className="size-4" /> },
+        { title: "Notifications", url: "/super-admin/notifications", icon: <BellRing className="size-4" /> },
+        { title: "Platform Reports", url: "/super-admin/reports", icon: <BarChart3 className="size-4" /> },
+        { title: "Security Center", url: "/super-admin/security", icon: <ShieldAlert className="size-4" /> },
+        { title: "Audit Logs", url: "/super-admin/audit", icon: <FileKey className="size-4" /> },
+        { title: "Database Backup", url: "/super-admin/backup", icon: <Database className="size-4" /> },
+      ]
+    }
   ];
 
   return (
@@ -155,7 +99,9 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
       </SidebarHeader>
 
       <SidebarContent className="pt-2">
-        <NavMain items={superAdminNav} />
+        {navCategories.map((category) => (
+          <NavMain key={category.title} items={category.items} title={category.title} />
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-slate-200 dark:border-slate-800 p-3">

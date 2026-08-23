@@ -9,35 +9,64 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import Link from "next/link";
 
-const mockChartData = [
-  { name: 'Jan', revenue: 4000, tenants: 24 },
-  { name: 'Feb', revenue: 5500, tenants: 28 },
-  { name: 'Mar', revenue: 7800, tenants: 35 },
-  { name: 'Apr', revenue: 8900, tenants: 42 },
-  { name: 'May', revenue: 11200, tenants: 50 },
-  { name: 'Jun', revenue: 14500, tenants: 65 },
-  { name: 'Jul', revenue: 18000, tenants: 80 },
-];
-
-const systemHealth = [
+const defaultSystemHealth = [
   { service: "Convex Database", status: "Operational", uptime: "99.99%", icon: Server, color: "text-emerald-500", bg: "bg-emerald-500/10" },
   { service: "AI Demand Engine", status: "Operational", uptime: "99.95%", icon: Cpu, color: "text-blue-500", bg: "bg-blue-500/10" },
   { service: "Stripe Billing", status: "Operational", uptime: "100%", icon: CreditCard, color: "text-purple-500", bg: "bg-purple-500/10" },
-  { service: "Notification Service", status: "Degraded", uptime: "98.2%", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" },
-];
-
-const recentActivity = [
-  { time: "10 mins ago", event: "New tenant registered", target: "TechStore Inc." },
-  { time: "25 mins ago", event: "Plan upgraded to Enterprise", target: "FreshMart Global" },
-  { time: "1 hour ago", event: "AI Forecast generated", target: "System" },
-  { time: "2 hours ago", event: "Payment failed", target: "Local Grocers" },
-  { time: "5 hours ago", event: "Support ticket resolved", target: "Ticket #4092" },
+  { service: "Notification Service", status: "Operational", uptime: "99.9%", icon: Zap, color: "text-emerald-500", bg: "bg-emerald-500/10" },
 ];
 
 export default function SuperAdminOverview() {
   const { token } = useAuth();
   const metrics = useQuery(api.superAdmin.getPlatformMetrics, { token: token ?? undefined });
+
+  const handleGenerateReport = () => {
+    if (!metrics) {
+      toast.error("Metrics are still loading");
+      return;
+    }
+    
+    toast.promise(
+      new Promise((resolve) => {
+        setTimeout(() => {
+          let csvContent = "data:text/csv;charset=utf-8,";
+          csvContent += "RetailMind AI Platform Report\n\n";
+          
+          csvContent += "Key Metrics\n";
+          csvContent += `Total Tenants,${metrics.totalOrgs}\n`;
+          csvContent += `Active Subscriptions,${metrics.activeOrgs}\n`;
+          csvContent += `Total Users,${metrics.totalUsers}\n`;
+          csvContent += `Active Users,${metrics.activeUsers}\n`;
+          csvContent += `Estimated MRR,$${metrics.mrr}\n\n`;
+          
+          csvContent += "Revenue & Growth (Last 7 Months)\n";
+          csvContent += "Month,Revenue,Tenants\n";
+          if (metrics.chartData) {
+            metrics.chartData.forEach((data: any) => {
+              csvContent += `${data.name},${data.revenue},${data.tenants}\n`;
+            });
+          }
+          
+          const encodedUri = encodeURI(csvContent);
+          const link = document.createElement("a");
+          link.setAttribute("href", encodedUri);
+          link.setAttribute("download", `platform-report-${new Date().toISOString().split('T')[0]}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          resolve(true);
+        }, 800);
+      }),
+      {
+        loading: 'Generating report...',
+        success: 'Report downloaded successfully!',
+        error: 'Failed to generate report',
+      }
+    );
+  };
 
   if (!metrics) {
     return (
@@ -62,7 +91,7 @@ export default function SuperAdminOverview() {
             <span className="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse inline-block"></span>
             System Live
           </Badge>
-          <Button size="sm" className="bg-white text-indigo-900 hover:bg-indigo-50">Generate Report</Button>
+          <Button size="sm" className="bg-white text-indigo-900 hover:bg-indigo-50" onClick={handleGenerateReport}>Generate Report</Button>
         </div>
       </div>
       
@@ -166,7 +195,7 @@ export default function SuperAdminOverview() {
           <CardContent>
             <div className="h-[350px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={metrics.chartData || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
@@ -196,11 +225,16 @@ export default function SuperAdminOverview() {
               <CardTitle className="text-lg">System Telemetry</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {systemHealth.map((sys, i) => (
+              {(metrics.systemHealth || defaultSystemHealth).map((sys: any, i: number) => {
+                const Icon = sys.service === "Convex Database" ? Server : sys.service === "AI Demand Engine" ? Cpu : sys.service === "Stripe Billing" ? CreditCard : Zap;
+                const color = sys.status === "Operational" ? "text-emerald-500" : sys.status === "Degraded" ? "text-amber-500" : "text-red-500";
+                const bg = sys.status === "Operational" ? "bg-emerald-500/10" : sys.status === "Degraded" ? "bg-amber-500/10" : "bg-red-500/10";
+                
+                return (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-md ${sys.bg}`}>
-                      <sys.icon className={`w-4 h-4 ${sys.color}`} />
+                    <div className={`p-2 rounded-md ${bg}`}>
+                      <Icon className={`w-4 h-4 ${color}`} />
                     </div>
                     <div>
                       <p className="text-sm font-medium">{sys.service}</p>
@@ -209,7 +243,7 @@ export default function SuperAdminOverview() {
                   </div>
                   <span className="text-xs font-semibold">{sys.uptime}</span>
                 </div>
-              ))}
+              )})}
             </CardContent>
           </Card>
 
@@ -218,12 +252,14 @@ export default function SuperAdminOverview() {
             <CardHeader className="pb-4">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg">Live Activity</CardTitle>
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-indigo-600">View All</Button>
+                <Link href="/super-admin/journal">
+                  <Button variant="ghost" size="sm" className="h-8 text-xs text-indigo-600 hover:text-indigo-700">View All</Button>
+                </Link>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-5 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-800 before:to-transparent">
-                {recentActivity.map((activity, i) => (
+                {(metrics.recentActivity || []).map((activity: any, i: number) => (
                   <div key={i} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                     <div className="flex items-center justify-center w-4 h-4 rounded-full border-2 border-white dark:border-slate-950 bg-indigo-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10" />
                     <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] p-3 rounded border bg-white dark:bg-slate-950 shadow-sm text-sm">
