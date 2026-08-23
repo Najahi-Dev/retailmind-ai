@@ -1,7 +1,9 @@
+"use node";
 import { action, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 // Internal query to securely fetch the template without exposing it to the client directly
 export const getTemplateByName = internalQuery({
@@ -85,14 +87,21 @@ export const sendUserCredentialsEmail = action({
     role: v.string(),
   },
   handler: async (ctx, args) => {
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (!resendApiKey) {
-      console.error("RESEND_API_KEY is not configured in the backend.");
-      return; // Silently fail in dev if key is missing, or throw error depending on strictness
+    const gmailEmail = process.env.GMAIL_EMAIL;
+    const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+    
+    if (!gmailEmail || !gmailPassword) {
+      console.error("GMAIL_EMAIL or GMAIL_APP_PASSWORD is not configured in the backend.");
+      return { success: false }; 
     }
 
-    const resend = new Resend(resendApiKey);
-    const fromAddress = "RetailMind System <onboarding@resend.dev>";
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailEmail,
+        pass: gmailPassword,
+      },
+    });
     
     const subject = `Welcome to RetailMind - Your Account Details`;
     const body = `Hello ${args.userName},
@@ -111,19 +120,18 @@ Best regards,
 The RetailMind Team`;
 
     try {
-      const response = await resend.emails.send({
-        from: fromAddress,
+      const info = await transporter.sendMail({
+        from: `"RetailMind System" <${gmailEmail}>`,
         to: args.targetEmail,
         subject: subject,
         text: body,
       });
       
-      if (response.error) {
-         console.error("Resend API Error (Credentials):", response.error);
-      }
-      return { success: !response.error };
+      console.log("Email sent successfully: " + info.messageId);
+      return { success: true };
     } catch (error: any) {
       console.error("Credentials Email Sending Failed:", error);
+      return { success: false };
     }
   }
 });
