@@ -5,15 +5,7 @@ import { internal } from "./_generated/api";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
-// Internal query to securely fetch the template without exposing it to the client directly
-export const getTemplateByName = internalQuery({
-  args: { name: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db.query("notificationTemplates")
-      .withIndex("by_name", q => q.eq("name", args.name))
-      .first();
-  }
-});
+
 
 // Main action to send an email using a stored template
 export const sendTemplateEmail = action({
@@ -23,7 +15,7 @@ export const sendTemplateEmail = action({
     variables: v.record(v.string(), v.string()),
   },
   handler: async (ctx, args) => {
-    const template = await ctx.runQuery(internal.communications.getTemplateByName, { name: args.templateName });
+    const template = await ctx.runQuery(internal.communicationsQueries.getTemplateByName, { name: args.templateName });
     
     if (!template) {
       throw new Error(`Template '${args.templateName}' not found.`);

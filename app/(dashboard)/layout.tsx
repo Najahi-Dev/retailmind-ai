@@ -11,6 +11,7 @@ import { getServerUser } from "@/lib/get-server-user";
 import { TrialBanner } from "@/components/trial-banner";
 import { SystemBanners } from "@/components/system-banners";
 import { PushNotificationWatcher } from "@/components/push-notification-watcher";
+import { MaintenanceGuard } from "@/components/maintenance-guard";
 
 export default async function DashboardLayout({
   children,
@@ -21,16 +22,18 @@ export default async function DashboardLayout({
   if (!user) redirect("/sign-in");
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <SystemBanners />
-        <SiteHeader />
-        <TrialBanner />
-        <div className="flex flex-1 flex-col">{children}</div>
-      </SidebarInset>
-      <PushNotificationWatcher />
-      <Toaster />
-    </SidebarProvider>
+    <MaintenanceGuard userRole={user.role}>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <SystemBanners />
+          <SiteHeader />
+          <TrialBanner />
+          <div className="flex flex-1 flex-col">{children}</div>
+        </SidebarInset>
+        <PushNotificationWatcher />
+        <Toaster />
+      </SidebarProvider>
+    </MaintenanceGuard>
   );
 }
