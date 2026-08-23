@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 async function requireSuperAdmin(ctx: any, token?: string) {
   if (!token) throw new Error("Unauthorized");
@@ -37,6 +38,8 @@ export const getPlatformPurchaseOrders = query({
           const supplier = await ctx.db.get(po.supplierId);
           if (supplier) {
             supplierName = supplier.name;
+          } else {
+            supplierName = `Not Found (${po.supplierId})`;
           }
         }
 
@@ -44,7 +47,7 @@ export const getPlatformPurchaseOrders = query({
         if (po.lineItems && po.lineItems.length > 0) {
           lineItemsWithSkus = await Promise.all(
             po.lineItems.map(async (item: any) => {
-              const product = await ctx.db.get(item.productId);
+              const product = await ctx.db.get(item.productId as Id<"products">);
               return { ...item, sku: product?.sku || "Unknown SKU" };
             })
           );
