@@ -61,6 +61,20 @@ export const getPlatformPurchaseOrders = query({
 });
 
 // ── APPROVALS ──
+
+// Lightweight count query for the sidebar badge
+export const getPendingApprovalsCount = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+    const pending = await ctx.db
+      .query("approvals")
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+    return pending.length;
+  },
+});
+
 export const getPlatformApprovals = query({
   args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {

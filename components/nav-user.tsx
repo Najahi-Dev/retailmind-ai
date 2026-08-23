@@ -31,7 +31,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, useRole } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { ChevronsUpDownIcon, UserIcon, LogOutIcon, ShieldCheckIcon, ZapIcon, RocketIcon, CrownIcon } from "lucide-react"
 
@@ -46,6 +46,7 @@ const PLAN_BADGES: Record<string, { label: string; Icon: any; bg: string }> = {
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, logout } = useAuth()
+  const { isSuperAdmin } = useRole()
   const router = useRouter()
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
 
@@ -91,8 +92,16 @@ export function NavUser() {
                   </Badge>
                 </div>
                 <span className="truncate text-xs text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1">
-                  <ShieldCheckIcon className="w-3 h-3 text-indigo-500 shrink-0" />
-                  {user.role}
+                  {isSuperAdmin ? (
+                    <ShieldCheckIcon className="w-3 h-3 text-violet-500 shrink-0" />
+                  ) : user.role === "admin" ? (
+                    <CrownIcon className="w-3 h-3 text-indigo-500 shrink-0" />
+                  ) : user.role === "manager" ? (
+                    <ShieldCheckIcon className="w-3 h-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <UserIcon className="w-3 h-3 text-blue-500 shrink-0" />
+                  )}
+                  {isSuperAdmin ? "Super Admin" : user.role}
                 </span>
               </div>
               <ChevronsUpDownIcon className="ml-auto size-4 text-slate-400 shrink-0" />

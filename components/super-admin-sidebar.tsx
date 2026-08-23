@@ -37,10 +37,20 @@ import {
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { useRouter } from "next/navigation"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { useAuth } from "@/lib/auth-context"
 
 export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
-  
+  const { token } = useAuth();
+
+  // Live pending approvals count — drives the sidebar badge
+  const pendingCount = useQuery(
+    api.workflowAdmin.getPendingApprovalsCount,
+    { token: token ?? undefined }
+  ) ?? 0;
+
   const navCategories = [
     {
       title: "Platform",
@@ -65,7 +75,12 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
         { title: "Dynamic Pricing", url: "/super-admin/dynamic-pricing", icon: <CircleDollarSign className="size-4" /> },
         { title: "Inventory Rules", url: "/super-admin/inventory-rules", icon: <Layers className="size-4" /> },
         { title: "Purchase Orders", url: "/super-admin/purchase-orders", icon: <ClipboardList className="size-4" /> },
-        { title: "Approval Center", url: "/super-admin/approvals", icon: <CheckSquare className="size-4" /> },
+        {
+          title: "Approval Center",
+          url: "/super-admin/approvals",
+          icon: <CheckSquare className="size-4" />,
+          badge: pendingCount,
+        },
       ]
     },
     {
@@ -110,3 +125,4 @@ export function SuperAdminSidebar({ ...props }: React.ComponentProps<typeof Side
     </Sidebar>
   )
 }
+

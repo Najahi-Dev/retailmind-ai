@@ -309,8 +309,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
+  // During SSR prerender, AuthContext is undefined (AuthProvider is client-only).
+  // Return a safe no-op default so the server render doesn't crash.
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    return {
+      currentUser: null,
+      user: null,
+      token: null,
+      login: async () => {},
+      loginWithToken: () => {},
+      logout: async () => {},
+      refreshUser: async () => {},
+      impersonateUser: () => {},
+      exitImpersonation: () => {},
+      isImpersonating: false,
+      isLoading: true,
+      isAuthenticated: false,
+    } satisfies AuthContextType;
   }
   return context;
 }
