@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 import bcrypt from "bcryptjs";
 import { getSupplierForUser, requireCallerOrg } from "./lib/roleGuard";
 
