@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useConfirm } from "@/hooks/use-confirm";
 import { ArrowLeft, Users, Activity, Copy, CheckCircle, Ban, Pencil, Trash2, UserPlus } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
@@ -46,6 +47,7 @@ export default function SuperAdminTenantDetails() {
     password: "",
     role: "staff",
     isActive: true,
+    sendEmail: true,
   });
 
   const addTenantUser = useAction(api.superAdminActions.addTenantUser);
@@ -69,7 +71,31 @@ export default function SuperAdminTenantDetails() {
         password: formData.password,
         role: formData.role,
       });
-      toast.success("User added successfully");
+
+      if (formData.sendEmail) {
+        toast.promise(
+          fetch("/api/send-credentials", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: formData.email,
+              name: formData.name,
+              password: formData.password,
+              role: formData.role,
+            }),
+          }).then((res) => {
+            if (!res.ok) throw new Error("Email dispatch failed");
+            return res.json();
+          }),
+          {
+            loading: "Creating user & sending email...",
+            success: "User added & email sent successfully!",
+            error: "User added, but failed to send email.",
+          }
+        );
+      } else {
+        toast.success("User added successfully");
+      }
       setIsAddUserOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to add user");
@@ -202,7 +228,7 @@ export default function SuperAdminTenantDetails() {
             <CardDescription>All user accounts associated with this organization.</CardDescription>
           </div>
           <Button size="sm" onClick={() => {
-            setFormData({ name: "", email: "", password: "", role: "staff", isActive: true });
+            setFormData({ name: "", email: "", password: "", role: "staff", isActive: true, sendEmail: true });
             setIsAddUserOpen(true);
           }}>
             <UserPlus className="w-4 h-4 mr-2" />
@@ -298,6 +324,16 @@ export default function SuperAdminTenantDetails() {
                   <SelectItem value="supplier">Supplier</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox 
+                id="sendEmail" 
+                checked={formData.sendEmail} 
+                onCheckedChange={(checked) => setFormData({ ...formData, sendEmail: checked as boolean })} 
+              />
+              <Label htmlFor="sendEmail" className="font-normal cursor-pointer">
+                Send credentials via email to the user
+              </Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>Cancel</Button>
