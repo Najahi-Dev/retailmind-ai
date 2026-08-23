@@ -128,7 +128,7 @@ export default function SuperAdminForecastingAdmin() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 border rounded-lg">
                   <div className="text-xs text-muted-foreground">Avg. MAE</div>
                   <div className="text-xl font-bold">12.4%</div>

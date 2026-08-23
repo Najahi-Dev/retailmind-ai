@@ -152,7 +152,7 @@ export default function StockAdjustmentClient({ role = "admin" }: Props) {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Manual Stock Adjustment Override
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Reconcile physical stock counts with digital inventory system totals for damaged goods, audit corrections, or shrinkage.
           </p>
         </div>

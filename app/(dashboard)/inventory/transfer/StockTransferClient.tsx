@@ -177,7 +177,7 @@ export default function StockTransferClient({ role = "admin" }: Props) {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Inter-Branch Stock Transfer
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Rebalance inventory between central distribution warehouses and regional retail stores with real-time audit logging.
           </p>
         </div>

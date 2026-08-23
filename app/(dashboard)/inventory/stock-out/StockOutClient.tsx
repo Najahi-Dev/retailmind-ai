@@ -133,7 +133,7 @@ export default function StockOutClient({ role }: Props) {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Record Outward Stock Removal
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Log inventory reductions for POS sales, damaged goods, expired write-offs, or sample dispatches.
           </p>
         </div>

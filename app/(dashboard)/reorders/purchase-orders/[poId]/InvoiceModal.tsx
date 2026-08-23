@@ -216,7 +216,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         {/* Email Dispatch Settings Bar (Toggleable) */}
         {showEmailPrompt && (
           <div className="p-4 bg-indigo-950/80 border-b border-indigo-800 text-white animate-in slide-in-from-top-2 duration-200">
-            <form onSubmit={handleDispatchEmail} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 max-w-3xl mx-auto">
+            <form onSubmit={handleDispatchEmail} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 sm:max-w-3xl w-[95vw] sm:w-full mx-auto">
               <div className="flex-1 space-y-1">
                 <Label className="text-xs font-semibold text-indigo-200">Recipient Gmail / Email Address</Label>
                 <Input

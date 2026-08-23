@@ -157,7 +157,7 @@ export default function DocsPage() {
               <span className="text-xs tracking-wider bg-violet-500/20 text-violet-500 px-3 py-1 rounded">GETTING STARTED</span>
             </div>
             <h1 className="mb-6 text-4xl font-bold text-white">Get started with RetailMind AI</h1>
-            <p className="text-slate-400 lg:text-lg max-w-3xl">
+            <p className="text-slate-400 lg:text-lg sm:max-w-3xl w-[95vw] sm:w-full">
               RetailMind AI is a supermarket neural intelligence platform that unifies real-time stock control, predictive AI replenishment, dynamic markdown pricing, and multi-tenant B2B vendor fulfillment into a single cohesive system designed for modern retail operations.
             </p>
           </section>
@@ -165,7 +165,7 @@ export default function DocsPage() {
           {/* Section B: Quickstart Workflow */}
           <section id="quickstart" className="mb-16">
             <h2 className="mb-6 text-3xl font-semibold text-white">Quickstart Workflow</h2>
-            <p className="mb-8 text-slate-400 max-w-2xl">
+            <p className="mb-8 text-slate-400 sm:max-w-2xl w-[95vw] sm:w-full">
               Follow these three steps to launch your RetailMind AI workspace and begin leveraging neural intelligence for your supermarket operations.
             </p>
 
@@ -315,7 +315,7 @@ export default function DocsPage() {
               <span className="text-xs tracking-wider bg-violet-500/20 text-violet-500 px-3 py-1 rounded">CORE MODULES</span>
             </div>
             <h2 className="mb-6 text-3xl font-semibold text-white">Role-Based Access Control (RBAC)</h2>
-            <p className="mb-8 text-slate-400 max-w-2xl">
+            <p className="mb-8 text-slate-400 sm:max-w-2xl w-[95vw] sm:w-full">
               Enterprise-grade permission system defining strict access controls for supermarket operations, ensuring data security and operational integrity.
             </p>
 
@@ -426,7 +426,7 @@ export default function DocsPage() {
               <span className="text-xs tracking-wider bg-violet-500/20 text-violet-500 px-3 py-1 rounded">CORE MODULES</span>
             </div>
             <h2 className="mb-6 text-3xl font-semibold text-white">Purchase Orders & B2B Settlement Terms</h2>
-            <p className="mb-8 text-slate-400 max-w-2xl">
+            <p className="mb-8 text-slate-400 sm:max-w-2xl w-[95vw] sm:w-full">
               Flexible payment workflows designed for supermarket supply chains, accommodating various vendor terms while maintaining clear financial tracking.
             </p>
 
@@ -522,7 +522,7 @@ export default function DocsPage() {
               <span className="text-xs tracking-wider bg-violet-500/20 text-violet-500 px-3 py-1 rounded">CORE MODULES</span>
             </div>
             <h2 className="mb-6 text-3xl font-semibold text-white">Pricing & 14-Day Free Trial</h2>
-            <p className="mb-8 text-slate-400 max-w-2xl">
+            <p className="mb-8 text-slate-400 sm:max-w-2xl w-[95vw] sm:w-full">
               Transparent, self-serve pricing plans designed for supermarkets of all sizes, all featuring risk-free 14-day trials without credit card requirements.
             </p>
 

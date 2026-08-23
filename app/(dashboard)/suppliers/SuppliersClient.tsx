@@ -143,7 +143,7 @@ export default function SuppliersClient() {
                   Vendor Network Sync
                 </Badge>
               </div>
-              <p className="text-xs text-slate-300 font-medium mt-1 max-w-2xl leading-relaxed">
+              <p className="text-xs text-slate-300 font-medium mt-1 sm:max-w-2xl w-[95vw] sm:w-full leading-relaxed">
                 Monitor active vendor relationships, lead times, order fulfillment value, and supplier reliability metrics.
               </p>
             </div>
@@ -161,7 +161,7 @@ export default function SuppliersClient() {
       </div>
 
       {/* ── 2. TOP KPI METRICS ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Suppliers</p>

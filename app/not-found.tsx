@@ -25,7 +25,7 @@ export default function NotFound() {
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="max-w-lg w-full text-center space-y-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-xl relative z-10 overflow-hidden mx-auto my-auto"
+        className="sm:max-w-lg w-[95vw] sm:w-full w-full text-center space-y-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-xl relative z-10 overflow-hidden mx-auto my-auto"
       >
         {/* Glowing 404 Hero Illustration */}
         <div className="flex flex-col items-center gap-3 pt-2">
@@ -76,7 +76,7 @@ export default function NotFound() {
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">
             Or Jump Straight To:
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             <Link
               href="/inventory"
               className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/50 dark:border-slate-700/50"

@@ -114,7 +114,7 @@ export default function SuperAdminInventoryRules() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 border rounded-lg bg-red-500/10 border-red-500/30">
                   <div className="text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> High Stock-Out Risk

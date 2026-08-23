@@ -167,7 +167,7 @@ export default function PricingClient() {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             AI Dynamic Pricing & Margin Optimizer
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Real-time automated price markdowns for near-expiry inventory & margin boosts based on demand velocity, safety stock, and seasonality.
           </p>
         </div>

@@ -159,7 +159,7 @@ export default function SuperAdminPlans() {
                     <PackageSearch className="w-5 h-5 mr-2 text-indigo-500" /> Plan Details
                   </h4>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Plan Name</label>
                         <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Starter" />
@@ -187,7 +187,7 @@ export default function SuperAdminPlans() {
                   <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-4 flex items-center">
                     Pricing
                   </h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Monthly Price (LKR)</label>
                       <Input type="number" value={formData.monthlyPriceLkr} onChange={e => setFormData({ ...formData, monthlyPriceLkr: Number(e.target.value) })} />
@@ -206,7 +206,7 @@ export default function SuperAdminPlans() {
                   <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-4 flex items-center">
                     Usage Limits
                   </h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Active SKU Limit</label>
                       <Input type="number" value={formData.activeSkuLimit} onChange={e => setFormData({ ...formData, activeSkuLimit: Number(e.target.value) })} />

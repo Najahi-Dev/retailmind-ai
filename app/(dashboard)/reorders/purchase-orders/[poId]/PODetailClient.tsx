@@ -474,7 +474,7 @@ export default function PODetailClient({
       {po.status !== "cancelled" && (
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <CardContent className="pt-2 pb-2">
-            <div className="flex items-center justify-between relative max-w-4xl mx-auto py-2">
+            <div className="flex items-center justify-between relative sm:max-w-4xl w-[95vw] sm:w-full mx-auto py-2">
               <div className="absolute left-6 right-6 top-6 h-1 bg-slate-100 dark:bg-slate-800" />
               <div
                 className="absolute left-6 top-6 h-1 bg-indigo-600 transition-all duration-300"
@@ -789,7 +789,7 @@ export default function PODetailClient({
           <CardContent className="p-4 sm:p-6 space-y-6">
             {/* Payment Summary Bar */}
             {(po as any).totalValue > 0 && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {[
                   { label: "Total Value", value: formatCurrency(po.totalValue), color: "text-slate-900 dark:text-white" },
                   { label: "Amount Paid", value: formatCurrency((po as any).amountPaid ?? 0), color: "text-emerald-600 dark:text-emerald-400" },

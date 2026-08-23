@@ -201,7 +201,7 @@ export default function AddProductClient() {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Register New Product SKU
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Add a new item to your catalog, define safety stock thresholds, cost margins, and seed initial store inventory.
           </p>
         </div>

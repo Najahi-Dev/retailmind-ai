@@ -124,7 +124,7 @@ export default function CreateAlertDialog({ open, onOpenChange }: Props) {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Alert Category</Label>
               <Select value={form.type} onValueChange={(val) => set("type", val)}>

@@ -146,7 +146,7 @@ export default function SuperAdminPurchaseOrders() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 mt-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Tenant</p>
                 <p className="font-medium">{selectedPO?.orgName || selectedPO?.orgId}</p>

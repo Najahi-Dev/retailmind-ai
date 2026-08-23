@@ -256,7 +256,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
       </div>
 
       {/* ── 2. TOP KPI METRICS GRID ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">On Hand Inventory</p>
           <div className="flex items-baseline gap-1.5 mt-1">
@@ -809,7 +809,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">
                   {canViewFinancials && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           Cost Basis (LKR)

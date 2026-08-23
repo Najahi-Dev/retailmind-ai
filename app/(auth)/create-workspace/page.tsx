@@ -130,7 +130,7 @@ export default function CreateWorkspacePage() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 my-8">
-        <div className="w-full max-w-2xl space-y-8">
+        <div className="w-full sm:max-w-2xl w-[95vw] sm:w-full space-y-8">
           {/* Header Title Section */}
           <div className="text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-50/90 via-violet-50/90 to-purple-50/90 dark:from-indigo-950/70 dark:via-violet-950/50 dark:to-purple-950/70 border border-indigo-500/25 dark:border-indigo-500/40 shadow-sm shadow-indigo-500/10 backdrop-blur-md">
@@ -146,7 +146,7 @@ export default function CreateWorkspacePage() {
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Create your workspace
             </h1>
-            <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-[15px] max-w-xl mx-auto font-medium leading-relaxed">
+            <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-[15px] sm:max-w-xl w-[95vw] sm:w-full mx-auto font-medium leading-relaxed">
               Streamline stock management, automated reorders &amp; POS analytics
             </p>
           </div>

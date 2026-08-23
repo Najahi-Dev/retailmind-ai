@@ -122,7 +122,7 @@ export function DashboardClient() {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Supermarket Chain Command Hub
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Live inventory monitoring, AI demand prediction accuracy, automated PO generation, and dynamic price cuts across branches.
           </p>
         </div>

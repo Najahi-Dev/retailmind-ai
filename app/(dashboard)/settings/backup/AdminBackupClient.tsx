@@ -251,7 +251,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
                   Convex Engine
                 </Badge>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full leading-relaxed">
                 Export complete system backups, restore datasets from JSON files, or perform permanent database reset operations. Restricted to Administrators.
               </p>
             </div>
@@ -260,7 +260,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
       </div>
 
       {/* ── REAL-TIME METRICS GRID ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
@@ -431,7 +431,7 @@ export default function AdminBackupClient({ role, userEmail }: Props) {
                 <p className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
                   <FileCheck className="w-3.5 h-3.5" /> Backup Ready to Restore:
                 </p>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-slate-600 dark:text-slate-400">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-0.5 text-slate-600 dark:text-slate-400">
                   <span>• Products: <b>{importPreview.productsCount}</b></span>
                   <span>• Inventory: <b>{importPreview.inventoryCount}</b></span>
                   <span>• Suppliers: <b>{importPreview.suppliersCount}</b></span>

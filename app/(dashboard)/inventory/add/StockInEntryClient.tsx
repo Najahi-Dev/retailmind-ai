@@ -133,7 +133,7 @@ export default function StockInEntryClient({ role = "admin" }: Props) {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Record Inward Stock Shipment
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Log restocks, purchase order deliveries, or supplier inward shipments with lot numbers and expiry dates.
           </p>
         </div>

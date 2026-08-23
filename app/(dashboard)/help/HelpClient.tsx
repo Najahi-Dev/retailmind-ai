@@ -379,7 +379,7 @@ export default function HelpClient({ user: initialUser }: Props) {
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2 max-w-2xl">
+          <div className="space-y-2 sm:max-w-2xl w-[95vw] sm:w-full">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge className="text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2.5 py-0.5">
                 <LifeBuoyIcon className="w-3.5 h-3.5 mr-1 text-indigo-400" />
@@ -399,7 +399,7 @@ export default function HelpClient({ user: initialUser }: Props) {
             </p>
 
             {/* Search Input Bar */}
-            <div className="relative pt-2 max-w-xl">
+            <div className="relative pt-2 sm:max-w-xl w-[95vw] sm:w-full">
               <SearchIcon className="w-4 h-4 absolute left-3.5 top-[22px] text-slate-400" />
               <Input
                 value={searchQuery}
@@ -432,7 +432,7 @@ export default function HelpClient({ user: initialUser }: Props) {
                 </Button>
               </DialogTrigger>
 
-              <DialogContent className="rounded-xl border-slate-200 dark:border-slate-800 max-w-lg">
+              <DialogContent className="rounded-xl border-slate-200 dark:border-slate-800 sm:max-w-lg w-[95vw] sm:w-full">
                 <DialogHeader>
                   <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <TicketIcon className="w-5 h-5 text-indigo-500" />
@@ -457,7 +457,7 @@ export default function HelpClient({ user: initialUser }: Props) {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category</Label>
                       <Select value={ticketCategory} onValueChange={setTicketCategory}>
@@ -766,7 +766,7 @@ export default function HelpClient({ user: initialUser }: Props) {
 
       {/* ── ADMIN / MANAGER TICKET RESPONSE & APPROVAL DIALOG ── */}
       <Dialog open={!!respondingTicket} onOpenChange={(open) => !open && setRespondingTicket(null)}>
-        <DialogContent className="rounded-xl border-slate-200 dark:border-slate-800 max-w-lg">
+        <DialogContent className="rounded-xl border-slate-200 dark:border-slate-800 sm:max-w-lg w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <MessageSquareTextIcon className="w-5 h-5 text-indigo-500" />
@@ -999,7 +999,7 @@ export default function HelpClient({ user: initialUser }: Props) {
 
       {/* ── 6. AI ASSISTANT DRAWER / DIALOG ── */}
       <Dialog open={isAiOpen} onOpenChange={setIsAiOpen}>
-        <DialogContent className="rounded-xl border-slate-200 dark:border-slate-800 max-w-lg p-0 overflow-hidden flex flex-col h-[520px]">
+        <DialogContent className="rounded-xl border-slate-200 dark:border-slate-800 sm:max-w-lg w-[95vw] sm:w-full p-0 overflow-hidden flex flex-col h-[520px]">
           <div className="p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-indigo-500/20">
             <div className="flex items-center gap-3">
               <div className="size-9 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">

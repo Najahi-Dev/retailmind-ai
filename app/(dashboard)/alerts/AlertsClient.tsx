@@ -173,7 +173,7 @@ export default function AlertsClient({ role }: Props) {
                   Real-time Stream
                 </Badge>
               </div>
-              <p className="text-xs text-slate-300 font-medium mt-1 max-w-2xl leading-relaxed">
+              <p className="text-xs text-slate-300 font-medium mt-1 sm:max-w-2xl w-[95vw] sm:w-full leading-relaxed">
                 Monitor critical stock outages, low inventory thresholds, overstock warnings, and automated system alerts.
               </p>
             </div>
@@ -199,7 +199,7 @@ export default function AlertsClient({ role }: Props) {
       </div>
 
       {/* ── 2. TOP KPI STAT CARDS ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Unread */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between">

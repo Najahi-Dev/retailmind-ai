@@ -253,7 +253,7 @@ export default function Home() {
         <div className="absolute top-1/3 left-1/3 w-[450px] h-[450px] bg-violet-600/15 rounded-full blur-[130px] pointer-events-none -z-10" />
 
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-6">
+          <div className="text-center sm:max-w-3xl w-[95vw] sm:w-full mx-auto space-y-6">
             {/* Top Centered Logo Icon */}
             <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.9 }}
@@ -356,7 +356,7 @@ export default function Home() {
               {/* Dashboard Content Mockup */}
               <div className="p-6 sm:p-8 space-y-6">
                 {/* Stats Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
                     <p className="text-xs text-slate-400">30-Day Demand Forecast</p>
                     <p className="text-xl sm:text-2xl font-bold text-white mt-1">+24.8%</p>
@@ -468,7 +468,7 @@ export default function Home() {
       {/* 3. PROBLEM SECTION */}
       <section className="py-20 bg-slate-100/70 dark:bg-slate-900/50 border-y border-slate-200 dark:border-slate-800/80 relative transition-colors">
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+          <div className="text-center sm:max-w-2xl w-[95vw] sm:w-full mx-auto mb-16 space-y-3">
             <h2 className="font-heading text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
               The Problem With Manual Inventory
             </h2>
@@ -541,7 +541,7 @@ export default function Home() {
       {/* 4. FEATURES SECTION */}
       <section id="features" className="py-24 relative">
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto mb-20 space-y-4 pt-4">
+          <div className="text-center sm:max-w-4xl w-[95vw] sm:w-full mx-auto mb-20 space-y-4 pt-4">
             <Badge variant="outline" className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 px-3.5 py-1 text-xs">
               Powerful Capabilities
             </Badge>
@@ -668,7 +668,7 @@ export default function Home() {
       {/* 5. HOW IT WORKS SECTION */}
       <section id="how-it-works" className="py-24 bg-slate-100/70 dark:bg-slate-900/40 border-y border-slate-200 dark:border-slate-800/80 transition-colors">
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-20 space-y-3">
+          <div className="text-center sm:max-w-2xl w-[95vw] sm:w-full mx-auto mb-20 space-y-3">
             <h2 className="font-heading text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
               How RetailMind AI Works
             </h2>
@@ -783,7 +783,7 @@ export default function Home() {
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left Content */}
-            <div className="space-y-8 max-w-2xl">
+            <div className="space-y-8 sm:max-w-2xl w-[95vw] sm:w-full">
               <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide gap-2">
                 <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Supercharge Your Supermarket</span>
@@ -839,7 +839,7 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20 rounded-full blur-3xl group-hover:blur-2xl transition-all duration-700" />
               
               {/* Floating Cards Mockup */}
-              <div className="relative w-full max-w-md transform-gpu transition-transform duration-700 lg:group-hover:rotate-y-[-10deg] lg:group-hover:rotate-x-[5deg]">
+              <div className="relative w-full sm:max-w-md w-[95vw] sm:w-full transform-gpu transition-transform duration-700 lg:group-hover:rotate-y-[-10deg] lg:group-hover:rotate-x-[5deg]">
                 <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 rounded-2xl blur opacity-20 dark:opacity-30 group-hover:opacity-40 dark:group-hover:opacity-70 transition duration-1000" />
                 
                 <div className="relative rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-700 shadow-2xl p-6 space-y-6 backdrop-blur-xl">
@@ -966,7 +966,7 @@ export default function Home() {
 
       {/* Interactive Watch Demo Dialog */}
       <Dialog open={demoOpen} onOpenChange={setDemoOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-3xl">
+        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-3xl w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold font-heading flex items-center gap-2">
               <BrainCircuit className="w-5 h-5 text-indigo-400" />
@@ -982,7 +982,7 @@ export default function Home() {
             </div>
             <div>
               <h4 className="text-base font-semibold text-white">Interactive Product Preview</h4>
-              <p className="text-xs text-slate-400 mt-1 max-w-md">
+              <p className="text-xs text-slate-400 mt-1 sm:max-w-md w-[95vw] sm:w-full">
                 Experience real-time AI inventory tracking, automated PO generation, and 30-day demand predictions.
               </p>
             </div>

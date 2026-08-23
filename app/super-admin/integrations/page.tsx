@@ -120,7 +120,7 @@ export default function SuperAdminIntegrations() {
       </div>
 
       <Tabs defaultValue="connections" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 sm:max-w-md w-[95vw] sm:w-full">
           <TabsTrigger value="connections" className="flex items-center gap-2"><Plug className="size-4"/> ERP & POS</TabsTrigger>
           <TabsTrigger value="webhooks" className="flex items-center gap-2"><Webhook className="size-4"/> Webhooks</TabsTrigger>
           <TabsTrigger value="apikeys" className="flex items-center gap-2"><KeyRound className="size-4"/> API Keys</TabsTrigger>

@@ -175,7 +175,7 @@ export default function SuperAdminAITelemetry() {
             </CardHeader>
             <CardContent className="pt-6">
               <form onSubmit={handleSavePrompt} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Prompt Name</Label>
                     <Input 

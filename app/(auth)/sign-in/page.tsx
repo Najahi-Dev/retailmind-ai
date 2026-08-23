@@ -148,7 +148,7 @@ export default function SignInPage() {
         <ModeToggle />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-6 max-w-md w-full">
+      <div className="relative z-10 flex flex-col items-center gap-6 sm:max-w-md w-[95vw] sm:w-full w-full">
         <Logo size="lg" href="/" layout="vertical" />
 
         <div className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-2xl space-y-6">
@@ -162,7 +162,7 @@ export default function SignInPage() {
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg">
             <button
               type="button"
               onClick={() => { setMode("signin"); setError(null); }}
@@ -301,7 +301,7 @@ export default function SignInPage() {
 
       {/* ── PENDING APPROVAL POPUP MODAL ── */}
       <Dialog open={showPendingModal} onOpenChange={setShowPendingModal}>
-        <DialogContent className="rounded-2xl border-slate-200 dark:border-slate-800 max-w-md text-center p-6 space-y-4 shadow-2xl">
+        <DialogContent className="rounded-2xl border-slate-200 dark:border-slate-800 sm:max-w-md w-[95vw] sm:w-full text-center p-6 space-y-4 shadow-2xl">
           <div className="mx-auto size-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center">
             <ClockIcon className="w-7 h-7 animate-pulse" />
           </div>
@@ -332,7 +332,7 @@ export default function SignInPage() {
 
       {/* ── ACCOUNT SUSPENDED POPUP MODAL ── */}
       <Dialog open={showSuspendedModal} onOpenChange={setShowSuspendedModal}>
-        <DialogContent className="rounded-2xl border-amber-200 dark:border-amber-900/50 max-w-md text-center p-6 space-y-4 shadow-2xl bg-white dark:bg-slate-900">
+        <DialogContent className="rounded-2xl border-amber-200 dark:border-amber-900/50 sm:max-w-md w-[95vw] sm:w-full text-center p-6 space-y-4 shadow-2xl bg-white dark:bg-slate-900">
           <div className="mx-auto size-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center">
             <AlertCircleIcon className="w-7 h-7 animate-pulse text-amber-500" />
           </div>

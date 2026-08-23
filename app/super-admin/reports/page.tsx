@@ -50,7 +50,7 @@ export default function SuperAdminReports() {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="relative z-10">
           <h1 className="text-2xl font-bold tracking-tight">Platform Analytics</h1>
-          <p className="text-indigo-200 mt-1 max-w-xl text-sm leading-relaxed">
+          <p className="text-indigo-200 mt-1 sm:max-w-xl w-[95vw] sm:w-full text-sm leading-relaxed">
             Holistic view of the RetailMind AI ecosystem performance and scale. Monitor tenant adoption, financial metrics, and overall system health in real-time.
           </p>
         </div>

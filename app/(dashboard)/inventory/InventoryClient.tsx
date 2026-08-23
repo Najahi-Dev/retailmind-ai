@@ -250,7 +250,7 @@ export default function InventoryClient({ role }: Props) {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Supermarket Inventory Control Center
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Real-time stock valuation, automated safety thresholds, branch transfers, and stock movement logs across 1,001 active SKUs.
           </p>
         </div>

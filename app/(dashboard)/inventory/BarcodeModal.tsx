@@ -36,7 +36,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl text-center space-y-4">
+      <DialogContent className="sm:max-w-md w-[95vw] sm:w-full p-6 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl text-center space-y-4">
         <DialogHeader className="flex flex-col items-center">
           <div className="size-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2">
             <TagIcon className="w-6 h-6" />

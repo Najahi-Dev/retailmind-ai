@@ -262,7 +262,7 @@ export default function SupplierDetailClient({
       </div>
 
       {/* ── 2. TOP KPI METRICS GRID ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Orders</p>
           <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums mt-2">

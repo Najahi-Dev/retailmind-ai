@@ -13,7 +13,7 @@ export default function AccessDeniedPage() {
       <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-2">
         403 - Access Restricted
       </h1>
-      <p className="text-slate-600 dark:text-slate-400 max-w-md mb-8 text-sm">
+      <p className="text-slate-600 dark:text-slate-400 sm:max-w-md w-[95vw] sm:w-full mb-8 text-sm">
         You do not have permission to view this section of RetailMind AI. Please contact your system administrator if you believe this is an error.
       </p>
       <Link href="/dashboard">

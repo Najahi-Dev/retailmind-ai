@@ -223,7 +223,7 @@ export default function SettingsPage() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2 max-w-2xl">
+          <div className="space-y-2 sm:max-w-2xl w-[95vw] sm:w-full">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge className="text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2.5 py-0.5">
                 <Settings2 className="w-3.5 h-3.5 mr-1 text-indigo-400" />
@@ -250,7 +250,7 @@ export default function SettingsPage() {
             </p>
 
             {/* Search Input Bar */}
-            <div className="relative pt-2 max-w-xl">
+            <div className="relative pt-2 sm:max-w-xl w-[95vw] sm:w-full">
               <SearchIcon className="w-4 h-4 absolute left-3.5 top-[22px] text-slate-400" />
               <Input
                 value={searchQuery}

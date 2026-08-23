@@ -78,7 +78,7 @@ export function ForecastingClient() {
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             AI Demand Forecasting & Analytics
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 sm:max-w-2xl w-[95vw] sm:w-full">
             Hyper-accurate future demand predictions powered by Prophet and XGBoost. Prevent stockouts, optimize inventory, and capitalize on seasonal trends.
           </p>
         </div>
