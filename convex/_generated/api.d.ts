@@ -27,6 +27,7 @@ import type * as getOrgsTest from "../getOrgsTest.js";
 import type * as guardrails from "../guardrails.js";
 import type * as inventory from "../inventory.js";
 import type * as lib_roleGuard from "../lib/roleGuard.js";
+import type * as mailer from "../mailer.js";
 import type * as migrations_multiTenantMigration from "../migrations/multiTenantMigration.js";
 import type * as organizations from "../organizations.js";
 import type * as plansAdmin from "../plansAdmin.js";
@@ -78,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   guardrails: typeof guardrails;
   inventory: typeof inventory;
   "lib/roleGuard": typeof lib_roleGuard;
+  mailer: typeof mailer;
   "migrations/multiTenantMigration": typeof migrations_multiTenantMigration;
   organizations: typeof organizations;
   plansAdmin: typeof plansAdmin;

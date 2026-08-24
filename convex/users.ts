@@ -302,9 +302,24 @@ export const createUser = mutation({
   },
   handler: async (ctx, args) => {
     let orgId = undefined;
+    let inviterName = "System Admin";
+    let inviterEmail = "admin@retailmind.ai";
+
     if (args.token) {
       const authResult = await requireCallerOrg(ctx, args.token, ["admin"]);
       orgId = authResult.orgId;
+      
+      const session = await ctx.db
+        .query("sessions")
+        .withIndex("by_token", (q) => q.eq("token", args.token!))
+        .first();
+      if (session) {
+        const caller = await ctx.db.get(session.userId);
+        if (caller) {
+          inviterName = caller.name;
+          inviterEmail = caller.email;
+        }
+      }
     }
 
     const emailClean = args.email.trim().toLowerCase();
@@ -348,12 +363,14 @@ export const createUser = mutation({
     }
 
     if (args.sendEmail) {
-      await ctx.scheduler.runAfter(0, api.communications.sendUserCredentialsEmail, {
-        targetEmail: emailClean,
-        userName: args.name.trim(),
-        password: rawPassword,
-        orgName,
-        role: args.role,
+      await ctx.scheduler.runAfter(0, api.mailer.sendWorkspaceUserInviteEmail, {
+        toEmail: emailClean,
+        toName: args.name.trim(),
+        inviterName: inviterName,
+        inviterEmail: inviterEmail,
+        workspaceName: orgName || "RetailMind AI",
+        temporaryPassword: rawPassword,
+        loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://app.retailmind.ai/login",
       });
     }
 
