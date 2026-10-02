@@ -1,46 +1,148 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛍️ RetailMind AI — Intelligent Retail & Inventory Management Platform
 
-## Getting Started
+An enterprise-grade, AI-driven retail management and predictive inventory platform. **RetailMind AI** empowers retailers to eliminate stockouts, forecast demand, automate purchase reorders, and manage multi-tenant operations with real-time reactive sync.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ✨ Features
+
+- 📊 **Real-time Inventory Dashboard**: Live tracking of stock levels, turnover rates, SKU movements, and inventory valuation powered by Convex's reactive engine.
+- 🤖 **AI-Driven Demand Forecasting**: Python FastAPI microservice utilizing machine learning models to forecast SKU demand, identify trends, and calculate optimal stock buffers.
+- 🔄 **Automated Reorder Engine**: Dynamic threshold calculations, low-stock alerts, automated purchase order generation, and reorder workflow approvals.
+- 👥 **Multi-Tenant & Role-Based Access Control (RBAC)**: Secure multi-organization architecture supporting Super Admin, Organization Admin, Manager, and Staff roles.
+- 🛡️ **Super Admin Control Center**: System-wide telemetry, tenant lifecycle management, AI operation monitors, audit trails, and subscription controls.
+- 💳 **Stripe Billing & Subscriptions**: Tiered subscription plans (Starter, Growth, Enterprise) with Stripe Checkout, Customer Billing Portal, and webhook sync.
+- 🔔 **Intelligent Alerts & Communication**: Automated threshold notifications and email delivery via Resend, Brevo, and Gmail SMTP.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router), [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/) |
+| **Styling & UI** | [Tailwind CSS v4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Framer Motion](https://www.framer.com/motion/), [Recharts](https://recharts.org/) |
+| **Backend & Database** | [Convex](https://convex.dev/) (Reactive TypeScript backend, realtime database, crons, scheduled actions) |
+| **AI Microservice** | [Python 3.12](https://www.python.org/), [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/), [Scikit-learn](https://scikit-learn.org/), [Pandas](https://pandas.pydata.org/) |
+| **Authentication** | Custom JWT authentication with role-based session authorization |
+| **Payments** | [Stripe](https://stripe.com/) (Checkout Sessions, Billing Portal, Webhooks) |
+| **Notifications** | [Resend](https://resend.com/), [Nodemailer](https://nodemailer.com/), [Brevo](https://www.brevo.com/) |
+
+---
+
+## 🔐 Authentication Flow
+
+<img width="1440" height="1840" alt="RetailMind AI Authentication Flow" src="https://github.com/user-attachments/assets/57a40b80-196a-4da1-bd0f-566c762c4c69" />
+
+---
+
+## 📁 Repository Structure
+
+```text
+retailmind-ai/
+├── app/                      # Next.js App Router (pages, layouts, API routes)
+│   ├── (auth)/               # Login, registration, and onboarding routes
+│   ├── (dashboard)/          # Authenticated app (inventory, forecasts, reorders, suppliers)
+│   ├── super-admin/          # Super admin system operations and tenant control
+│   └── api/                  # Serverless route handlers (webhooks, stripe, notifications)
+├── convex/                   # Convex reactive backend functions, schemas, crons, and auth
+├── ai-service/               # Python FastAPI machine learning & forecasting microservice
+│   ├── routers/              # API endpoints for forecasting & dynamic pricing
+│   ├── services/             # ML prediction pipelines & data processors
+│   └── main.py               # FastAPI application entry point
+├── components/               # Reusable UI and domain components
+├── lib/                      # Shared client utilities, helpers, and configurations
+└── public/                   # Static assets & brand media
 ```
 
-To run Convex locally on Windows, use the repo-safe wrapper instead of calling `npx convex dev` directly:
+---
 
+## 🚀 Getting Started
+
+### 1. Prerequisites
+
+- **Node.js**: `v20+` or `v22+`
+- **Python**: `3.10+` (for AI microservice)
+- **Package Manager**: `npm` (or `pnpm` / `yarn`)
+
+### 2. Clone the Repository & Install Dependencies
+
+```bash
+# Clone the repository
+git clone https://github.com/Najahi-Dev/retailmind-ai.git
+cd retailmind-ai
+
+# Install Node.js dependencies
+npm install
+```
+
+### 3. Configure Environment Variables
+
+Copy the example environment template to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Open `.env.local` and configure:
+- `CONVEX_DEPLOYMENT` / `NEXT_PUBLIC_CONVEX_URL`
+- `JWT_SECRET`
+- `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` / `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY` or `GMAIL_EMAIL` & `GMAIL_APP_PASSWORD`
+- `AI_SERVICE_URL` (default: `http://localhost:8000`)
+
+---
+
+### 4. Running the Development Environment
+
+You can run the three core services simultaneously:
+
+#### A. Convex Reactive Backend
 ```bash
 npm run dev:convex
 ```
 
-### Authentication Flow
+#### B. AI Forecasting Microservice (Python / FastAPI)
+```bash
+cd ai-service
 
-<img width="1440" height="1840" alt="image" src="https://github.com/user-attachments/assets/57a40b80-196a-4da1-bd0f-566c762c4c69" />
+# Create and activate virtual environment
+python -m venv venv
+# On Windows:
+.\venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# Install requirements
+pip install -r requirements.txt
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Start the service on port 8000
+python main.py
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+#### C. Next.js Frontend Application
+```bash
+# In the root directory
+npm run dev
+```
 
-## Learn More
+Visit [http://localhost:3000](http://localhost:3000) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📜 Available Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | Description |
+|---|---|
+| `npm run dev` | Starts the Next.js development server on `http://localhost:3000` |
+| `npm run dev:convex` | Starts the Convex backend sync process in a repo-safe sandbox |
+| `npm run build` | Builds the production Next.js application bundle |
+| `npm run start` | Runs the Next.js production server |
+| `npm run lint` | Runs ESLint checks across the codebase |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📄 License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is proprietary and maintained by the **RetailMind AI** development team.
+
