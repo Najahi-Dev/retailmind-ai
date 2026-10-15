@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Input } from "@/components/ui/input";
@@ -21,17 +20,11 @@ import {
 import {
   LockIcon,
   MailIcon,
-  UserIcon,
   Loader2Icon,
   AlertCircleIcon,
   ShieldCheckIcon,
-  UserPlusIcon,
-  LogInIcon,
-  EyeIcon,
-  EyeOffIcon,
   ClockIcon,
-  ShieldAlertIcon,
-  PhoneIcon,
+  ArrowLeft,
 } from "lucide-react";
 
 const ROLE_DESTINATIONS: Record<string, string> = {
@@ -45,15 +38,10 @@ const ROLE_DESTINATIONS: Record<string, string> = {
 export default function SignInPage() {
   const router = useRouter();
   const { login, currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
-  const registerUserAction = useAction(api.auth.registerUser);
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [role, setRole] = useState<string>("staff");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -83,32 +71,12 @@ export default function SignInPage() {
       return;
     }
 
-    if (mode === "signup" && !name.trim()) {
-      setError("Please enter your full name.");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      if (mode === "signin") {
-        await login(email, password);
-      } else {
-        const res = await registerUserAction({
-          name: name.trim(),
-          email: email.trim(),
-          password: password.trim(),
-          phone: phone.trim() || undefined,
-        });
-
-        if (res && res.isPending) {
-          setShowPendingModal(true);
-          setMode("signin");
-          setLoading(false);
-        }
-      }
+      await login(email, password);
     } catch (err: any) {
       let msg = err?.message || "Authentication failed. Please try again.";
       msg = msg
@@ -143,6 +111,29 @@ export default function SignInPage() {
         <div className="absolute bottom-[20%] right-[20%] w-[450px] h-[450px] rounded-full bg-purple-600/15 dark:bg-purple-600/20 blur-[140px] animate-pulse-glow" />
       </div>
 
+      {/* Top Floating Back Button */}
+      <div className="fixed top-6 left-6 z-50">
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+          className="border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all shadow-sm text-xs font-semibold gap-1.5"
+        >
+          <Link
+            href="/"
+            onClick={(e) => {
+              if (typeof window !== "undefined" && window.history.state && window.history.state.idx > 0) {
+                e.preventDefault();
+                router.back();
+              }
+            }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </Link>
+        </Button>
+      </div>
+
       {/* Top Floating Theme Toggle */}
       <div className="fixed top-6 right-6 z-50">
         <ModeToggle />
@@ -154,37 +145,11 @@ export default function SignInPage() {
         <div className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-2xl space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-2">
-              {mode === "signin" ? "Welcome Back" : "Create Account"} <ShieldCheckIcon className="w-5 h-5 text-indigo-500" />
+              Welcome Back <ShieldCheckIcon className="w-5 h-5 text-indigo-500" />
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {mode === "signin" ? "Sign in to RetailMind AI Supermarket Management" : "Register a new user account on RetailMind AI"}
+              Sign in to RetailMind AI Supermarket Management
             </p>
-          </div>
-
-          {/* Mode Switcher Tabs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg">
-            <button
-              type="button"
-              onClick={() => { setMode("signin"); setError(null); }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                mode === "signin"
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <LogInIcon className="w-3.5 h-3.5" /> Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode("signup"); setError(null); }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                mode === "signup"
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <UserPlusIcon className="w-3.5 h-3.5" /> Create Account
-            </button>
           </div>
 
           {successMessage && (
@@ -202,39 +167,6 @@ export default function SignInPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Full Name</Label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="John Doe"
-                      required={mode === "signup"}
-                      className="h-11 text-xs rounded-xl pl-10 border-slate-200 dark:border-slate-800"
-                    />
-                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mobile Number</Label>
-                  <div className="relative">
-                    <Input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+94 77 123 4567"
-                      className="h-11 text-xs rounded-xl pl-10 border-slate-200 dark:border-slate-800"
-                    />
-                    <PhoneIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none" />
-                  </div>
-                </div>
-              </>
-            )}
-
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Email Address</Label>
               <div className="relative">
@@ -265,8 +197,6 @@ export default function SignInPage() {
               </div>
             </div>
 
-
-
             <Button
               type="submit"
               disabled={loading || authLoading}
@@ -274,17 +204,30 @@ export default function SignInPage() {
             >
               {loading ? (
                 <>
-                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> {mode === "signin" ? "Signing In..." : "Creating Account..."}
+                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> Signing In...
                 </>
-              ) : mode === "signin" ? (
-                "Sign In to Platform"
               ) : (
-                "Create New Account"
+                "Sign In to Platform"
               )}
             </Button>
           </form>
 
-                  </div>
+          <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800/60">
+            <Link
+              href="/"
+              onClick={(e) => {
+                if (typeof window !== "undefined" && window.history.state && window.history.state.idx > 0) {
+                  e.preventDefault();
+                  router.back();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Home</span>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* ── PENDING APPROVAL POPUP MODAL ── */}
