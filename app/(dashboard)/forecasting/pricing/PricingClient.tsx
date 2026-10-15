@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Card,
@@ -84,6 +84,13 @@ export default function PricingClient() {
   const stats = useQuery(api.pricing.getPricingStats, { token: token ?? undefined });
   const approve = useMutation(api.pricing.approvePriceSuggestion);
   const reject = useMutation(api.pricing.rejectPriceSuggestion);
+  const cleanup = useMutation(api.pricing.cleanupDuplicatePriceSuggestions);
+
+  useEffect(() => {
+    if (token) {
+      cleanup({ token }).catch(() => {});
+    }
+  }, [token, cleanup]);
 
   const [processing, setProcessing] = useState<string | null>(null);
 
@@ -108,7 +115,7 @@ export default function PricingClient() {
   const handleApprove = async (id: Id<"priceSuggestions">) => {
     setProcessing(id);
     try {
-      await approve({ suggestionId: id });
+      await approve({ token: token ?? undefined, suggestionId: id });
       toast.success("AI Price update applied successfully!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to apply price");
@@ -120,7 +127,7 @@ export default function PricingClient() {
   const handleReject = async (id: Id<"priceSuggestions">) => {
     setProcessing(id);
     try {
-      await reject({ suggestionId: id });
+      await reject({ token: token ?? undefined, suggestionId: id });
       toast.success("Price suggestion dismissed");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reject suggestion");

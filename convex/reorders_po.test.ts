@@ -376,4 +376,111 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
     expect(po?.paymentStatus).toBe("PAID");
     expect(po?.amountPaid).toBe(6000);
   });
+
+  it("prevents duplicate reorder suggestions for the same product on repeated cron runs and deduplicates views", async () => {
+    // 1. Create a product with low stock
+    const productId = await t.mutation(api.inventory.createProduct, {
+      token: adminToken,
+      sku: "SKU-GTAV",
+      name: "GTA V Game",
+      unit: "pcs",
+      costPrice: 2500,
+      sellingPrice: 3500,
+      reorderPoint: 20,
+      safetyStock: 5,
+      trackBatches: false,
+      categoryId,
+      primarySupplierId: supplierId,
+      initialLocationId: warehouseId,
+      initialQuantity: 3,
+    });
+
+    // 2. First generation run: creates 1 suggestion
+    const firstRun = await t.mutation(api.reorder.generateReorderSuggestionsPublic, {
+      token: adminToken,
+    });
+    expect(firstRun.created).toBe(1);
+
+    // 3. Second generation run (like the next night): should skip because pending suggestion exists
+    const secondRun = await t.mutation(api.reorder.generateReorderSuggestionsPublic, {
+      token: adminToken,
+    });
+    expect(secondRun.created).toBe(0);
+
+    // 4. Manually insert older duplicate suggestions (simulating past bug where daily crons created duplicates)
+    await t.run(async (ctx) => {
+      // Duplicate 1 (Oct 16)
+      await ctx.db.insert("reorderSuggestions", {
+        orgId,
+        productId,
+        preferredSupplierId: supplierId,
+        urgency: "critical",
+        suggestedQuantity: 37,
+        estimatedCost: 37 * 2500,
+        orderByDate: Date.now() - 2 * 86400000,
+        rationale: "Automated reorder suggestion",
+        status: "pending",
+        aiGenerated: true,
+        createdAt: Date.now() - 2 * 86400000,
+      });
+      // Duplicate 2 (Oct 17)
+      await ctx.db.insert("reorderSuggestions", {
+        orgId,
+        productId,
+        preferredSupplierId: supplierId,
+        urgency: "critical",
+        suggestedQuantity: 37,
+        estimatedCost: 37 * 2500,
+        orderByDate: Date.now() - 1 * 86400000,
+        rationale: "Automated reorder suggestion",
+        status: "pending",
+        aiGenerated: true,
+        createdAt: Date.now() - 1 * 86400000,
+      });
+    });
+
+    // 5. Query suggestions: must return only 1 deduplicated card for this product
+    const suggestions = await t.query(api.reorder.getReorderSuggestions, {
+      token: adminToken,
+      status: "pending",
+    });
+    const gtaSuggestions = suggestions.filter((s) => s.productId === productId);
+    expect(gtaSuggestions.length).toBe(1);
+
+    // 6. Query stats: pending count must reflect unique products (1), not 3
+    const stats = await t.query(api.reorder.getReorderStats, {
+      token: adminToken,
+    });
+    expect(stats.pending).toBe(1);
+    expect(stats.critical).toBe(1);
+
+    // 7. Cleanup mutation should remove the 2 older duplicates from DB
+    const cleanupRes = await t.mutation(api.reorder.cleanupDuplicateSuggestions, {
+      token: adminToken,
+    });
+    expect(cleanupRes.cleaned).toBe(2);
+
+    // 8. Re-query the active suggestion after cleanup and approve it
+    const activeSuggestions = await t.query(api.reorder.getReorderSuggestions, {
+      token: adminToken,
+      status: "pending",
+    });
+    const activeGta = activeSuggestions.find((s) => s.productId === productId);
+    expect(activeGta).toBeDefined();
+
+    await t.mutation(api.reorder.approveSuggestion, {
+      token: adminToken,
+      suggestionId: activeGta!._id,
+      supplierId,
+      quantity: 37,
+      unitCost: 2500,
+      paymentMethod: "CASH_ON_DELIVERY",
+    });
+
+    // 9. Re-run generator while PO is active (draft) -> should NOT create new suggestion
+    const thirdRun = await t.mutation(api.reorder.generateReorderSuggestionsPublic, {
+      token: adminToken,
+    });
+    expect(thirdRun.created).toBe(0);
+  });
 });

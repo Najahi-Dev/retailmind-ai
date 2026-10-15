@@ -243,10 +243,25 @@ export const getReorderSuggestions = query({
       : await ctx.db.query("reorderSuggestions").order("desc").collect();
 
     suggestions = suggestions.filter((s) => s.orgId === caller.orgId);
+    suggestions.sort((a, b) => (b.createdAt ?? b._creationTime) - (a.createdAt ?? a._creationTime));
+
+    // Deduplicate pending suggestions by productId, keeping the newest one
+    const seenPendingProducts = new Set<string>();
+    const deduplicatedSuggestions: typeof suggestions = [];
+
+    for (const s of suggestions) {
+      if (s.status === "pending") {
+        if (seenPendingProducts.has(s.productId)) {
+          continue;
+        }
+        seenPendingProducts.add(s.productId);
+      }
+      deduplicatedSuggestions.push(s);
+    }
 
     // Attach product + supplier info
     const result = await Promise.all(
-      suggestions.map(async (s) => {
+      deduplicatedSuggestions.map(async (s) => {
         const product = await ctx.db.get(s.productId);
         const supplier = s.preferredSupplierId
           ? await ctx.db.get(s.preferredSupplierId)
@@ -299,10 +314,10 @@ export const getReorderDetail = query({
       : null;
     const inventory = product
       ? await ctx.db
-          .query("inventory")
-          .withIndex("by_product", (q) => q.eq("productId", s.productId))
-          .first()
-      : null;
+              .query("inventory")
+              .withIndex("by_product", (q) => q.eq("productId", s.productId))
+              .first()
+          : null;
     const allSuppliers = await ctx.db
       .query("suppliers")
       .filter((q) => q.eq(q.field("status"), "active"))
@@ -396,6 +411,22 @@ export const approveSuggestion = mutation({
       estimatedCost: totalValue,
     });
 
+    // Clean up any remaining duplicate pending suggestions for this same product
+    const otherPending = await ctx.db
+      .query("reorderSuggestions")
+      .withIndex("by_product", (q) => q.eq("productId", suggestion.productId))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("_id"), args.suggestionId),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .collect();
+
+    for (const duplicate of otherPending) {
+      await ctx.db.delete(duplicate._id);
+    }
+
     return { poId, poNumber };
   },
 });
@@ -418,6 +449,23 @@ export const dismissSuggestion = mutation({
       status: "dismissed",
       dismissedReason: args.reason,
     });
+
+    if (suggestion) {
+      const otherPending = await ctx.db
+        .query("reorderSuggestions")
+        .withIndex("by_product", (q) => q.eq("productId", suggestion.productId))
+        .filter((q) =>
+          q.and(
+            q.neq(q.field("_id"), args.suggestionId),
+            q.eq(q.field("status"), "pending")
+          )
+        )
+        .collect();
+
+      for (const duplicate of otherPending) {
+        await ctx.db.delete(duplicate._id);
+      }
+    }
   },
 });
 
@@ -435,14 +483,56 @@ export const getReorderStats = query({
     const allRecords = await ctx.db.query("reorderSuggestions").collect();
     const all = allRecords.filter((s) => s.orgId === caller.orgId);
 
+    // Deduplicate pending records by productId, keeping the latest one
+    const pendingByProduct = new Map<string, typeof all[0]>();
+    for (const s of all) {
+      if (s.status === "pending") {
+        const existing = pendingByProduct.get(s.productId);
+        if (!existing || s.createdAt > existing.createdAt) {
+          pendingByProduct.set(s.productId, s);
+        }
+      }
+    }
+    const uniquePending = Array.from(pendingByProduct.values());
+
     return {
-      pending: all.filter((s) => s.status === "pending").length,
-      critical: all.filter(
-        (s) => s.status === "pending" && s.urgency === "critical",
-      ).length,
-      high: all.filter((s) => s.status === "pending" && s.urgency === "high").length,
+      pending: uniquePending.length,
+      critical: uniquePending.filter((s) => s.urgency === "critical").length,
+      high: uniquePending.filter((s) => s.urgency === "high").length,
       approved: all.filter((s) => s.status === "approved").length,
       dismissed: all.filter((s) => s.status === "dismissed").length,
     };
+  },
+});
+
+// ── Cleanup duplicate suggestions mutation ────────
+export const cleanupDuplicateSuggestions = mutation({
+  args: {
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const caller = await getCallerUser(ctx, args.token);
+    if (!caller || !caller.orgId) return { cleaned: 0 };
+
+    const suggestions = await ctx.db
+      .query("reorderSuggestions")
+      .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    suggestions.sort((a, b) => b.createdAt - a.createdAt);
+
+    const seen = new Set<string>();
+    let cleaned = 0;
+    for (const s of suggestions) {
+      if (seen.has(s.productId)) {
+        await ctx.db.delete(s._id);
+        cleaned++;
+      } else {
+        seen.add(s.productId);
+      }
+    }
+
+    return { cleaned };
   },
 });

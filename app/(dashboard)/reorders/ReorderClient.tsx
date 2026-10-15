@@ -2,7 +2,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -73,6 +73,13 @@ export default function ReordersClient() {
     token: token ?? undefined,
   });
   const dismiss = useMutation(api.reorder.dismissSuggestion);
+  const cleanup = useMutation(api.reorder.cleanupDuplicateSuggestions);
+
+  useEffect(() => {
+    if (token) {
+      cleanup({ token }).catch(() => {});
+    }
+  }, [token, cleanup]);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-LK", { style: "currency", currency: "LKR", maximumFractionDigits: 0 }).format(val);
@@ -351,7 +358,7 @@ export default function ReordersClient() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => dismiss({ suggestionId: s._id })}
+                              onClick={() => dismiss({ token: token ?? undefined, suggestionId: s._id })}
                               className="h-9 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 px-3"
                             >
                               <XCircleIcon className="w-3.5 h-3.5 mr-1 text-slate-400" /> Dismiss
