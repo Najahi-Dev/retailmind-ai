@@ -1,6 +1,6 @@
-// convex/authInternal.ts
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
+import { isSuperAdminUser } from "./lib/roleGuard";
 
 // Query all users
 export const getAllUsers = query({
@@ -53,10 +53,10 @@ export const getSessionByToken = query({
     }
 
     const user = await ctx.db.get(session.userId);
-    if (!user || (!user.isActive && user.role !== "super_admin")) return null;
+    if (!user || (!user.isActive && !isSuperAdminUser(user))) return null;
 
     const organization = user.orgId ? await ctx.db.get(user.orgId) : null;
-    if (organization && user.role !== "super_admin") {
+    if (organization && !isSuperAdminUser(user)) {
       const isOrgSuspended =
         organization.isActive === false ||
         (organization.subscriptionStatus || "").toUpperCase() === "CANCELED";
@@ -77,6 +77,7 @@ export const createUserRecord = mutation({
     name: v.string(),
     phone: v.optional(v.string()),
     role: v.union(
+      v.literal("super_admin"),
       v.literal("admin"),
       v.literal("manager"),
       v.literal("staff"),
@@ -201,6 +202,26 @@ export const updateUserStatus = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
       isActive: args.isActive,
+    });
+  },
+});
+
+// Update user role
+export const updateUserRole = mutation({
+  args: {
+    userId: v.id("users"),
+    role: v.union(
+      v.literal("super_admin"),
+      v.literal("admin"),
+      v.literal("manager"),
+      v.literal("staff"),
+      v.literal("supplier"),
+      v.literal("pending")
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      role: args.role,
     });
   },
 });

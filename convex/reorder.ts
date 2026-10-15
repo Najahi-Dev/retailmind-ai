@@ -9,19 +9,72 @@ export const generateReorderSuggestions = internalMutation({
     const inventory = await ctx.db.query("inventory").collect();
     let created = 0;
 
+    // Aggregate inventory by product to avoid multi-location duplicate passes
+    const onHandByProduct = new Map<string, number>();
     for (const inv of inventory) {
+      onHandByProduct.set(inv.productId, (onHandByProduct.get(inv.productId) ?? 0) + inv.onHand);
+    }
+
+    const processedProducts = new Set<string>();
+
+    for (const inv of inventory) {
+      if (processedProducts.has(inv.productId)) continue;
+      processedProducts.add(inv.productId);
+
       const product = await ctx.db.get(inv.productId);
       if (!product || !product.isActive) continue;
 
-      // Already pending suggestion? skip
-      const existing = await ctx.db
+      // 1. Check if there are already pending suggestions for this product
+      const pendingSuggestions = await ctx.db
         .query("reorderSuggestions")
         .withIndex("by_product", (q) => q.eq("productId", inv.productId))
+        .filter((q) => q.eq(q.field("status"), "pending"))
+        .collect();
+
+      if (pendingSuggestions.length > 0) {
+        // If multiple duplicate pending suggestions exist, keep the newest one and remove stale duplicates
+        if (pendingSuggestions.length > 1) {
+          pendingSuggestions.sort((a, b) => b.createdAt - a.createdAt);
+          for (const dup of pendingSuggestions.slice(1)) {
+            await ctx.db.delete(dup._id);
+          }
+        }
+        continue;
+      }
+
+      // 2. Check if this suggestion was dismissed within the last 48 hours
+      const recentDismissed = await ctx.db
+        .query("reorderSuggestions")
+        .withIndex("by_product", (q) => q.eq("productId", inv.productId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("status"), "dismissed"),
+            q.gte(q.field("createdAt"), Date.now() - 48 * 60 * 60 * 1000)
+          )
+        )
         .first();
+      if (recentDismissed) continue;
 
-      if (existing && existing.status === "pending") continue;
+      // 3. Check if there is an active purchase order for this product (awaiting delivery)
+      if (inv.orgId) {
+        const activePOs = await ctx.db
+          .query("purchaseOrders")
+          .withIndex("by_org", (q) => q.eq("orgId", inv.orgId))
+          .filter((q) =>
+            q.and(
+              q.neq(q.field("status"), "delivered"),
+              q.neq(q.field("status"), "cancelled")
+            )
+          )
+          .collect();
 
-      const onHand = inv.onHand;
+        const hasActivePO = activePOs.some((po) =>
+          po.lineItems.some((item) => item.productId === inv.productId)
+        );
+        if (hasActivePO) continue;
+      }
+
+      const onHand = onHandByProduct.get(inv.productId) ?? inv.onHand;
       const reorderPoint = product.reorderPoint;
       const safetyStock = product.safetyStock;
 
@@ -67,24 +120,79 @@ export const generateReorderSuggestionsPublic = mutation({
     const allInventory = await ctx.db.query("inventory").collect();
     const inventory = caller && caller.orgId ? allInventory.filter((i) => i.orgId === caller.orgId) : allInventory;
 
-    let created = 0;
+    // Aggregate inventory by product
+    const onHandByProduct = new Map<string, number>();
     for (const inv of inventory) {
+      onHandByProduct.set(inv.productId, (onHandByProduct.get(inv.productId) ?? 0) + inv.onHand);
+    }
+
+    const processedProducts = new Set<string>();
+    let created = 0;
+
+    for (const inv of inventory) {
+      if (processedProducts.has(inv.productId)) continue;
+      processedProducts.add(inv.productId);
+
       const product = await ctx.db.get(inv.productId);
       if (!product || !product.isActive) continue;
 
-      const existing = await ctx.db
+      // 1. Check if there are already pending suggestions for this product
+      const pendingSuggestions = await ctx.db
         .query("reorderSuggestions")
         .withIndex("by_product", (q) => q.eq("productId", inv.productId))
+        .filter((q) => q.eq(q.field("status"), "pending"))
+        .collect();
+
+      if (pendingSuggestions.length > 0) {
+        if (pendingSuggestions.length > 1) {
+          pendingSuggestions.sort((a, b) => b.createdAt - a.createdAt);
+          for (const dup of pendingSuggestions.slice(1)) {
+            await ctx.db.delete(dup._id);
+          }
+        }
+        continue;
+      }
+
+      // 2. Check if recently dismissed
+      const recentDismissed = await ctx.db
+        .query("reorderSuggestions")
+        .withIndex("by_product", (q) => q.eq("productId", inv.productId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("status"), "dismissed"),
+            q.gte(q.field("createdAt"), Date.now() - 48 * 60 * 60 * 1000)
+          )
+        )
         .first();
+      if (recentDismissed) continue;
 
-      if (existing && existing.status === "pending") continue;
+      // 3. Check active POs
+      const orgId = inv.orgId ?? caller?.orgId;
+      if (orgId) {
+        const activePOs = await ctx.db
+          .query("purchaseOrders")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .filter((q) =>
+            q.and(
+              q.neq(q.field("status"), "delivered"),
+              q.neq(q.field("status"), "cancelled")
+            )
+          )
+          .collect();
 
-      if (inv.onHand <= product.reorderPoint) {
+        const hasActivePO = activePOs.some((po) =>
+          po.lineItems.some((item) => item.productId === inv.productId)
+        );
+        if (hasActivePO) continue;
+      }
+
+      const onHand = onHandByProduct.get(inv.productId) ?? inv.onHand;
+      if (onHand <= product.reorderPoint) {
         let urgency: "critical" | "high" | "medium" | "low" = "medium";
-        if (inv.onHand <= product.safetyStock) urgency = "critical";
-        else if (inv.onHand <= product.reorderPoint * 0.5) urgency = "high";
+        if (onHand <= product.safetyStock) urgency = "critical";
+        else if (onHand <= product.reorderPoint * 0.5) urgency = "high";
 
-        const suggestedQty = Math.max(product.reorderPoint, product.reorderPoint * 2 - inv.onHand);
+        const suggestedQty = Math.max(product.reorderPoint, product.reorderPoint * 2 - onHand);
         const allSuppliers = await ctx.db.query("suppliers").collect();
         const suppliers = caller && caller.orgId ? allSuppliers.filter((s) => s.orgId === caller.orgId) : allSuppliers;
         const preferredSupplier = suppliers.length > 0 ? suppliers[0] : null;
@@ -98,7 +206,7 @@ export const generateReorderSuggestionsPublic = mutation({
           suggestedQuantity: suggestedQty,
           estimatedCost: suggestedQty * product.costPrice,
           orderByDate: Date.now() + 3 * 86400000,
-          rationale: `Automated reorder suggestion based on inventory levels`,
+          rationale: `Automated reorder suggestion based on inventory levels (${onHand} on hand vs ${product.reorderPoint} reorder point)`,
           status: "pending",
           aiGenerated: true,
           createdAt: Date.now(),

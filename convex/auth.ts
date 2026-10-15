@@ -5,6 +5,7 @@ import { api } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { isSuperAdminUser } from "./lib/roleGuard";
 
 const JWT_SECRET = process.env.JWT_SECRET || "retailmind-secret-jwt-key-2026";
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -20,13 +21,18 @@ export const loginUser = action({
       email: args.email.toLowerCase().trim(),
     });
 
+    const cleanEmail = args.email.toLowerCase().trim();
+    let isSuperAdmin =
+      cleanEmail === "admin@retailmind.com" ||
+      cleanEmail === "ahmednajahi2003@gmail.com" ||
+      user?.role === "super_admin";
+
     if (!user) {
-      const cleanEmail = args.email.toLowerCase().trim();
       // Auto-create default admin account or dev account if logging in for the first time
-      if (cleanEmail === "admin@retailmind.com" || cleanEmail === "devnaja.arcade@gmail.com") {
+      if (isSuperAdmin || cleanEmail === "devnaja.arcade@gmail.com") {
         const passwordHash = bcrypt.hashSync(args.password, 10);
-        const role = cleanEmail === "admin@retailmind.com" ? "admin" : "admin";
-        const name = cleanEmail === "admin@retailmind.com" ? "Admin User" : "Dev Naja";
+        const role = isSuperAdmin ? "super_admin" : "admin";
+        const name = cleanEmail === "admin@retailmind.com" ? "Super Admin" : "Dev Naja";
         
         const userId: any = await ctx.runMutation(api.authInternal.createUserRecord, {
           email: cleanEmail,
@@ -48,11 +54,32 @@ export const loginUser = action({
       }
     }
 
-    if (user.role === "pending") {
+    isSuperAdmin = isSuperAdminUser(user);
+
+    // Auto-promote super admin accounts to super_admin role
+    if (isSuperAdmin && user.role !== "super_admin") {
+      await ctx.runMutation(api.authInternal.updateUserRole, {
+        userId: user._id,
+        role: "super_admin",
+      });
+      user.role = "super_admin";
+    }
+
+    // Auto-reactivate super admin account if inactive
+    if (isSuperAdmin && user.isActive === false) {
+      await ctx.runMutation(api.authInternal.updateUserStatus, {
+        userId: user._id,
+        isActive: true,
+      });
+      user.isActive = true;
+    }
+
+    if (user.role === "pending" && !isSuperAdmin) {
       throw new ConvexError("Your user role is not assigned. Waiting for the admin approval.");
     }
 
-    if (user.orgId && user.role !== "super_admin") {
+    // Only non-super-admin users are blocked when their workspace is suspended
+    if (user.orgId && !isSuperAdmin) {
       const org = await ctx.runQuery(api.authInternal.getOrganizationById, { orgId: user.orgId });
       if (org) {
         const isOrgSuspended =
@@ -64,7 +91,7 @@ export const loginUser = action({
       }
     }
 
-    if (user.isActive === false) {
+    if (user.isActive === false && !isSuperAdmin) {
       if (user.role === "supplier") {
         await ctx.runMutation(api.authInternal.updateUserStatus, {
           userId: user._id,
@@ -220,11 +247,11 @@ export const validateSession = action({
         token: args.token,
       });
 
-      if (!res || !res.user || res.user.isActive === false) {
+      if (!res || !res.user || (!res.user.isActive && !isSuperAdminUser(res.user))) {
         return null;
       }
 
-      if (res.organization && res.user.role !== "super_admin") {
+      if (res.organization && !isSuperAdminUser(res.user)) {
         const isOrgSuspended =
           res.organization.isActive === false ||
           (res.organization.subscriptionStatus || "").toUpperCase() === "CANCELED";

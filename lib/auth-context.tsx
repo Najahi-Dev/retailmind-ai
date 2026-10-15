@@ -77,16 +77,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     token: token ?? undefined,
   });
 
+  const isSuperAdminAccount = (u: any) => {
+    if (!u) return false;
+    const email = (u.email || "").toLowerCase().trim();
+    return (
+      u.role === "super_admin" ||
+      email === "admin@retailmind.com" ||
+      email === "ahmednajahi2003@gmail.com"
+    );
+  };
+
   useEffect(() => {
     if (!token) return;
     if (liveUserRecord !== undefined) {
+      const isSuperAdmin = isSuperAdminAccount(liveUserRecord);
       const isSuspended =
         liveUserRecord === null ||
-        liveUserRecord.isActive === false ||
-        liveUserRecord.role === "pending" ||
-        (liveUserRecord.role !== "super_admin" &&
-          (liveUserRecord.subscriptionStatus === "CANCELED" ||
-            liveUserRecord.subscriptionStatus === "canceled"));
+        (!isSuperAdmin && (
+          liveUserRecord.isActive === false ||
+          liveUserRecord.role === "pending" ||
+          liveUserRecord.subscriptionStatus === "CANCELED" ||
+          liveUserRecord.subscriptionStatus === "canceled"
+        ));
 
       if (isSuspended) {
         // Immediate forced logout when account or tenant is suspended or invalidated by Admin

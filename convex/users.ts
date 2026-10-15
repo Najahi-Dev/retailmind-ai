@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 import bcrypt from "bcryptjs";
-import { getSupplierForUser, requireCallerOrg } from "./lib/roleGuard";
+import { getSupplierForUser, requireCallerOrg, isSuperAdminUser } from "./lib/roleGuard";
 
 // Live Reactive Current User Record for Session & Instant Suspension Monitoring
 export const getCurrentUserRecord = query({
@@ -19,7 +19,7 @@ export const getCurrentUserRecord = query({
     if (!session || session.expiresAt < Date.now()) return null;
 
     const user = await ctx.db.get(session.userId);
-    if (!user || (!user.isActive && user.role !== "super_admin")) return null;
+    if (!user || (!user.isActive && !isSuperAdminUser(user))) return null;
 
     let plan = "starter";
     let planTier = "STARTER";
@@ -31,7 +31,7 @@ export const getCurrentUserRecord = query({
           org.isActive === false ||
           (org.subscriptionStatus || "").toUpperCase() === "CANCELED";
 
-        if (isOrgSuspended && user.role !== "super_admin") {
+        if (isOrgSuspended && !isSuperAdminUser(user)) {
           return null; // Forces immediate reactive logout in auth-context.tsx
         }
 
@@ -41,11 +41,13 @@ export const getCurrentUserRecord = query({
       }
     }
 
+    const effectiveRole = isSuperAdminUser(user) ? "super_admin" : user.role;
+
     return {
       _id: user._id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: effectiveRole,
       plan,
       planTier,
       subscriptionStatus,

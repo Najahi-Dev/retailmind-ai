@@ -399,4 +399,57 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
     });
     expect(sessionAfter).toBeNull();
   });
+
+  it("never locks out super admin even if their linked organization is CANCELED", async () => {
+    const t = convexTest(schema, modules);
+
+    // Organization is canceled
+    const orgId = await t.run(async (ctx) => {
+      return await ctx.db.insert("organizations", {
+        name: "Canceled Org",
+        slug: "canceled-org",
+        inviteCode: "CANC1",
+        plan: "enterprise",
+        subscriptionStatus: "CANCELED",
+        isActive: false,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Super admin user linked to this org
+    const adminId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        email: "admin@retailmind.com",
+        name: "Admin User",
+        role: "admin", // initially seeded as admin
+        orgId,
+        isActive: true,
+        createdAt: Date.now(),
+      });
+    });
+
+    const adminToken = "admin-token-super-123";
+    await t.run(async (ctx) => {
+      await ctx.db.insert("sessions", {
+        userId: adminId,
+        orgId,
+        token: adminToken,
+        expiresAt: Date.now() + 3600000,
+        createdAt: Date.now(),
+      });
+    });
+
+    // 1. getCurrentUserRecord must NOT be null and must recognize super_admin
+    const record = await t.query(api.users.getCurrentUserRecord, {
+      token: adminToken,
+    });
+    expect(record).not.toBeNull();
+    expect(record?.role).toBe("super_admin");
+
+    // 2. Super admin can still execute operations
+    const superAdminCheck = await t.query(api.superAdmin.getAllOrganizations, {
+      token: adminToken,
+    });
+    expect(superAdminCheck).toBeDefined();
+  });
 });

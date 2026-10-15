@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { isSuperAdminUser } from "./lib/roleGuard";
 
 // Helper to authenticate super admin
 async function requireSuperAdmin(ctx: any, token?: string) {
@@ -11,7 +12,7 @@ async function requireSuperAdmin(ctx: any, token?: string) {
   if (!session) throw new Error("Unauthorized");
   
   const user = await ctx.db.get(session.userId);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
+  if (!user || !isSuperAdminUser(user)) {
     throw new Error("Forbidden: Super Admin access required");
   }
   return user;
@@ -348,7 +349,7 @@ export const updateOrganizationStatus = mutation({
 
     await ctx.db.patch(args.orgId, patchData);
 
-    // If suspending, immediately purge all active sessions belonging to users of this organization
+    // If suspending, immediately purge all active sessions belonging to tenant users of this organization (never super admins)
     if (isSuspending) {
       const orgUsers = await ctx.db
         .query("users")
@@ -356,6 +357,8 @@ export const updateOrganizationStatus = mutation({
         .collect();
 
       for (const u of orgUsers) {
+        if (isSuperAdminUser(u)) continue; // Never purge super admin sessions!
+
         const userSessions = await ctx.db
           .query("sessions")
           .withIndex("by_user", (q) => q.eq("userId", u._id))
@@ -372,7 +375,10 @@ export const updateOrganizationStatus = mutation({
         .collect();
 
       for (const s of orgSessions) {
-        await ctx.db.delete(s._id);
+        const sessionUser = await ctx.db.get(s.userId);
+        if (!isSuperAdminUser(sessionUser)) {
+          await ctx.db.delete(s._id);
+        }
       }
     }
     
