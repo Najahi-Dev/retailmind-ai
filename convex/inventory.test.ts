@@ -285,10 +285,10 @@ describe("Inventory Management & Stock Lifecycle", () => {
     });
 
     const warehouseRecord = overview.find(
-      (r) => r.productId === productId && r.location === "Central Warehouse"
+      (r) => r !== null && r.productId === productId && r.location === "Central Warehouse"
     );
     const storeRecord = overview.find(
-      (r) => r.productId === productId && r.location === "Downtown Store"
+      (r) => r !== null && r.productId === productId && r.location === "Downtown Store"
     );
 
     expect(warehouseRecord?.onHand).toBe(30);

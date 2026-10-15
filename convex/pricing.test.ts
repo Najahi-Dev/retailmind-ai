@@ -113,11 +113,11 @@ describe("Dynamic Pricing Engine & Guardrails", () => {
     const hpSuggestion = suggestions.find((s) => s.productId === productId);
 
     expect(hpSuggestion).toBeDefined();
-    expect(hpSuggestion.changeDirection).toBe("increase");
+    expect(hpSuggestion?.changeDirection).toBe("increase");
     // 8000 * 1.15 = 9200
-    expect(hpSuggestion.suggestedPrice).toBe(9200);
-    expect(hpSuggestion.priceChange).toBe(1200);
-    expect(hpSuggestion.status).toBe("pending");
+    expect(hpSuggestion?.suggestedPrice).toBe(9200);
+    expect(hpSuggestion?.priceChange).toBe(1200);
+    expect(hpSuggestion?.status).toBe("pending");
   });
 
   it("suggests price decrease for overstocked inventory", async () => {
@@ -147,11 +147,11 @@ describe("Dynamic Pricing Engine & Guardrails", () => {
     const cableSuggestion = suggestions.find((s) => s.productId === productId);
 
     expect(cableSuggestion).toBeDefined();
-    expect(cableSuggestion.changeDirection).toBe("decrease");
+    expect(cableSuggestion?.changeDirection).toBe("decrease");
     // 500 * 0.9 = 450
-    expect(cableSuggestion.suggestedPrice).toBe(450);
-    expect(cableSuggestion.priceChange).toBe(-50);
-    expect(cableSuggestion.status).toBe("pending");
+    expect(cableSuggestion?.suggestedPrice).toBe(450);
+    expect(cableSuggestion?.priceChange).toBe(-50);
+    expect(cableSuggestion?.status).toBe("pending");
   });
 
   it("approves price suggestion, updating product selling price and auditing status", async () => {
@@ -184,14 +184,14 @@ describe("Dynamic Pricing Engine & Guardrails", () => {
     await expect(
       t.mutation(api.pricing.approvePriceSuggestion, {
         token: staffToken,
-        suggestionId: suggestion._id,
+        suggestionId: suggestion!._id,
       })
     ).rejects.toThrow(/Access denied: Required role in \[admin, manager\]/i);
 
     // Admin approves
     await t.mutation(api.pricing.approvePriceSuggestion, {
       token: adminToken,
-      suggestionId: suggestion._id,
+      suggestionId: suggestion!._id,
     });
 
     // Verify product price updated: 4500 * 1.15 = 5175
@@ -231,7 +231,7 @@ describe("Dynamic Pricing Engine & Guardrails", () => {
     // Admin rejects
     await t.mutation(api.pricing.rejectPriceSuggestion, {
       token: adminToken,
-      suggestionId: suggestion._id,
+      suggestionId: suggestion!._id,
       reason: "Contractual price guarantee with distributor",
     });
 
@@ -246,7 +246,7 @@ describe("Dynamic Pricing Engine & Guardrails", () => {
     const updatedSuggestions = await t.query(api.pricing.getPriceSuggestions, {
       token: adminToken,
     });
-    const updated = updatedSuggestions.find((s) => s._id === suggestion._id);
-    expect(updated.status).toBe("rejected");
+    const updated = updatedSuggestions.find((s) => s._id === suggestion!._id);
+    expect(updated?.status).toBe("rejected");
   });
 });

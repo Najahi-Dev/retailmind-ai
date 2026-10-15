@@ -135,10 +135,10 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
 
     const sodaSuggestion = suggestions.find((s) => s.productId === productId);
     expect(sodaSuggestion).toBeDefined();
-    expect(sodaSuggestion.urgency).toBe("critical");
-    expect(sodaSuggestion.status).toBe("pending");
-    expect(sodaSuggestion.suggestedQuantity).toBe(92); // 50 * 2 - 8 = 92
-    expect(sodaSuggestion.estimatedCost).toBe(92 * 40); // 3680
+    expect(sodaSuggestion?.urgency).toBe("critical");
+    expect(sodaSuggestion?.status).toBe("pending");
+    expect(sodaSuggestion?.suggestedQuantity).toBe(92); // 50 * 2 - 8 = 92
+    expect(sodaSuggestion?.estimatedCost).toBe(92 * 40); // 3680
   });
 
   it("approves reorder suggestion, creating a Purchase Order", async () => {
@@ -172,7 +172,7 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
     await expect(
       t.mutation(api.reorder.approveSuggestion, {
         token: staffToken,
-        suggestionId: suggestion._id,
+        suggestionId: suggestion!._id,
         supplierId,
         quantity: 50,
         unitCost: 150,
@@ -183,7 +183,7 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
     // Admin approves suggestion
     const approvalRes = await t.mutation(api.reorder.approveSuggestion, {
       token: adminToken,
-      suggestionId: suggestion._id,
+      suggestionId: suggestion!._id,
       supplierId,
       quantity: 50,
       unitCost: 150,
@@ -199,10 +199,10 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
       poId: approvalRes.poId,
     });
     expect(po).toBeDefined();
-    expect(po.totalValue).toBe(50 * 150);
-    expect(po.status).toBe("draft");
-    expect(po.lineItems[0].productId).toBe(productId);
-    expect(po.lineItems[0].quantityOrdered).toBe(50);
+    expect(po?.totalValue).toBe(50 * 150);
+    expect(po?.status).toBe("draft");
+    expect(po?.lineItems[0].productId).toBe(productId);
+    expect(po?.lineItems[0].quantityOrdered).toBe(50);
   });
 
   it("dismisses reorder suggestions with a documented reason", async () => {
@@ -234,14 +234,14 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
 
     await t.mutation(api.reorder.dismissSuggestion, {
       token: adminToken,
-      suggestionId: suggestion._id,
+      suggestionId: suggestion!._id,
       reason: "Product being phased out",
     });
 
     // Query again - suggestion status must now be dismissed
     const updated = await t.query(api.reorder.getReorderDetail, {
       token: adminToken,
-      suggestionId: suggestion._id,
+      suggestionId: suggestion!._id,
     });
     expect(updated?.suggestion.status).toBe("dismissed");
     expect(updated?.suggestion.dismissedReason).toBe("Product being phased out");
@@ -284,20 +284,20 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
     // Transition status to sent, confirmed, then delivered
     await t.mutation(api.purchaseOrders.updatePOStatus, {
       token: adminToken,
-      poId,
+      poId: poId!,
       status: "sent",
     });
 
     await t.mutation(api.purchaseOrders.updatePOStatus, {
       token: adminToken,
-      poId,
+      poId: poId!,
       status: "confirmed",
     });
 
     // Transitioning to 'delivered' should auto-stock in the 100 items!
     await t.mutation(api.purchaseOrders.updatePOStatus, {
       token: adminToken,
-      poId,
+      poId: poId!,
       status: "delivered",
     });
 
@@ -342,10 +342,12 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
       paymentMethod: "CASH_ON_DELIVERY",
     });
 
+    expect(poId).toBeDefined();
+
     // 1. Partial payment: 2500 out of 6000
     await t.mutation(api.purchaseOrders.recordPOPayment, {
       token: adminToken,
-      poId,
+      poId: poId!,
       amount: 2500,
       method: "CASH_ON_DELIVERY",
       reference: "TXN-COD-001",
@@ -353,15 +355,15 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
 
     let po = await t.query(api.purchaseOrders.getPODetail, {
       token: adminToken,
-      poId,
+      poId: poId!,
     });
-    expect(po.paymentStatus).toBe("PARTIALLY_PAID");
-    expect(po.amountPaid).toBe(2500);
+    expect(po?.paymentStatus).toBe("PARTIALLY_PAID");
+    expect(po?.amountPaid).toBe(2500);
 
     // 2. Remaining payment: 3500 (total = 6000)
     await t.mutation(api.purchaseOrders.recordPOPayment, {
       token: adminToken,
-      poId,
+      poId: poId!,
       amount: 3500,
       method: "CASH_ON_DELIVERY",
       reference: "TXN-COD-002",
@@ -369,9 +371,9 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
 
     po = await t.query(api.purchaseOrders.getPODetail, {
       token: adminToken,
-      poId,
+      poId: poId!,
     });
-    expect(po.paymentStatus).toBe("PAID");
-    expect(po.amountPaid).toBe(6000);
+    expect(po?.paymentStatus).toBe("PAID");
+    expect(po?.amountPaid).toBe(6000);
   });
 });
