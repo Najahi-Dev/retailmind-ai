@@ -52,19 +52,28 @@ export const loginUser = action({
       throw new ConvexError("Your user role is not assigned. Waiting for the admin approval.");
     }
 
-    if (user.orgId) {
+    if (user.orgId && user.role !== "super_admin") {
       const org = await ctx.runQuery(api.authInternal.getOrganizationById, { orgId: user.orgId });
-      if (org && org.isActive === false) {
-        throw new ConvexError("Workspace suspended: Global Kill Switch is active. Contact Support.");
+      if (org) {
+        const isOrgSuspended =
+          org.isActive === false ||
+          (org.subscriptionStatus || "").toUpperCase() === "CANCELED";
+        if (isOrgSuspended) {
+          throw new ConvexError("Workspace suspended: Your organization account has been suspended or canceled by an administrator. Please contact support.");
+        }
       }
     }
 
     if (user.isActive === false) {
-      await ctx.runMutation(api.authInternal.updateUserStatus, {
-        userId: user._id,
-        isActive: true,
-      });
-      user.isActive = true;
+      if (user.role === "supplier") {
+        await ctx.runMutation(api.authInternal.updateUserStatus, {
+          userId: user._id,
+          isActive: true,
+        });
+        user.isActive = true;
+      } else {
+        throw new ConvexError("Account suspended: Your user account has been deactivated. Contact your administrator.");
+      }
     }
 
     if (!user.passwordHash) {
@@ -213,6 +222,15 @@ export const validateSession = action({
 
       if (!res || !res.user || res.user.isActive === false) {
         return null;
+      }
+
+      if (res.organization && res.user.role !== "super_admin") {
+        const isOrgSuspended =
+          res.organization.isActive === false ||
+          (res.organization.subscriptionStatus || "").toUpperCase() === "CANCELED";
+        if (isOrgSuspended) {
+          return null;
+        }
       }
 
       return {

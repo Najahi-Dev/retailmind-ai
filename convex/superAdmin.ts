@@ -329,22 +329,60 @@ export const updateOrganizationStatus = mutation({
         maxApi: v.number(),
         maxBranches: v.number(),
       })),
+      isActive: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
     
-    await ctx.db.patch(args.orgId, {
-      ...args.updates,
-    });
+    const isSuspending = args.updates.subscriptionStatus === "CANCELED" || args.updates.isActive === false;
+    const isActivating = args.updates.subscriptionStatus === "ACTIVE" || args.updates.isActive === true;
+
+    const patchData: any = { ...args.updates };
+    if (isSuspending) {
+      patchData.subscriptionStatus = "CANCELED";
+      patchData.isActive = false;
+    } else if (isActivating && args.updates.subscriptionStatus === "ACTIVE") {
+      patchData.isActive = true;
+    }
+
+    await ctx.db.patch(args.orgId, patchData);
+
+    // If suspending, immediately purge all active sessions belonging to users of this organization
+    if (isSuspending) {
+      const orgUsers = await ctx.db
+        .query("users")
+        .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+        .collect();
+
+      for (const u of orgUsers) {
+        const userSessions = await ctx.db
+          .query("sessions")
+          .withIndex("by_user", (q) => q.eq("userId", u._id))
+          .collect();
+
+        for (const s of userSessions) {
+          await ctx.db.delete(s._id);
+        }
+      }
+
+      const orgSessions = await ctx.db
+        .query("sessions")
+        .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+        .collect();
+
+      for (const s of orgSessions) {
+        await ctx.db.delete(s._id);
+      }
+    }
     
     // Log audit
     await ctx.db.insert("securityLogs", {
       userId: admin._id,
       email: admin.email,
       role: "super_admin",
-      eventType: "ORG_UPDATE",
-      details: `Updated org ${args.orgId} with ${JSON.stringify(args.updates)}`,
+      eventType: isSuspending ? "ORG_SUSPENDED" : "ORG_UPDATE",
+      details: `Updated org ${args.orgId} with ${JSON.stringify(patchData)}`,
       createdAt: Date.now(),
     });
     

@@ -71,14 +71,22 @@ export default function SuperAdminTenants() {
   };
 
   const handleToggleStatus = async (orgId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "CANCELED" ? "ACTIVE" : "CANCELED";
+    const isCurrentlyCanceled = currentStatus === "CANCELED" || currentStatus === "canceled";
+    const newStatus = isCurrentlyCanceled ? "ACTIVE" : "CANCELED";
     try {
       await updateOrganizationStatus({ 
         token: token ?? undefined, 
         orgId: orgId as any,
-        updates: { subscriptionStatus: newStatus as any }
+        updates: { 
+          subscriptionStatus: newStatus as any,
+          isActive: isCurrentlyCanceled,
+        }
       });
-      toast.success(`Organization status updated to ${newStatus}`);
+      toast.success(
+        newStatus === "CANCELED"
+          ? "Organization suspended. All active tenant user sessions revoked."
+          : "Organization activated successfully."
+      );
     } catch (err: any) {
       toast.error(err.message || "Failed to update status");
     }

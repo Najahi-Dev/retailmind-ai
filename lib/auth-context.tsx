@@ -80,12 +80,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!token) return;
     if (liveUserRecord !== undefined) {
-      if (
+      const isSuspended =
         liveUserRecord === null ||
         liveUserRecord.isActive === false ||
-        liveUserRecord.role === "pending"
-      ) {
-        // Immediate forced logout when account is suspended or invalidated by Admin
+        liveUserRecord.role === "pending" ||
+        (liveUserRecord.role !== "super_admin" &&
+          (liveUserRecord.subscriptionStatus === "CANCELED" ||
+            liveUserRecord.subscriptionStatus === "canceled"));
+
+      if (isSuspended) {
+        // Immediate forced logout when account or tenant is suspended or invalidated by Admin
         localStorage.removeItem(TOKEN_KEY);
         document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
         setToken(null);

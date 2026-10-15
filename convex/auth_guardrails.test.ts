@@ -254,4 +254,149 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
     expect(categoriesB.map((c) => c.name)).toEqual(["Beta Only Groceries"]);
     expect(categoriesB.map((c) => c.name)).not.toContain("Alpha Only Electronics");
   });
+
+  it("blocks tenant users from accessing APIs and returns null from getCurrentUserRecord when organization is CANCELED", async () => {
+    const t = convexTest(schema, modules);
+
+    const orgId = await t.run(async (ctx) => {
+      return await ctx.db.insert("organizations", {
+        name: "Suspended Org",
+        slug: "suspended-org",
+        inviteCode: "SUSP1",
+        plan: "enterprise",
+        subscriptionStatus: "CANCELED",
+        isActive: false,
+        createdAt: Date.now(),
+      });
+    });
+
+    const tenantAdminId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        email: "admin@suspended.com",
+        name: "Admin User",
+        role: "admin",
+        orgId,
+        isActive: true,
+        createdAt: Date.now(),
+      });
+    });
+
+    const tenantToken = "tenant-token-suspended-123";
+    await t.run(async (ctx) => {
+      await ctx.db.insert("sessions", {
+        userId: tenantAdminId,
+        orgId,
+        token: tenantToken,
+        expiresAt: Date.now() + 3600000,
+        createdAt: Date.now(),
+      });
+    });
+
+    // 1. Live session watcher query must return null (forcing client-side logout)
+    const liveRecord = await t.query(api.users.getCurrentUserRecord, {
+      token: tenantToken,
+    });
+    expect(liveRecord).toBeNull();
+
+    // 2. Mutations/queries through roleGuard must be rejected
+    await expect(
+      t.mutation(api.inventory.addCategory, {
+        token: tenantToken,
+        name: "Should Fail",
+      })
+    ).rejects.toThrow(/Unauthorized: Invalid session or account deactivated|Forbidden: Organization account is suspended or canceled/i);
+  });
+
+  it("purges all active tenant sessions when super admin updates status to CANCELED", async () => {
+    const t = convexTest(schema, modules);
+
+    // 1. Create Super Admin
+    const superAdminId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        email: "super@retailmind.com",
+        name: "Super Admin",
+        role: "super_admin",
+        isActive: true,
+        createdAt: Date.now(),
+      });
+    });
+    const superToken = "super-token-999";
+    await t.run(async (ctx) => {
+      await ctx.db.insert("sessions", {
+        userId: superAdminId,
+        token: superToken,
+        expiresAt: Date.now() + 3600000,
+        createdAt: Date.now(),
+      });
+    });
+
+    // 2. Create Active Organization and Tenant User
+    const orgId = await t.run(async (ctx) => {
+      return await ctx.db.insert("organizations", {
+        name: "Active Org",
+        slug: "active-org",
+        inviteCode: "ACT1",
+        plan: "growth",
+        subscriptionStatus: "ACTIVE",
+        isActive: true,
+        createdAt: Date.now(),
+      });
+    });
+
+    const tenantUserId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        email: "user@active.com",
+        name: "Active User",
+        role: "admin",
+        orgId,
+        isActive: true,
+        createdAt: Date.now(),
+      });
+    });
+
+    const tenantUserToken = "tenant-user-token-777";
+    await t.run(async (ctx) => {
+      await ctx.db.insert("sessions", {
+        userId: tenantUserId,
+        orgId,
+        token: tenantUserToken,
+        expiresAt: Date.now() + 3600000,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Verify session exists before suspension
+    const sessionBefore = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("sessions")
+        .withIndex("by_token", (q) => q.eq("token", tenantUserToken))
+        .first();
+    });
+    expect(sessionBefore).not.toBeNull();
+
+    // 3. Super admin suspends organization
+    await t.mutation(api.superAdmin.updateOrganizationStatus, {
+      token: superToken,
+      orgId,
+      updates: {
+        subscriptionStatus: "CANCELED",
+      },
+    });
+
+    // 4. Verify organization is marked inactive and canceled
+    const orgAfter = await t.run(async (ctx) => {
+      return await ctx.db.get(orgId);
+    });
+    expect(orgAfter?.subscriptionStatus).toBe("CANCELED");
+    expect(orgAfter?.isActive).toBe(false);
+
+    // 5. Verify tenant user's session was completely purged from database
+    const sessionAfter = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("sessions")
+        .withIndex("by_token", (q) => q.eq("token", tenantUserToken))
+        .first();
+    });
+    expect(sessionAfter).toBeNull();
+  });
 });

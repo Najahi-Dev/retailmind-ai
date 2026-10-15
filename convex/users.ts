@@ -19,7 +19,7 @@ export const getCurrentUserRecord = query({
     if (!session || session.expiresAt < Date.now()) return null;
 
     const user = await ctx.db.get(session.userId);
-    if (!user) return null;
+    if (!user || (!user.isActive && user.role !== "super_admin")) return null;
 
     let plan = "starter";
     let planTier = "STARTER";
@@ -27,6 +27,14 @@ export const getCurrentUserRecord = query({
     if (user.orgId) {
       const org = await ctx.db.get(user.orgId);
       if (org) {
+        const isOrgSuspended =
+          org.isActive === false ||
+          (org.subscriptionStatus || "").toUpperCase() === "CANCELED";
+
+        if (isOrgSuspended && user.role !== "super_admin") {
+          return null; // Forces immediate reactive logout in auth-context.tsx
+        }
+
         plan = org.plan || "starter";
         planTier = org.planTier || (org.plan ? org.plan.toUpperCase() : "STARTER");
         subscriptionStatus = org.subscriptionStatus || "FREE";

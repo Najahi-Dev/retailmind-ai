@@ -37,7 +37,24 @@ export async function getCallerUser(
     return null;
   }
 
-  return await ctx.db.get(session.userId);
+  const user = await ctx.db.get(session.userId);
+  if (!user || (!user.isActive && user.role !== "super_admin")) {
+    return null;
+  }
+
+  if (user.orgId && user.role !== "super_admin") {
+    const org = await ctx.db.get(user.orgId);
+    if (org) {
+      const isOrgSuspended =
+        org.isActive === false ||
+        (org.subscriptionStatus || "").toUpperCase() === "CANCELED";
+      if (isOrgSuspended) {
+        return null;
+      }
+    }
+  }
+
+  return user;
 }
 
 export async function requireCallerOrg(
@@ -61,8 +78,13 @@ export async function requireCallerOrg(
     }
   }
 
-  if (organization && !organization.isActive) {
-    throw new Error("Forbidden: Active organization membership required.");
+  if (organization && user.role !== "super_admin") {
+    const isOrgSuspended =
+      organization.isActive === false ||
+      (organization.subscriptionStatus || "").toUpperCase() === "CANCELED";
+    if (isOrgSuspended) {
+      throw new Error("Forbidden: Organization account is suspended or canceled. Contact Administrator.");
+    }
   }
 
   return { user, orgId, organization };

@@ -53,11 +53,16 @@ export const getSessionByToken = query({
     }
 
     const user = await ctx.db.get(session.userId);
-    if (!user) return null;
+    if (!user || (!user.isActive && user.role !== "super_admin")) return null;
 
     const organization = user.orgId ? await ctx.db.get(user.orgId) : null;
-    if (organization && organization.isActive === false) {
-      return null;
+    if (organization && user.role !== "super_admin") {
+      const isOrgSuspended =
+        organization.isActive === false ||
+        (organization.subscriptionStatus || "").toUpperCase() === "CANCELED";
+      if (isOrgSuspended) {
+        return null;
+      }
     }
 
     return { session, user, organization };
