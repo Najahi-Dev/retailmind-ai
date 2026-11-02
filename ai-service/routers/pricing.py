@@ -1,22 +1,22 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import numpy as np
 
 router = APIRouter()
 
 class PricingRequest(BaseModel):
-    product_id:    str
-    current_price: float
-    cost_price:    float
-    on_hand:       int
-    reorder_point: int
-    safety_stock:  int
-    avg_daily_sales: float        # from stock movement history
-    forecast_demand: float        # from Prophet output
-    category:      str
-    peak_months:   list[int]      # seasonal config
-    current_month: int
+    product_id:    str = Field(..., min_length=1, max_length=128)
+    current_price: float = Field(..., ge=0, le=1e12, allow_inf_nan=False)
+    cost_price:    float = Field(..., ge=0, le=1e12, allow_inf_nan=False)
+    on_hand:       int = Field(..., ge=-10**9, le=10**9)
+    reorder_point: int = Field(..., ge=0, le=10**9)
+    safety_stock:  int = Field(..., ge=0, le=10**9)
+    avg_daily_sales: float = Field(..., ge=0, le=1e9, allow_inf_nan=False)  # from stock movement history
+    forecast_demand: float = Field(..., ge=0, le=1e9, allow_inf_nan=False)  # from Prophet output
+    category:      str = Field(..., max_length=128)
+    peak_months:   list[int] = Field(..., max_length=12)  # seasonal config
+    current_month: int = Field(..., ge=1, le=12)
 
 class PricingResponse(BaseModel):
     product_id:      str

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException
-from typing import List
+from fastapi import APIRouter, Body, HTTPException
+from typing import Annotated, List
 from datetime import datetime, timezone
 import pandas as pd
 
@@ -9,6 +9,8 @@ from services.prophet_model import ProphetForecaster
 from services.xgboost_model import XGBoostForecaster
 
 router = APIRouter()
+
+MAX_BATCH_SIZE = 50
 
 @router.post("/forecast", response_model=ForecastResponse)
 def forecast(request: ForecastRequest):
@@ -79,8 +81,8 @@ def forecast(request: ForecastRequest):
     )
 
 @router.post("/batch-forecast", response_model=List[ForecastResponse])
-def batch_forecast(requests: List[ForecastRequest]):
-    if len(requests) > 50:
+def batch_forecast(requests: Annotated[List[ForecastRequest], Body(max_length=MAX_BATCH_SIZE)]):
+    if len(requests) > MAX_BATCH_SIZE:
         raise HTTPException(status_code=400, detail="Maximum 50 products per batch")
         
     responses = []

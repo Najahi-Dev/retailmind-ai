@@ -6,9 +6,13 @@ import os
 # Add parent directory to path so routers and services can be imported
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+TEST_API_KEY = "test-ai-service-key-0123456789abcdef"
+os.environ["AI_SERVICE_API_KEY"] = TEST_API_KEY
+
 from main import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-API-Key": TEST_API_KEY})
+anon_client = TestClient(app)
 
 def test_root_health_check():
     response = client.get("/")
@@ -90,3 +94,43 @@ def test_model_evaluation_mape():
     assert "mape" in data
     assert "accuracy_percent" in data
     assert data["accuracy_percent"] > 95.0
+
+
+def test_api_requires_key():
+    response = anon_client.post("/api/v1/evaluate", json={"actuals": [1.0], "predicted": [1.0]})
+    assert response.status_code == 401
+
+
+def test_api_rejects_wrong_key():
+    response = anon_client.post(
+        "/api/v1/evaluate",
+        json={"actuals": [1.0], "predicted": [1.0]},
+        headers={"X-API-Key": "wrong"},
+    )
+    assert response.status_code == 401
+
+
+def test_api_returns_503_when_key_unset(monkeypatch):
+    monkeypatch.delenv("AI_SERVICE_API_KEY", raising=False)
+    response = client.get("/api/v1/health")
+    assert response.status_code == 503
+
+
+def test_forecast_rejects_excessive_horizon():
+    payload = {
+        "product_id": "PROD-BOUNDS",
+        "history": [{"ds": f"2026-10-0{i}", "y": 1} for i in range(1, 8)],
+        "horizon_days": 366,
+    }
+    response = client.post("/api/v1/forecast", json=payload)
+    assert response.status_code == 422
+
+
+def test_batch_rejects_more_than_50():
+    item = {
+        "product_id": "P",
+        "history": [{"ds": "2026-10-01", "y": 1}],
+        "horizon_days": 1,
+    }
+    response = client.post("/api/v1/batch-forecast", json=[item] * 51)
+    assert response.status_code in (400, 422)

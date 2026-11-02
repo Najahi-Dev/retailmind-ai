@@ -33,9 +33,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env.local
-.env
+# env files (never commit secrets; only the template is tracked)
+.env*
+!.env.example
 
 # vercel
 .vercel
@@ -46,3 +46,10 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
