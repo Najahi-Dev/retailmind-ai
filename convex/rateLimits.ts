@@ -1,7 +1,7 @@
 // convex/rateLimits.ts
 import { internalMutation, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { RATE_LIMITS, RateLimitName, consumeRateLimit, ipKey } from "./lib/rateLimit";
+import { RATE_LIMITS, RateLimitName, consumeRateLimit, ipKey, resetRateLimit } from "./lib/rateLimit";
 import { requireServerSecret } from "./lib/serverSecret";
 
 const policy = v.union(...(Object.keys(RATE_LIMITS) as RateLimitName[]).map((k) => v.literal(k)));
@@ -27,5 +27,17 @@ export const consumeForIp = mutation({
       `${args.scope.slice(0, 64)}:ip:${ipKey(args.ip)}`,
       RATE_LIMITS[args.policy],
     );
+  },
+});
+
+/**
+ * Admin/CLI only: clear a rate-limit bucket, e.g.
+ *   npx convex run rateLimits:clear '{"key":"pwreset:email:user@example.com"}'
+ */
+export const clear = internalMutation({
+  args: { key: v.string() },
+  handler: async (ctx, args) => {
+    await resetRateLimit(ctx, args.key);
+    return null;
   },
 });

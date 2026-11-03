@@ -147,6 +147,18 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 
+  // ── Password reset tokens (single use, hashed, short-lived) ──
+  passwordResetTokens: defineTable({
+    userId: v.id("users"),
+    tokenHash: v.string(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    ip: v.optional(v.string()),
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_user", ["userId"]),
+
   // ── Price-drop guardrail baseline (cumulative 30-day window per product) ──
   priceReferences: defineTable({
     productId: v.id("products"),

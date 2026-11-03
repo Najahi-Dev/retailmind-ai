@@ -13,7 +13,7 @@ import { api } from "@/convex/_generated/api";
 import { ACCESS_COOKIE, REFRESH_COOKIE, setAuthCookies, clearAuthCookies } from "@/lib/server/auth-cookies";
 import { getClientIp, getConvexServerClient, serverSecret } from "@/lib/server/request";
 
-const PUBLIC_PAGE_PREFIXES = ["/sign-in", "/create-workspace", "/select-plan", "/docs"];
+const PUBLIC_PAGE_PREFIXES = ["/sign-in", "/find-workspace", "/forgot-password", "/reset-password", "/create-workspace", "/select-plan", "/docs"];
 
 function isPublicPage(pathname: string) {
   return pathname === "/" || PUBLIC_PAGE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

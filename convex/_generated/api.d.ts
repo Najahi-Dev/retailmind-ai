@@ -24,6 +24,7 @@ import type * as crons from "../crons.js";
 import type * as forecasting from "../forecasting.js";
 import type * as guardrails from "../guardrails.js";
 import type * as inventory from "../inventory.js";
+import type * as lib_emailTemplates from "../lib/emailTemplates.js";
 import type * as lib_jwt from "../lib/jwt.js";
 import type * as lib_password from "../lib/password.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -56,6 +57,7 @@ import type * as users from "../users.js";
 import type * as usersAdmin from "../usersAdmin.js";
 import type * as wipeDb from "../wipeDb.js";
 import type * as workflowAdmin from "../workflowAdmin.js";
+import type * as workspaces from "../workspaces.js";
 
 import type {
   ApiFromModules,
@@ -80,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   forecasting: typeof forecasting;
   guardrails: typeof guardrails;
   inventory: typeof inventory;
+  "lib/emailTemplates": typeof lib_emailTemplates;
   "lib/jwt": typeof lib_jwt;
   "lib/password": typeof lib_password;
   "lib/rateLimit": typeof lib_rateLimit;
@@ -112,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   usersAdmin: typeof usersAdmin;
   wipeDb: typeof wipeDb;
   workflowAdmin: typeof workflowAdmin;
+  workspaces: typeof workspaces;
 }>;
 
 /**

@@ -73,7 +73,12 @@ async function issueTokens(sessionId: string, user: SessionUser) {
 
 // ── LOGIN ────────────────────────────────────────────────────────────────────
 export const loginUser = action({
-  args: { email: v.string(), password: v.string(), ...clientMeta },
+  args: {
+    email: v.string(),
+    password: v.string(),
+    workspace: v.optional(v.string()),
+    ...clientMeta,
+  },
   handler: async (ctx, args): Promise<TokenResponse> => {
     requireServerSecret(args.serverSecret);
     const email = args.email.toLowerCase().trim();
@@ -85,8 +90,12 @@ export const loginUser = action({
     const record: LoginRecord = await ctx.runMutation(internal.authInternal.beginLogin, { email, ip: args.ip });
 
     if (record && record.lockedUntil > Date.now()) {
-      const mins = Math.ceil((record.lockedUntil - Date.now()) / 60000);
-      throw new ConvexError(`Account temporarily locked after too many failed attempts. Try again in ${mins} minute(s).`);
+      const retryAfterMs = record.lockedUntil - Date.now();
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: `Account temporarily locked after too many failed attempts. Try again in ${Math.ceil(retryAfterMs / 60000)} minute(s).`,
+        retryAfterMs,
+      });
     }
 
     // Always run bcrypt so response time does not reveal whether the account exists.
@@ -110,6 +119,7 @@ export const loginUser = action({
       refreshTokenHash: await sha256Hex(refreshToken),
       ip: args.ip,
       userAgent: args.userAgent,
+      workspace: args.workspace?.toLowerCase().trim().slice(0, 48) || undefined,
     });
 
     const tokens = await issueTokens(result.sessionId, result.user);
@@ -250,6 +260,56 @@ export const registerWorkspaceAndOwner = action({
       orgId: result.orgId,
       inviteCode,
     };
+  },
+});
+
+// ── PASSWORD RESET ───────────────────────────────────────────────────────────
+/** Always resolves the same way whether or not the account exists (no enumeration). */
+export const requestPasswordReset = action({
+  args: { email: v.string(), ...clientMeta },
+  handler: async (ctx, args): Promise<{ ok: true }> => {
+    requireServerSecret(args.serverSecret);
+    const email = args.email.toLowerCase().trim().slice(0, 254);
+    if (!email) return { ok: true };
+    const token = randomBytes(32).toString("base64url");
+    await ctx.runMutation(internal.authInternal.createPasswordReset, {
+      email,
+      ip: args.ip,
+      userAgent: args.userAgent,
+      token,
+      tokenHash: await sha256Hex(token),
+    });
+    return { ok: true };
+  },
+});
+
+export const checkPasswordResetToken = action({
+  args: { token: v.string(), ...clientMeta },
+  handler: async (ctx, args): Promise<{ valid: boolean }> => {
+    requireServerSecret(args.serverSecret);
+    if (!args.token || args.token.length > 128) return { valid: false };
+    const valid: boolean = await ctx.runMutation(internal.authInternal.checkPasswordResetToken, {
+      tokenHash: await sha256Hex(args.token),
+      ip: args.ip,
+    });
+    return { valid };
+  },
+});
+
+export const resetPassword = action({
+  args: { token: v.string(), newPassword: v.string(), ...clientMeta },
+  handler: async (ctx, args): Promise<{ success: true }> => {
+    requireServerSecret(args.serverSecret);
+    if (!args.token || args.token.length > 128) {
+      throw new ConvexError("This reset link is invalid or has expired. Please request a new one.");
+    }
+    validatePasswordStrength(args.newPassword);
+    await ctx.runMutation(internal.authInternal.consumePasswordReset, {
+      tokenHash: await sha256Hex(args.token),
+      passwordHash: await bcrypt.hash(args.newPassword, BCRYPT_ROUNDS),
+      ip: args.ip,
+    });
+    return { success: true };
   },
 });
 

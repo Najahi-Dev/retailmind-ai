@@ -35,11 +35,15 @@ export function serverSecret(): string {
 export function convexErrorResponse(err: unknown, fallback = "Request failed"): {
   status: number;
   message: string;
+  /** Present for 429s: milliseconds until the caller may retry. */
+  retryAfterMs?: number;
 } {
   if (err instanceof ConvexError) {
     const data = err.data as any;
     if (data && typeof data === "object" && data.code === "RATE_LIMITED") {
-      return { status: 429, message: String(data.message ?? "Too many requests") };
+      const retryAfterMs =
+        typeof data.retryAfterMs === "number" && data.retryAfterMs > 0 ? Math.ceil(data.retryAfterMs) : undefined;
+      return { status: 429, message: String(data.message ?? "Too many requests"), retryAfterMs };
     }
     if (typeof data === "string") {
       if (data === "Forbidden") return { status: 403, message: "Forbidden" };

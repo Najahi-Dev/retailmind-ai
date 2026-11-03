@@ -10,6 +10,7 @@ export async function POST(req: Request) {
   const body = await readJson(req);
   const email = str(body?.email, 254);
   const password = str(body?.password, 128);
+  const workspace = body?.workspace ? (str(body.workspace, 48) ?? undefined) : undefined;
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
   }
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
     const result = await getConvexServerClient().action(api.auth.loginUser, {
       email,
       password,
+      workspace,
       serverSecret: serverSecret(),
       ip: getClientIp(req),
       userAgent: userAgentOf(req),

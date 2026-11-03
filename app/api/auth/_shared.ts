@@ -29,10 +29,12 @@ export function sessionResponse(
 }
 
 export function errorResponse(err: unknown, fallback: string, clearCookies = false) {
-  const { status, message } = convexErrorResponse(err, fallback);
+  const { status, message, retryAfterMs } = convexErrorResponse(err, fallback);
+  const headers: Record<string, string> = { "Cache-Control": "no-store" };
+  if (retryAfterMs) headers["Retry-After"] = String(Math.ceil(retryAfterMs / 1000));
   const res = NextResponse.json(
-    { error: message },
-    { status, headers: { "Cache-Control": "no-store" } },
+    retryAfterMs ? { error: message, code: "RATE_LIMITED", retryAfterMs } : { error: message },
+    { status, headers },
   );
   if (clearCookies) clearAuthCookies(res);
   return res;

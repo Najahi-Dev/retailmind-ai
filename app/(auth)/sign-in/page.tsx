@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, AuthRequestError } from "@/lib/auth-context";
+import { useRetryCountdown, stripRetrySuffix } from "@/hooks/use-retry-countdown";
+import { RetryNotice } from "@/components/auth/retry-notice";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Input } from "@/components/ui/input";
@@ -25,7 +27,10 @@ import {
   ShieldCheckIcon,
   ClockIcon,
   ArrowLeft,
+  BuildingIcon,
 } from "lucide-react";
+
+type Workspace = { name: string; slug: string; logoUrl: string | null };
 
 const ROLE_DESTINATIONS: Record<string, string> = {
   super_admin: "/super-admin",
@@ -36,7 +41,18 @@ const ROLE_DESTINATIONS: Record<string, string> = {
 };
 
 export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignIn />
+    </Suspense>
+  );
+}
+
+function SignIn() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const workspaceParam = searchParams.get("workspace")?.slice(0, 48) || null;
+  const resetDone = searchParams.get("reset") === "success";
   const { login, currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -44,9 +60,49 @@ export default function SignInPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(
+    resetDone ? "Your password has been updated. Sign in with your new password." : null,
+  );
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [showSuspendedModal, setShowSuspendedModal] = useState(false);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [limitMessage, setLimitMessage] = useState("Too many requests.");
+  const retry = useRetryCountdown();
+  const [checkingWorkspace, setCheckingWorkspace] = useState(!!workspaceParam);
+
+  // Workspace-scoped sign-in (?workspace=<slug>, set by /find-workspace): re-verify it.
+  useEffect(() => {
+    const slug = workspaceParam;
+    if (!slug) return;
+    let cancelled = false;
+    fetch("/api/auth/workspace", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: slug }),
+    })
+      .then(async (res) => {
+        if (cancelled) return;
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.workspace) {
+          setWorkspace(data.workspace);
+        } else if (res.status === 404) {
+          router.replace(`/find-workspace?notfound=${encodeURIComponent(slug)}`);
+        } else {
+          // Rate-limited or transient error: keep the slug; the server re-checks it at sign-in.
+          setWorkspace({ name: slug, slug, logoUrl: null });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setWorkspace({ name: slug, slug, logoUrl: null });
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingWorkspace(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router, workspaceParam]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.search.includes("suspended=true")) {
@@ -81,8 +137,14 @@ export default function SignInPage() {
     setSuccessMessage(null);
 
     try {
-      await login(email, password);
+      await login(email, password, workspace?.slug);
     } catch (err: any) {
+      if (err instanceof AuthRequestError && err.status === 429 && err.retryAfterMs) {
+        setLimitMessage(stripRetrySuffix(err.message));
+        retry.start(err.retryAfterMs);
+        setLoading(false);
+        return;
+      }
       let msg = err?.message || "Authentication failed. Please try again.";
       msg = msg
         .replace(/\[CONVEX.*?\]\s*/g, "")
@@ -152,9 +214,32 @@ export default function SignInPage() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-2">
               Welcome Back <ShieldCheckIcon className="w-5 h-5 text-indigo-500" />
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Sign in to RetailMind AI Supermarket Management
-            </p>
+            {workspace ? (
+              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 pl-1 pr-3 py-1 text-xs text-indigo-700 dark:text-indigo-300 max-w-full">
+                <span className="size-6 rounded-full bg-white dark:bg-slate-800 border border-indigo-500/20 flex items-center justify-center overflow-hidden shrink-0 text-[11px] font-bold">
+                  {workspace.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={workspace.logoUrl} alt="" className="size-full object-cover" />
+                  ) : (
+                    workspace.name.charAt(0).toUpperCase()
+                  )}
+                </span>
+                <span className="truncate">
+                  Signing in to <span className="font-bold">{workspace.name}</span>
+                </span>
+                <Link href="/find-workspace" className="font-semibold underline-offset-2 hover:underline shrink-0">
+                  Change
+                </Link>
+              </div>
+            ) : checkingWorkspace ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 inline-flex items-center gap-1.5">
+                <Loader2Icon className="w-3.5 h-3.5 animate-spin" /> Verifying workspace...
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Sign in to RetailMind AI Supermarket Management
+              </p>
+            )}
           </div>
 
           {successMessage && (
@@ -164,7 +249,9 @@ export default function SignInPage() {
             </div>
           )}
 
-          {error && (
+          {retry.active && <RetryNotice message={limitMessage} label={retry.label} />}
+
+          {error && !retry.active && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-xs text-red-600 dark:text-red-400 flex items-center gap-2.5">
               <AlertCircleIcon className="w-4 h-4 shrink-0" />
               <span>{error}</span>
@@ -188,7 +275,15 @@ export default function SignInPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Password</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Input
                   type="password"
@@ -204,18 +299,30 @@ export default function SignInPage() {
 
             <Button
               type="submit"
-              disabled={loading || authLoading}
+              disabled={loading || authLoading || checkingWorkspace || retry.active}
               className="w-full h-11 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-md mt-2"
             >
               {loading ? (
                 <>
                   <Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> Signing In...
                 </>
+              ) : retry.active ? (
+                <span className="tabular-nums">Try again in {retry.label}</span>
               ) : (
                 "Sign In to Platform"
               )}
             </Button>
           </form>
+
+          {!workspace && (
+            <Link
+              href="/find-workspace"
+              className="flex items-center justify-center gap-1.5 w-full h-10 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-indigo-500/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              <BuildingIcon className="w-4 h-4" />
+              Find your workspace
+            </Link>
+          )}
 
           <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800/60">
             <Link

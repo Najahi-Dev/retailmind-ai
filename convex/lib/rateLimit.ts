@@ -23,6 +23,9 @@ export const RATE_LIMITS = {
   emailPerIp: { capacity: 30, windowMs: 60 * 60 * 1000 },
   expensiveJobPerOrg: { capacity: 6, windowMs: 60 * 60 * 1000 },
   apiPerIp: { capacity: 300, windowMs: 60 * 1000 },
+  workspaceLookupPerIp: { capacity: 20, windowMs: 15 * 60 * 1000 },
+  passwordResetPerIp: { capacity: 10, windowMs: 60 * 60 * 1000 },
+  passwordResetPerEmail: { capacity: 3, windowMs: 60 * 60 * 1000 },
 } as const satisfies Record<string, RateLimitConfig>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

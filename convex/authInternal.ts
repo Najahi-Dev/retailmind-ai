@@ -4,6 +4,7 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import {
   RATE_LIMITS,
   MAX_FAILED_LOGINS,
@@ -82,10 +83,25 @@ export const completeLogin = internalMutation({
     refreshTokenHash: v.string(),
     ip: v.string(),
     userAgent: v.optional(v.string()),
+    /** Optional workspace slug chosen on the "find your workspace" step. */
+    workspace: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) throw new ConvexError("Invalid email or password");
+
+    // Workspace-scoped sign-in: the (already password-verified) account must belong to it.
+    if (args.workspace && user.role !== "super_admin") {
+      const org = await ctx.db
+        .query("organizations")
+        .withIndex("by_slug", (q) => q.eq("slug", args.workspace!))
+        .first();
+      if (!org || user.orgId !== org._id) {
+        throw new ConvexError(
+          `This account is not a member of the "${org?.name ?? args.workspace}" workspace. Check the workspace or sign in without selecting one.`,
+        );
+      }
+    }
 
     if (user.role === "pending") {
       throw new ConvexError("Your user role is not assigned. Waiting for the admin approval.");
@@ -498,6 +514,126 @@ export const createWorkspaceAndOwnerRecord = internalMutation({
   },
 });
 
+// ── Password reset ───────────────────────────────────────────────────────────
+
+export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Rate-limits the request and, if the account exists and may sign in, stores a
+ * hashed single-use token and schedules the e-mail. Returns nothing either way
+ * so callers cannot learn whether an account exists.
+ */
+export const createPasswordReset = internalMutation({
+  args: {
+    email: v.string(),
+    ip: v.string(),
+    tokenHash: v.string(),
+    token: v.string(),
+    userAgent: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await consumeRateLimit(ctx, `pwreset:ip:${ipKey(args.ip)}`, RATE_LIMITS.passwordResetPerIp);
+    await consumeRateLimit(ctx, `pwreset:email:${args.email}`, RATE_LIMITS.passwordResetPerEmail);
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user || !user.isActive || user.role === "pending") return null;
+
+    // Only the newest link is valid.
+    const now = Date.now();
+    const previous = await ctx.db
+      .query("passwordResetTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const p of previous) {
+      if (!p.usedAt) await ctx.db.patch(p._id, { usedAt: now });
+    }
+
+    await ctx.db.insert("passwordResetTokens", {
+      userId: user._id,
+      tokenHash: args.tokenHash,
+      expiresAt: now + PASSWORD_RESET_TTL_MS,
+      createdAt: now,
+      ip: ipKey(args.ip),
+    });
+    await ctx.db.insert("securityLogs", {
+      orgId: user.orgId,
+      userId: user._id,
+      email: user.email,
+      role: user.role,
+      eventType: "PASSWORD_RESET_REQUESTED",
+      details: `Password reset link requested from ip ${ipKey(args.ip)}`,
+      createdAt: now,
+    });
+    await ctx.scheduler.runAfter(0, internal.mailer.sendPasswordResetEmail, {
+      toEmail: user.email,
+      toName: user.name,
+      token: args.token,
+      requestedAt: now,
+      ip: ipKey(args.ip),
+      userAgent: args.userAgent?.slice(0, 256),
+    });
+    return null;
+  },
+});
+
+/** Validates a reset token (read-only) so the reset page can show "expired" early. */
+export const checkPasswordResetToken = internalMutation({
+  args: { tokenHash: v.string(), ip: v.string() },
+  handler: async (ctx, args) => {
+    await consumeRateLimit(ctx, `pwreset-check:ip:${ipKey(args.ip)}`, RATE_LIMITS.refreshPerIp);
+    const row = await ctx.db
+      .query("passwordResetTokens")
+      .withIndex("by_token_hash", (q) => q.eq("tokenHash", args.tokenHash))
+      .unique();
+    return !!row && !row.usedAt && row.expiresAt > Date.now();
+  },
+});
+
+/**
+ * Atomically consumes a reset token and sets the new password. Clears lockout,
+ * revokes every session and writes a security log entry.
+ */
+export const consumePasswordReset = internalMutation({
+  args: { tokenHash: v.string(), passwordHash: v.string(), ip: v.string() },
+  handler: async (ctx, args) => {
+    await consumeRateLimit(ctx, `pwreset-confirm:ip:${ipKey(args.ip)}`, RATE_LIMITS.passwordResetPerIp);
+    const now = Date.now();
+    const row = await ctx.db
+      .query("passwordResetTokens")
+      .withIndex("by_token_hash", (q) => q.eq("tokenHash", args.tokenHash))
+      .unique();
+    if (!row || row.usedAt || row.expiresAt < now) {
+      throw new ConvexError("This reset link is invalid or has expired. Please request a new one.");
+    }
+    const user = await ctx.db.get(row.userId);
+    if (!user || !user.isActive || user.role === "pending") {
+      throw new ConvexError("This reset link is invalid or has expired. Please request a new one.");
+    }
+
+    await ctx.db.patch(row._id, { usedAt: now });
+    await ctx.db.patch(user._id, {
+      passwordHash: args.passwordHash,
+      passwordChangedAt: now,
+      failedLoginCount: 0,
+      lockedUntil: undefined,
+    });
+    await revokeAllUserSessions(ctx, user._id, "password_reset");
+    await ctx.db.insert("securityLogs", {
+      orgId: user.orgId,
+      userId: user._id,
+      email: user.email,
+      role: user.role,
+      eventType: "PASSWORD_RESET_COMPLETED",
+      details: `Password reset completed from ip ${ipKey(args.ip)}; all sessions revoked.`,
+      createdAt: now,
+    });
+    return { success: true };
+  },
+});
+
 // ── Maintenance ──────────────────────────────────────────────────────────────
 
 /** Deletes expired/revoked sessions and stale rate-limit buckets (run by cron). */
@@ -512,6 +648,10 @@ export const purgeExpiredAuthData = internalMutation({
         await ctx.db.delete(s._id);
         deleted++;
       }
+    }
+    const resets = await ctx.db.query("passwordResetTokens").take(500);
+    for (const r of resets) {
+      if (r.expiresAt < now - 24 * 60 * 60 * 1000) await ctx.db.delete(r._id);
     }
     const buckets = await ctx.db.query("rateLimits").take(500);
     for (const b of buckets) {

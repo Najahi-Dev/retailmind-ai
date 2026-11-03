@@ -33,7 +33,7 @@ interface AuthContextType {
   currentUser: AuthUser | null;
   user: AuthUser | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, workspace?: string) => Promise<void>;
   loginWithToken: (newToken: string, user: AuthUser) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -57,8 +57,13 @@ type SessionPayload = {
   user: { _id: string; email: string; name: string; role: string; orgId?: string; imageUrl?: string };
 };
 
-class AuthRequestError extends Error {
-  constructor(message: string, public status: number) {
+export class AuthRequestError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    /** Set on 429 responses: milliseconds until a retry is allowed. */
+    public retryAfterMs?: number,
+  ) {
     super(message);
   }
 }
@@ -95,7 +100,13 @@ async function postAuth(path: string, body?: unknown): Promise<any> {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new AuthRequestError(data?.error || "Request failed", res.status);
+  if (!res.ok) {
+    throw new AuthRequestError(
+      data?.error || "Request failed",
+      res.status,
+      typeof data?.retryAfterMs === "number" ? data.retryAfterMs : undefined,
+    );
+  }
   return data;
 }
 
@@ -277,10 +288,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [liveUserRecord, token, isImpersonating, refresh, clearSession]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, workspace?: string) => {
     setIsLoading(true);
     try {
-      const data: SessionPayload = await postAuth("/api/auth/login", { email, password });
+      const data: SessionPayload = await postAuth("/api/auth/login", { email, password, workspace });
       setAccessToken(data.accessToken);
       setCurrentUser(toAuthUser(data.user));
     } finally {

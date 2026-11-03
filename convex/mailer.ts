@@ -2,6 +2,7 @@
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import nodemailer from "nodemailer";
+import { renderPasswordResetEmail } from "./lib/emailTemplates";
 
 // Helper to get initialized Nodemailer transporter
 const getTransporter = () => {
@@ -36,17 +37,92 @@ function headerSafe(value: unknown, max = 120): string {
   return String(value ?? "").replace(/[\r\n"<>]/g, " ").trim().slice(0, max);
 }
 
-/** Login URL is always derived from server configuration, never from caller input. */
-function getAppLoginUrl(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://app.retailmind.ai";
+/** App origin is always derived from server configuration, never from caller input or Host headers. */
+function getAppOrigin(): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
   try {
     const url = new URL(base);
     if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("bad protocol");
-    return new URL("/login", url.origin).toString();
+    return url.origin;
   } catch {
-    return "https://app.retailmind.ai/login";
+    return "http://localhost:3000";
   }
 }
+
+function getAppLoginUrl(): string {
+  return new URL("/sign-in", getAppOrigin()).toString();
+}
+
+/**
+ * Sends a transactional e-mail via Gmail SMTP when configured, otherwise Resend.
+ * RESEND_FROM should be an address on a domain verified in Resend; the sandbox
+ * sender (onboarding@resend.dev) only delivers to the Resend account owner.
+ */
+async function sendTransactionalEmail(to: string, subject: string, html: string, text: string) {
+  const gmailUser = process.env.GMAIL_USER || process.env.GMAIL_EMAIL;
+  if (gmailUser && process.env.GMAIL_APP_PASSWORD) {
+    await getTransporter().sendMail({
+      from: `"RetailMind AI" <${gmailUser}>`,
+      to,
+      subject: headerSafe(subject, 200),
+      html,
+      text,
+    });
+    console.log("Transactional e-mail sent via Gmail SMTP");
+    return;
+  }
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("No e-mail provider configured (GMAIL_* or RESEND_API_KEY)");
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: process.env.RESEND_FROM || "RetailMind AI <onboarding@resend.dev>",
+      to: [to],
+      subject: headerSafe(subject, 200),
+      html,
+      text,
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().then((b) => b?.message).catch(() => "");
+    throw new Error(`Resend rejected the e-mail (${res.status})${detail ? `: ${detail}` : ""}`);
+  }
+  console.log("Transactional e-mail sent via Resend");
+}
+
+// Internal only: scheduled by authInternal.createPasswordReset. Never reveals to the
+// requester whether the e-mail exists — failures are only logged.
+export const sendPasswordResetEmail = internalAction({
+  args: {
+    toEmail: v.string(),
+    toName: v.string(),
+    token: v.string(),
+    requestedAt: v.optional(v.number()),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    const origin = getAppOrigin();
+    const resetUrl = new URL("/reset-password", origin);
+    resetUrl.searchParams.set("token", args.token);
+    const { subject, html, text } = renderPasswordResetEmail({
+      name: args.toName,
+      resetUrl: resetUrl.toString(),
+      appOrigin: origin,
+      expiresInMinutes: 30,
+      requestedAt: args.requestedAt ?? Date.now(),
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+    try {
+      await sendTransactionalEmail(args.toEmail, subject, html, text);
+    } catch (err) {
+      console.error("Password reset e-mail failed:", err instanceof Error ? err.message : err);
+    }
+    return null;
+  },
+});
 
 // Internal only: scheduled by convex/users.ts after an authorized admin creates a user.
 export const sendWorkspaceUserInviteEmail = internalAction({
