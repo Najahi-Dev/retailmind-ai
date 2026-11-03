@@ -203,7 +203,7 @@ export default defineSchema({
   platformApiKeys: defineTable({
     name: v.string(),
     keyMasked: v.string(),
-    keyHash: v.string(), // normally we'd hash the key here
+    keyHash: v.string(), // SHA-256 of the raw key (raw key is shown once, never stored)
     isActive: v.boolean(),
     createdAt: v.number(),
   }),

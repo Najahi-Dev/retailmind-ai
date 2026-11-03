@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -35,7 +35,7 @@ export default function SuperAdminIntegrations() {
   const createWebhook = useMutation(api.workflowAdmin.createWebhook);
   const toggleWebhook = useMutation(api.workflowAdmin.toggleWebhook);
   const deleteWebhook = useMutation(api.workflowAdmin.deleteWebhook);
-  const createApiKey = useMutation(api.workflowAdmin.createApiKey);
+  const createApiKey = useAction(api.workflowAdmin.createApiKey);
   const revokeApiKey = useMutation(api.workflowAdmin.revokeApiKey);
 
   // States

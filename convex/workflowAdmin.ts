@@ -1,7 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { ConvexError, v } from "convex/values";
 import { requireSuperAdmin } from "./lib/roleGuard";
+import { randomToken, sha256Hex } from "./lib/jwt";
 import { Id } from "./_generated/dataModel";
 
 // ── PURCHASE ORDERS ──
@@ -241,38 +242,62 @@ export const getApiKeys = query({
   args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx, args.token);
-    return await ctx.db.query("platformApiKeys").order("desc").collect();
+    const keys = await ctx.db.query("platformApiKeys").order("desc").collect();
+    // Never send key hashes to the client.
+    return keys.map(({ keyHash: _hash, ...k }) => k);
   }
 });
 
-export const createApiKey = mutation({
+export const insertApiKey = internalMutation({
   args: {
-    token: v.optional(v.string()),
+    adminId: v.id("users"),
     name: v.string(),
+    keyMasked: v.string(),
+    keyHash: v.string(),
   },
   handler: async (ctx, args) => {
-    const admin = await requireSuperAdmin(ctx, args.token);
-    
-    // In a real app we'd use a crypto library, but we just simulate it here for the UI.
-    const rawKey = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-    const keyMasked = `sk_live_****${rawKey.slice(-4)}`;
-    const keyHash = `hash_${rawKey}`;
-    
     const id = await ctx.db.insert("platformApiKeys", {
       name: args.name,
-      keyMasked,
-      keyHash,
+      keyMasked: args.keyMasked,
+      keyHash: args.keyHash,
       isActive: true,
       createdAt: Date.now(),
     });
-    
     await ctx.db.insert("adminAuditLogs", {
-      adminId: admin._id,
+      adminId: args.adminId,
       action: "CREATE_API_KEY",
       details: `Generated new global API key: ${args.name}`,
       timestamp: Date.now(),
     });
-    
+    return id;
+  },
+});
+
+/**
+ * Creates a platform API key. Generated in an action (true CSPRNG randomness),
+ * only the SHA-256 hash is stored, and the raw key is returned exactly once.
+ */
+export const createApiKey = action({
+  args: {
+    token: v.optional(v.string()),
+    name: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ id: Id<"platformApiKeys">; rawKey: string }> => {
+    const caller: { userId: Id<"users">; role: string; impersonatedBy?: Id<"users"> } | null =
+      args.token ? await ctx.runQuery(internal.sessions.resolveAccessToken, { token: args.token }) : null;
+    if (!caller || caller.role !== "super_admin" || caller.impersonatedBy) {
+      throw new ConvexError("Access denied: Super administrator privileges required");
+    }
+    const name = args.name.trim().slice(0, 100);
+    if (!name) throw new ConvexError("Key name is required");
+
+    const rawKey = `rmk_live_${randomToken(32)}`;
+    const id: Id<"platformApiKeys"> = await ctx.runMutation(internal.workflowAdmin.insertApiKey, {
+      adminId: caller.userId,
+      name,
+      keyMasked: `rmk_live_****${rawKey.slice(-4)}`,
+      keyHash: await sha256Hex(rawKey),
+    });
     return { id, rawKey };
   }
 });
