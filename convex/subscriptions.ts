@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCallerUser } from "./lib/roleGuard";
+import { getCallerUser, requireCallerOrg, requireSuperAdmin } from "./lib/roleGuard";
 
 // ── Get Subscription for Current User ─────────────
 export const getUserSubscription = query({
@@ -135,15 +135,21 @@ export const grantVipAccess = mutation({
     targetUserId: v.string(),
     isVipAccess: v.boolean(),
     grantedPlan: v.optional(v.union(v.literal("growth"), v.literal("enterprise"))),
+    token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Legacy no-op kept for API compatibility; restricted to super admins.
+    await requireSuperAdmin(ctx, args.token);
     return { success: true };
   },
 });
 
 export const cancelSubscriptionAtPeriodEnd = mutation({
-  args: { userId: v.optional(v.string()) },
+  args: { userId: v.optional(v.string()), token: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    // Legacy no-op (cancellation is handled through the Stripe billing portal);
+    // restricted to workspace administrators.
+    await requireCallerOrg(ctx, args.token, ["admin"]);
     return { success: true };
   },
 });

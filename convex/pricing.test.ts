@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect, beforeEach } from "vitest";
 import schema from "./schema";
 import { api } from "./_generated/api";
+import { createTestSession } from "./lib/testAuth";
 import { Id } from "./_generated/dataModel";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -41,16 +42,7 @@ describe("Dynamic Pricing Engine & Guardrails", () => {
         createdAt: Date.now(),
       });
     });
-    adminToken = "admin-pricing-token";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: adminId,
-        orgId,
-        token: adminToken,
-        expiresAt: Date.now() + 86400000,
-        createdAt: Date.now(),
-      });
-    });
+    adminToken = await createTestSession(t, adminId);
 
     staffId = await t.run(async (ctx) => {
       return await ctx.db.insert("users", {
@@ -62,16 +54,7 @@ describe("Dynamic Pricing Engine & Guardrails", () => {
         createdAt: Date.now(),
       });
     });
-    staffToken = "staff-pricing-token";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: staffId,
-        orgId,
-        token: staffToken,
-        expiresAt: Date.now() + 86400000,
-        createdAt: Date.now(),
-      });
-    });
+    staffToken = await createTestSession(t, staffId);
 
     warehouseId = await t.mutation(api.inventory.addLocation, {
       token: adminToken,

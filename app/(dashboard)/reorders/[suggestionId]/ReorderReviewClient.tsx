@@ -68,9 +68,10 @@ export default function ReorderReviewClient({
 }) {
   const router   = useRouter();
   const { token } = useAuth();
-  const detail   = useQuery(api.reorder.getReorderDetail, {
-    suggestionId: suggestionId as Id<"reorderSuggestions">,
-  });
+  const detail   = useQuery(
+    api.reorder.getReorderDetail,
+    token ? { suggestionId: suggestionId as Id<"reorderSuggestions">, token } : "skip",
+  );
   const approve  = useMutation(api.reorder.approveSuggestion);
   const dismiss  = useMutation(api.reorder.dismissSuggestion);
 
@@ -120,7 +121,7 @@ export default function ReorderReviewClient({
         ? Date.now() + creditTermDays * 24 * 60 * 60 * 1000
         : undefined;
 
-      await approve({
+      const result = await approve({
         token: token ?? undefined,
         suggestionId: suggestionId as Id<"reorderSuggestions">,
         supplierId:   supplierId as Id<"suppliers">,
@@ -137,6 +138,11 @@ export default function ReorderReviewClient({
         creditTermDays: paymentMethod === "CREDIT" ? creditTermDays : undefined,
         dueDate:        computedDueDate,
       });
+      if (result.blocked) {
+        window.alert(result.reason);
+        router.push(`/reorders`);
+        return;
+      }
       router.push(`/reorders/purchase-orders`);
     } catch (e) {
       console.error(e);

@@ -40,7 +40,7 @@ import { useAuth } from "@/lib/auth-context";
 export default function EditProductClient({ productId, role }: { productId: string; role: string }) {
   const router = useRouter();
   const { token } = useAuth();
-  const detail = useQuery(api.inventory.getProductDetail, { productId: productId as Id<"products">, token: token ?? undefined });
+  const detail = useQuery(api.inventory.getProductDetail, token ? { productId: productId as Id<"products">, token } : "skip");
   const categoriesQ = useQuery(api.inventory.getCategories, { token: token ?? undefined });
   const suppliersQ = useQuery(api.inventory.getSuppliers, { token: token ?? undefined });
   const edit = useMutation(api.inventory.editProduct);

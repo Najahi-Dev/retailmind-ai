@@ -115,8 +115,9 @@ export default function PricingClient() {
   const handleApprove = async (id: Id<"priceSuggestions">) => {
     setProcessing(id);
     try {
-      await approve({ token: token ?? undefined, suggestionId: id });
-      toast.success("AI Price update applied successfully!");
+      const result = await approve({ token: token ?? undefined, suggestionId: id });
+      if (result.blocked) toast.warning(result.reason);
+      else toast.success("AI Price update applied successfully!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to apply price");
     } finally {

@@ -1,31 +1,59 @@
 // app/api/alerts/send-email/route.ts
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { z } from "zod";
+import { convexErrorResponse, getConvexServerClient } from "@/lib/server/request";
+import {
+  enforceRateLimit,
+  escapeHtml,
+  headerSafe,
+  isAllowedRecipient,
+  jsonError,
+  readJson,
+  requireCaller,
+} from "../../_lib/guard";
+
+const bodySchema = z.object({
+  // Optional: defaults to the caller. Must be the caller or a user of the caller's org.
+  email: z.string().trim().email().max(254).optional(),
+  subject: z.string().trim().max(200).optional(),
+  alertType: z
+    .enum(["low_stock", "critical_stock", "overstock", "demand_spike", "supplier_delay", "system"])
+    .default("low_stock"),
+  priority: z.enum(["critical", "high", "medium", "low"]).default("high"),
+  message: z.string().trim().min(1).max(2000).default("Inventory threshold alert triggered"),
+  productName: z.string().trim().max(200).optional(),
+  sku: z.string().trim().max(100).optional(),
+});
+
+const PRIORITY_COLORS: Record<string, string> = {
+  critical: "#ef4444",
+  high: "#f97316",
+  medium: "#eab308",
+  low: "#64748b",
+};
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const {
-      email,
-      subject,
-      alertType = "low_stock",
-      priority = "high",
-      message = "Inventory threshold alert triggered",
-      productName,
-      sku,
-    } = body;
+    const auth = await requireCaller(req, ["admin", "manager", "staff"]);
+    if ("response" in auth) return auth.response;
+    const { caller, token } = auth;
 
-    const apiKey = process.env.RESEND_API_KEY;
+    const parsed = bodySchema.safeParse((await readJson(req)) ?? {});
+    if (!parsed.success) return jsonError(400, "Invalid request body");
+    const { subject, alertType, priority, message, productName, sku } = parsed.data;
 
-    const priorityColors: Record<string, string> = {
-      critical: "#ef4444",
-      high: "#f97316",
-      medium: "#eab308",
-      low: "#64748b",
-    };
+    const client = getConvexServerClient();
+    const limited = await enforceRateLimit(client, req, "alerts-send-email", caller.id);
+    if (limited) return limited;
 
-    const badgeColor = priorityColors[priority] ?? "#64748b";
+    const recipient = parsed.data.email ?? caller.email;
+    if (!recipient) return jsonError(400, "No recipient address available");
+    if (!(await isAllowedRecipient(client, token, caller, recipient, { orgUsers: true }))) {
+      return jsonError(403, "Recipient must be a member of your organization");
+    }
 
+    const badgeColor = PRIORITY_COLORS[priority] ?? "#64748b";
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -49,16 +77,16 @@ export async function POST(req: Request) {
           <div class="card">
             <div class="header">
               <h1>RetailMind AI — Alert Notification</h1>
-              <div class="badge">${priority} Priority • ${alertType.replace("_", " ")}</div>
+              <div class="badge">${escapeHtml(priority)} Priority • ${escapeHtml(alertType.replace("_", " "))}</div>
             </div>
             <div class="content">
-              <div class="message">${message}</div>
+              <div class="message">${escapeHtml(message)}</div>
               ${
                 productName
                   ? `
                 <div class="product-box">
-                  <div class="product-title">${productName}</div>
-                  ${sku ? `<div class="product-sku">SKU: ${sku}</div>` : ""}
+                  <div class="product-title">${escapeHtml(productName)}</div>
+                  ${sku ? `<div class="product-sku">SKU: ${escapeHtml(sku)}</div>` : ""}
                 </div>
               `
                   : ""
@@ -75,31 +103,34 @@ export async function POST(req: Request) {
       </html>
     `;
 
+    const finalSubject = headerSafe(subject ?? `[${priority.toUpperCase()}] ${message}`);
+    const apiKey = process.env.RESEND_API_KEY;
+
     if (!apiKey || apiKey === "re_dummy") {
-      console.log(`[Email Alert Mock Send] To: ${email ?? "admin@retailmind.ai"}, Subject: ${subject ?? message}`);
+      console.log("[Email Alert Mock Send] Resend API key not configured; alert email not sent.");
       return NextResponse.json({
         success: true,
-        delivered: true,
+        delivered: false,
         mock: true,
         message: "Email alert notification logged (Resend API key pending in env)",
       });
     }
 
     const resend = new Resend(apiKey);
-
-    const data = await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: "RetailMind AI Alerts <alerts@retailmind.ai>",
-      to: email ? [email] : ["admin@retailmind.ai"],
-      subject: subject ?? `[${priority.toUpperCase()}] ${message}`,
+      to: [recipient],
+      subject: finalSubject,
       html: htmlContent,
     });
+    if (error) {
+      console.error("Resend alert email error:", error);
+      return jsonError(502, "Failed to send email notification");
+    }
 
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    console.error("Failed to send alert email notification:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to send email notification" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, delivered: true });
+  } catch (err) {
+    const { status, message } = convexErrorResponse(err, "Failed to send email notification");
+    return jsonError(status, message);
   }
 }

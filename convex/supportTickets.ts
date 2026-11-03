@@ -1,6 +1,6 @@
 // convex/supportTickets.ts
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getCallerUser, requireRole } from "./lib/roleGuard";
 
 // ── 1. Create Support Ticket ──────────────────────────
@@ -15,11 +15,11 @@ export const createTicket = mutation({
   handler: async (ctx, args) => {
     const caller = await requireRole(ctx, args.token);
 
-    const count = await ctx.db.query("supportTickets").collect();
     const ticketId = `#RM-SUP-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const id = await ctx.db.insert("supportTickets", {
       ticketId,
+      orgId: caller.orgId,
       userId: caller._id,
       userName: caller.name,
       userEmail: caller.email,
@@ -47,9 +47,16 @@ export const getUserTickets = query({
     const caller = await getCallerUser(ctx, args.token);
     if (!caller) return [];
 
-    // Admins and Managers see all tickets; Suppliers and Staff see their own
-    const tickets = ["admin", "manager"].includes(caller.role)
-      ? await ctx.db.query("supportTickets").order("desc").collect()
+    // Org Admins and Managers see their own organization's tickets; Suppliers and
+    // Staff see only their own. Platform-wide access lives in communicationsAdmin
+    // (super admin only).
+    const orgId = caller.orgId;
+    const tickets = ["admin", "manager"].includes(caller.role) && orgId
+      ? await ctx.db
+          .query("supportTickets")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .order("desc")
+          .collect()
       : await ctx.db
           .query("supportTickets")
           .withIndex("by_user", (q) => q.eq("userId", caller._id))
@@ -78,14 +85,17 @@ export const deleteTicket = mutation({
   handler: async (ctx, args) => {
     const caller = await requireRole(ctx, args.token);
     const ticket = await ctx.db.get(args.ticketDbId);
-    if (!ticket) throw new Error("Support ticket not found");
+    if (!ticket) throw new ConvexError("Support ticket not found");
 
-    // Only ticket creator or Admin/Manager can delete ticket
+    // Only ticket creator or an Admin/Manager of the SAME organization can delete it
     const isOwner = ticket.userId === caller._id;
-    const isAdminOrManager = ["admin", "manager"].includes(caller.role);
+    const isOrgAdminOrManager =
+      ["admin", "manager"].includes(caller.role) &&
+      !!caller.orgId &&
+      ticket.orgId === caller.orgId;
 
-    if (!isOwner && !isAdminOrManager) {
-      throw new Error("Access Denied: You can only delete your own support tickets");
+    if (!isOwner && !isOrgAdminOrManager) {
+      throw new ConvexError("Access Denied: You can only delete your own support tickets");
     }
 
     await ctx.db.delete(args.ticketDbId);
@@ -102,9 +112,12 @@ export const respondToTicket = mutation({
     status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("resolved"), v.literal("closed")),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.token, ["admin", "manager"]);
+    const caller = await requireRole(ctx, args.token, ["admin", "manager"]);
     const ticket = await ctx.db.get(args.ticketDbId);
-    if (!ticket) throw new Error("Support ticket not found");
+    if (!ticket) throw new ConvexError("Support ticket not found");
+    if (!caller.orgId || ticket.orgId !== caller.orgId) {
+      throw new ConvexError("Access Denied: Ticket belongs to another organization.");
+    }
 
     await ctx.db.patch(args.ticketDbId, {
       adminResponse: args.adminResponse.trim(),

@@ -57,8 +57,13 @@ export default function SignInPage() {
   useEffect(() => {
     if (!authLoading && isAuthenticated && currentUser) {
       let destination = ROLE_DESTINATIONS[currentUser.role] ?? "/dashboard";
-      if (currentUser.role === "super_admin" || currentUser.email === "admin@retailmind.com" || currentUser.email === "ahmednajahi2003@gmail.com") {
+      if (currentUser.role === "super_admin") {
         destination = "/super-admin";
+      }
+      // Honour ?next= only for same-site relative paths (prevents open redirects).
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")) {
+        destination = next;
       }
       router.replace(destination);
     }

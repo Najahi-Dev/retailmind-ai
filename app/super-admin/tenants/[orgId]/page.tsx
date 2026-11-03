@@ -69,7 +69,7 @@ export default function SuperAdminTenantDetails() {
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        role: formData.role,
+        role: formData.role as any,
       });
 
       if (formData.sendEmail) {
@@ -82,6 +82,7 @@ export default function SuperAdminTenantDetails() {
               name: formData.name,
               password: formData.password,
               role: formData.role,
+              orgId,
             }),
           }).then((res) => {
             if (!res.ok) throw new Error("Email dispatch failed");
@@ -110,7 +111,7 @@ export default function SuperAdminTenantDetails() {
         userId: editUser._id,
         name: formData.name,
         email: formData.email,
-        role: formData.role,
+        role: formData.role as any,
         isActive: formData.isActive,
       });
       toast.success("User updated successfully");

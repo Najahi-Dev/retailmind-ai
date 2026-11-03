@@ -1,6 +1,6 @@
 // app/(dashboard)/users/AddUserModal.tsx
 "use client";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api }         from "@/convex/_generated/api";
 import { useState }    from "react";
 import { toast }       from "sonner";
@@ -26,7 +26,7 @@ interface Props {
 }
 
 export default function AddUserModal({ open, onOpenChange }: Props) {
-  const createUser = useMutation(api.users.createUser);
+  const createUser = useAction(api.users.createUser);
 
   const [form, setForm] = useState({
     name:  "",
@@ -45,19 +45,20 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
 
   const generatePassword = () => {
     // Generate a random password of length 12
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    // Cryptographically secure; always satisfies the server password policy.
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
+    const bytes = new Uint8Array(14);
+    crypto.getRandomValues(bytes);
     let password = "";
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(password);
+    for (const b of bytes) password += chars.charAt(b % chars.length);
+    setPassword(password + "Aa7");
   };
 
   const handleSubmit = async () => {
     if (!form.name || !form.email) return;
     setSubmitting(true);
     try {
-      await createUser({
+      const res = await createUser({
         token: token ?? undefined,
         name:  form.name,
         email: form.email,
@@ -66,7 +67,11 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
         password: password || undefined,
         sendEmail: sendEmail,
       });
-      toast.success(`User ${form.name} created successfully!`);
+      if (res.temporaryPassword) {
+        toast.success(`User ${form.name} created. Temporary password: ${res.temporaryPassword}`, { duration: 20000 });
+      } else {
+        toast.success(`User ${form.name} created successfully!`);
+      }
       setForm({ name: "", email: "", phone: "", role: "staff" });
       setPassword("");
       setSendEmail(true);

@@ -1,6 +1,15 @@
 import { mutation, query, internalMutation } from "./_generated/server";
-import { v } from "convex/values";
-import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
+import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
+import { getCallerUser, requireCallerOrg, getOrgEntity } from "./lib/roleGuard";
+import {
+  GUARDRAIL_PRICE_DROP_PCT,
+  computePriceDropPct,
+  hasPendingApprovalFor,
+  notePriceChange,
+  requirePositiveFinite,
+} from "./guardrails";
 
 // ── Generate price suggestions ───────
 export const generatePriceSuggestions = internalMutation({
@@ -324,16 +333,46 @@ export const approvePriceSuggestion = mutation({
     overridePrice: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-    const s = await ctx.db.get(args.suggestionId);
-    if (!s) throw new Error("Suggestion not found");
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const s = await getOrgEntity<Doc<"priceSuggestions">>(ctx, "priceSuggestions", args.suggestionId, orgId);
+    if (s.status !== "pending") throw new ConvexError("Suggestion already processed");
 
-    if (orgId && s.orgId && s.orgId !== orgId) {
-      throw new Error("Access Denied: Suggestion belongs to another workspace.");
+    const product = await getOrgEntity<Doc<"products">>(ctx, "products", s.productId, orgId);
+
+    const finalPrice = requirePositiveFinite(args.overridePrice ?? s.suggestedPrice, "Price");
+
+    // ── GUARDRAIL: large (cumulative) price drops need Super Admin approval ──
+    const { referencePrice, dropPct } = await computePriceDropPct(ctx, product, finalPrice);
+    if (dropPct >= GUARDRAIL_PRICE_DROP_PCT) {
+      if (await hasPendingApprovalFor(ctx, orgId, "PRICE_DROP", "suggestionId", args.suggestionId)) {
+        throw new ConvexError("An approval request for this price change is already pending.");
+      }
+      const roundedDrop = Math.round(dropPct);
+      await ctx.runMutation(internal.guardrails.createPendingApproval, {
+        orgId,
+        requesterId: caller._id,
+        actionType: "PRICE_DROP",
+        details: {
+          productId: product._id,
+          productName: product.name,
+          productSku: product.sku,
+          currentPrice: product.sellingPrice,
+          referencePrice,
+          newPrice: finalPrice,
+          dropPct: roundedDrop,
+          orgId,
+          suggestionId: args.suggestionId,
+        },
+      });
+      return {
+        success: false,
+        blocked: true,
+        reason: `Price drop of ${roundedDrop}% on "${product.name}" exceeds the safe limit of ${GUARDRAIL_PRICE_DROP_PCT}%. A Super Admin approval request has been submitted — the price will update once approved.`,
+      };
     }
 
-    const finalPrice = args.overridePrice ?? s.suggestedPrice;
-    await ctx.db.patch(s.productId, { sellingPrice: finalPrice });
+    await notePriceChange(ctx, product, finalPrice);
+    await ctx.db.patch(product._id, { sellingPrice: finalPrice, updatedAt: Date.now() });
 
     await ctx.db.patch(args.suggestionId, {
       status: "approved",
@@ -357,7 +396,7 @@ export const approvePriceSuggestion = mutation({
       await ctx.db.delete(duplicate._id);
     }
 
-    return { success: true };
+    return { success: true, blocked: false };
   },
 });
 
@@ -370,12 +409,8 @@ export const rejectPriceSuggestion = mutation({
   },
   handler: async (ctx, args) => {
     const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-    const s = await ctx.db.get(args.suggestionId);
-    if (!s) throw new Error("Suggestion not found");
-
-    if (orgId && s.orgId && s.orgId !== orgId) {
-      throw new Error("Access Denied: Suggestion belongs to another workspace.");
-    }
+    const s = await getOrgEntity<Doc<"priceSuggestions">>(ctx, "priceSuggestions", args.suggestionId, orgId);
+    if (s.status !== "pending") throw new ConvexError("Suggestion already processed");
 
     await ctx.db.patch(args.suggestionId, {
       status: "rejected",

@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import schema from "./schema";
 import { api } from "./_generated/api";
+import { createTestSession } from "./lib/testAuth";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -44,16 +45,7 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
       });
     });
 
-    const expiredToken = "expired-token-123";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId,
-        orgId,
-        token: expiredToken,
-        expiresAt: Date.now() - 10000, // expired in the past
-        createdAt: Date.now() - 50000,
-      });
-    });
+    const expiredToken = await createTestSession(t, userId, { expired: true });
 
     await expect(
       t.mutation(api.inventory.addCategory, {
@@ -88,16 +80,7 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
       });
     });
 
-    const staffToken = "staff-token-456";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: staffId,
-        orgId,
-        token: staffToken,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const staffToken = await createTestSession(t, staffId);
 
     // Staff role should be refused: required role in [admin, manager]
     await expect(
@@ -133,16 +116,7 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
       });
     });
 
-    const managerToken = "manager-token-789";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: managerId,
-        orgId,
-        token: managerToken,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const managerToken = await createTestSession(t, managerId);
 
     const categoryId = await t.mutation(api.inventory.addCategory, {
       token: managerToken,
@@ -185,16 +159,7 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
         createdAt: Date.now(),
       });
     });
-    const tokenA = "token-alpha";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: userAId,
-        orgId: orgAId,
-        token: tokenA,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const tokenA = await createTestSession(t, userAId);
 
     // Setup Org B
     const orgBId = await t.run(async (ctx) => {
@@ -217,16 +182,7 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
         createdAt: Date.now(),
       });
     });
-    const tokenB = "token-beta";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: userBId,
-        orgId: orgBId,
-        token: tokenB,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const tokenB = await createTestSession(t, userBId);
 
     // Org A adds Category A
     await t.mutation(api.inventory.addCategory, {
@@ -281,16 +237,7 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
       });
     });
 
-    const tenantToken = "tenant-token-suspended-123";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: tenantAdminId,
-        orgId,
-        token: tenantToken,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const tenantToken = await createTestSession(t, tenantAdminId);
 
     // 1. Live session watcher query must return null (forcing client-side logout)
     const liveRecord = await t.query(api.users.getCurrentUserRecord, {
@@ -320,15 +267,7 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
         createdAt: Date.now(),
       });
     });
-    const superToken = "super-token-999";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: superAdminId,
-        token: superToken,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const superToken = await createTestSession(t, superAdminId);
 
     // 2. Create Active Organization and Tenant User
     const orgId = await t.run(async (ctx) => {
@@ -354,25 +293,11 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
       });
     });
 
-    const tenantUserToken = "tenant-user-token-777";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: tenantUserId,
-        orgId,
-        token: tenantUserToken,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const tenantUserToken = await createTestSession(t, tenantUserId);
 
-    // Verify session exists before suspension
-    const sessionBefore = await t.run(async (ctx) => {
-      return await ctx.db
-        .query("sessions")
-        .withIndex("by_token", (q) => q.eq("token", tenantUserToken))
-        .first();
-    });
-    expect(sessionBefore).not.toBeNull();
+    // Verify the tenant session works before suspension
+    const categoriesBefore = await t.query(api.inventory.getCategories, { token: tenantUserToken });
+    expect(categoriesBefore).toEqual([]);
 
     // 3. Super admin suspends organization
     await t.mutation(api.superAdmin.updateOrganizationStatus, {
@@ -390,14 +315,17 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
     expect(orgAfter?.subscriptionStatus).toBe("CANCELED");
     expect(orgAfter?.isActive).toBe(false);
 
-    // 5. Verify tenant user's session was completely purged from database
-    const sessionAfter = await t.run(async (ctx) => {
+    // 5. Verify tenant user's sessions were revoked and the token no longer works
+    const sessionsAfter = await t.run(async (ctx) => {
       return await ctx.db
         .query("sessions")
-        .withIndex("by_token", (q) => q.eq("token", tenantUserToken))
-        .first();
+        .withIndex("by_user", (q) => q.eq("userId", tenantUserId))
+        .collect();
     });
-    expect(sessionAfter).toBeNull();
+    expect(sessionsAfter.every((sess) => sess.revokedAt !== undefined)).toBe(true);
+    await expect(
+      t.mutation(api.inventory.addCategory, { token: tenantUserToken, name: "After" }),
+    ).rejects.toThrow(/Unauthorized/i);
   });
 
   it("never locks out super admin even if their linked organization is CANCELED", async () => {
@@ -421,23 +349,14 @@ describe("Multi-Tenant RBAC & Auth Guardrails", () => {
       return await ctx.db.insert("users", {
         email: "admin@retailmind.com",
         name: "Admin User",
-        role: "admin", // initially seeded as admin
+        role: "super_admin", // super admin is determined by stored role only
         orgId,
         isActive: true,
         createdAt: Date.now(),
       });
     });
 
-    const adminToken = "admin-token-super-123";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: adminId,
-        orgId,
-        token: adminToken,
-        expiresAt: Date.now() + 3600000,
-        createdAt: Date.now(),
-      });
-    });
+    const adminToken = await createTestSession(t, adminId);
 
     // 1. getCurrentUserRecord must NOT be null and must recognize super_admin
     const record = await t.query(api.users.getCurrentUserRecord, {

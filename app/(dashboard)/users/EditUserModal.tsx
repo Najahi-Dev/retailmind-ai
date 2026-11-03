@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -40,8 +41,10 @@ interface Props {
 export default function EditUserModal({ user, open, onOpenChange }: Props) {
   const router = useRouter();
 
+  const { token } = useAuth();
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const updateUserProfileImage = useMutation(api.users.updateUserProfileImage);
+  const updateUserFullDetail = useMutation(api.users.updateUserFullDetail);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
@@ -66,7 +69,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
 
     setUploadingImage(true);
     try {
-      const postUrl = await generateUploadUrl();
+      const postUrl = await generateUploadUrl({ token: token ?? undefined });
       const result = await fetch(postUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -77,6 +80,7 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
       const { storageId } = await result.json();
 
       const res = await updateUserProfileImage({
+        token: token ?? undefined,
         userId: user._id,
         storageId,
       });
@@ -101,21 +105,14 @@ export default function EditUserModal({ user, open, onOpenChange }: Props) {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/users/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user._id,
-          clerkId: user.clerkId,
-          name,
-          imageUrl,
-          role,
-          isActive,
-        }),
+      await updateUserFullDetail({
+        token: token ?? undefined,
+        userId: user._id,
+        name,
+        imageUrl: imageUrl || undefined,
+        role,
+        isActive,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update user");
 
       toast.success("Updated Successfully");
       onOpenChange(false);

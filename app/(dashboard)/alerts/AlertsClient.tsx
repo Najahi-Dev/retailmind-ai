@@ -94,7 +94,7 @@ export default function AlertsClient({ role }: Props) {
 
   const handleMarkRead = async (alertId: Id<"alerts">) => {
     try {
-      await markAlertRead({ alertId });
+      await markAlertRead({ token: token ?? undefined, alertId });
       toast.success("Alert Marked");
     } catch (err) {
       toast.error("Failed to remove alert");
@@ -112,7 +112,7 @@ export default function AlertsClient({ role }: Props) {
 
   const handleDismiss = async (alertId: Id<"alerts">) => {
     try {
-      await dismissAlert({ alertId });
+      await dismissAlert({ token: token ?? undefined, alertId });
       toast.success("Alert dismissed");
     } catch (err) {
       toast.error("Failed to dismiss alert");
@@ -122,7 +122,7 @@ export default function AlertsClient({ role }: Props) {
   const handleSnooze = async (alertId: Id<"alerts">, durationMs: number) => {
     try {
       const snoozeUntil = Date.now() + durationMs;
-      await snoozeAlert({ alertId, snoozeUntil });
+      await snoozeAlert({ token: token ?? undefined, alertId, snoozeUntil });
       toast.success("Alert snoozed");
     } catch (err) {
       toast.error("Failed to snooze alert");

@@ -9,20 +9,14 @@ export const exportFullDatabaseBackup = mutation({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args.token);
-    if (!caller || !caller.orgId) {
-      return {
-        jsonString: JSON.stringify({ metadata: { totalRecords: 0, tableCounts: {} }, data: {} }),
-        recordCount: 0,
-      };
-    }
+    // Full tenant export: workspace administrators only.
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
 
-    const orgId = caller.orgId;
     const products           = (await ctx.db.query("products").collect()).filter((p) => p.orgId === orgId);
     const inventory          = (await ctx.db.query("inventory").collect()).filter((i) => i.orgId === orgId);
     const suppliers          = (await ctx.db.query("suppliers").collect()).filter((s) => s.orgId === orgId);
-    const categories         = (await ctx.db.query("categories").collect()).filter((c) => !c.orgId || c.orgId === orgId);
-    const locations          = (await ctx.db.query("locations").collect()).filter((l) => !l.orgId || l.orgId === orgId);
+    const categories         = (await ctx.db.query("categories").collect()).filter((c) => c.orgId === orgId);
+    const locations          = (await ctx.db.query("locations").collect()).filter((l) => l.orgId === orgId);
     const stockMovements     = (await ctx.db.query("stockMovements").collect()).filter((sm) => sm.orgId === orgId);
     const purchaseOrders     = (await ctx.db.query("purchaseOrders").collect()).filter((po) => po.orgId === orgId);
     const reorderSuggestions = (await ctx.db.query("reorderSuggestions").collect()).filter((rs) => rs.orgId === orgId);
@@ -103,7 +97,7 @@ export const getSystemDataStats = query({
   },
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args.token);
-    if (!caller || !caller.orgId) {
+    if (!caller || !caller.orgId || caller.role !== "admin") {
       return {
         productCount: 0,
         inventoryCount: 0,
@@ -122,8 +116,8 @@ export const getSystemDataStats = query({
     const products       = (await ctx.db.query("products").collect()).filter((p) => p.orgId === orgId);
     const inventory      = (await ctx.db.query("inventory").collect()).filter((i) => i.orgId === orgId);
     const suppliers      = (await ctx.db.query("suppliers").collect()).filter((s) => s.orgId === orgId);
-    const categories     = (await ctx.db.query("categories").collect()).filter((c) => !c.orgId || c.orgId === orgId);
-    const locations      = (await ctx.db.query("locations").collect()).filter((l) => !l.orgId || l.orgId === orgId);
+    const categories     = (await ctx.db.query("categories").collect()).filter((c) => c.orgId === orgId);
+    const locations      = (await ctx.db.query("locations").collect()).filter((l) => l.orgId === orgId);
     const stockMovements = (await ctx.db.query("stockMovements").collect()).filter((sm) => sm.orgId === orgId);
     const purchaseOrders = (await ctx.db.query("purchaseOrders").collect()).filter((po) => po.orgId === orgId);
     const alerts         = (await ctx.db.query("alerts").collect()).filter((a) => a.orgId === orgId);
@@ -262,10 +256,24 @@ export const restoreFullDatabaseBackup = mutation({
     const idMap = new Map<string, any>();
     let insertedTotal = 0;
 
+    // Foreign keys inside a backup are untrusted. Only ids that were re-created
+    // by THIS restore (present in idMap) are accepted; anything else is dropped so a
+    // crafted backup can never reference another tenant's documents.
     const getValidId = (table: any, id: any): any => {
-      if (!id) return undefined;
-      const mapped = idMap.get(id) || id;
+      if (!id || typeof id !== "string") return undefined;
+      const mapped = idMap.get(id);
+      if (!mapped) return undefined;
       return ctx.db.normalizeId(table, mapped) || undefined;
+    };
+
+    // Users are not restored; a user reference is kept only if it is an existing
+    // member of the caller's organization.
+    const getOrgUserId = async (id: any): Promise<any> => {
+      if (!id || typeof id !== "string") return undefined;
+      const userId = ctx.db.normalizeId("users", id);
+      if (!userId) return undefined;
+      const user = await ctx.db.get(userId);
+      return user && user.orgId === orgId ? userId : undefined;
     };
 
     // 1. Locations
@@ -378,7 +386,7 @@ export const restoreFullDatabaseBackup = mutation({
       for (const sm of data.stockMovements) {
         const productId = getValidId("products", sm.productId);
         const locationId = getValidId("locations", sm.locationId);
-        const userId = getValidId("users", sm.userId);
+        const userId = await getOrgUserId(sm.userId);
         if (productId && locationId) {
           await ctx.db.insert("stockMovements", {
             orgId,
@@ -449,7 +457,7 @@ export const restoreFullDatabaseBackup = mutation({
     // 9. Alerts
     if (Array.isArray(data.alerts)) {
       for (const alt of data.alerts) {
-        const productId = alt.productId ? (idMap.get(alt.productId) || alt.productId) : undefined;
+        const productId = getValidId("products", alt.productId);
         await ctx.db.insert("alerts", {
           orgId,
           productId,
@@ -468,7 +476,7 @@ export const restoreFullDatabaseBackup = mutation({
     // 10. Price Suggestions
     if (Array.isArray(data.priceSuggestions)) {
       for (const ps of data.priceSuggestions) {
-        const productId = idMap.get(ps.productId) || ps.productId;
+        const productId = getValidId("products", ps.productId);
         if (productId) {
           await ctx.db.insert("priceSuggestions", {
             orgId,

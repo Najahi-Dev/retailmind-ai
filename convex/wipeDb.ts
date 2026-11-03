@@ -1,5 +1,5 @@
 // convex/wipeDb.ts
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 export const ALL_TABLES = [
@@ -25,7 +25,8 @@ export const ALL_TABLES = [
 ] as const;
 
 // ── 1. Check Record Counts Across All Tables ──
-export const getDatabaseRecordCounts = query({
+// INTERNAL ONLY (CLI: npx convex run wipeDb:getDatabaseRecordCounts)
+export const getDatabaseRecordCounts = internalQuery({
   args: {},
   handler: async (ctx) => {
     const counts: Record<string, number> = {};
@@ -42,7 +43,8 @@ export const getDatabaseRecordCounts = query({
 });
 
 // ── 2. Wipe A Single Batch Chunk (Safe within execution limits) ──
-export const wipeBatchChunk = mutation({
+// INTERNAL ONLY (CLI: npx convex run wipeDb:wipeBatchChunk). Deletes ALL tenants' data.
+export const wipeBatchChunk = internalMutation({
   args: {
     batchSize: v.optional(v.number()),
   },

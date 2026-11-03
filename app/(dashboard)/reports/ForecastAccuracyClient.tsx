@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,7 +12,8 @@ export function ForecastAccuracyClient() {
   // Since we don't have a dedicated endpoint for historical accuracy comparison yet,
   // we will use the overview query which contains basic mape and predictions.
   // In a real scenario, this would query a specific accuracy evaluation endpoint.
-  const overview = useQuery(api.forecasting.getForecastOverview);
+  const { token } = useAuth();
+  const overview = useQuery(api.forecasting.getForecastOverview, token ? { token } : "skip");
 
   if (!overview) {
     return (

@@ -51,7 +51,7 @@ export default function AddProductClient() {
   const locationsQ = useQuery(api.inventory.getStockInFormData, { token: token ?? undefined });
   const categoriesQ = useQuery(api.inventory.getCategories, { token: token ?? undefined });
   const suppliersQ = useQuery(api.inventory.getSuppliers, { token: token ?? undefined });
-  const nextSku = useQuery(api.inventory.getNextSku, { token: token ?? undefined });
+  const nextSku = useQuery(api.inventory.getNextSku, token ? { token } : "skip");
 
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");

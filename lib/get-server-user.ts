@@ -1,35 +1,43 @@
 // lib/get-server-user.ts
+// Server-side identity for Server Components and Route Handlers.
+// The access token's HS256 signature, issuer, audience and expiry are VERIFIED.
+// For authorization decisions on data, pass the token on to Convex functions
+// (getServerAccessToken), which additionally check that the session is not revoked.
 import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
+import { verifyAccessToken } from "@/convex/lib/jwt";
+import { ACCESS_COOKIE } from "@/lib/server/auth-cookies";
 
 export interface ServerUser {
   id: string;
   email: string;
   name: string;
-  role: "super_admin" | "owner" | "admin" | "manager" | "staff" | "supplier" | "pending";
+  role: "super_admin" | "admin" | "manager" | "staff" | "supplier" | "pending";
+  orgId?: string;
+  sessionId: string;
+  impersonatedBy?: string;
+}
+
+export async function getServerAccessToken(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(ACCESS_COOKIE)?.value ?? null;
 }
 
 export async function getServerUser(): Promise<ServerUser | null> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("retailmind_token")?.value;
+    const token = await getServerAccessToken();
     if (!token) return null;
-
-    const decoded = jwt.decode(token) as any;
-    if (!decoded || !decoded.userId || !decoded.role) return null;
-
-    let actualRole = decoded.role;
-    if (decoded.email === "admin@retailmind.com" || decoded.email === "ahmednajahi2003@gmail.com") {
-      actualRole = "super_admin";
-    }
-
+    const claims = await verifyAccessToken(token);
+    if (!claims) return null;
     return {
-      id: decoded.userId,
-      email: decoded.email,
-      name: decoded.name,
-      role: actualRole,
+      id: claims.sub,
+      email: claims.email ?? "",
+      name: claims.name ?? "",
+      role: claims.role as ServerUser["role"],
+      orgId: claims.orgId,
+      sessionId: claims.sid,
+      impersonatedBy: claims.imp,
     };
-  } catch (err) {
+  } catch {
     return null;
   }
 }

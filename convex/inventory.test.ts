@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect, beforeEach } from "vitest";
 import schema from "./schema";
 import { api } from "./_generated/api";
+import { createTestSession } from "./lib/testAuth";
 import { Id } from "./_generated/dataModel";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -43,16 +44,7 @@ describe("Inventory Management & Stock Lifecycle", () => {
       });
     });
 
-    token = "session-token-admin";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: adminId,
-        orgId,
-        token,
-        expiresAt: Date.now() + 86400000,
-        createdAt: Date.now(),
-      });
-    });
+    token = await createTestSession(t, adminId);
 
     // Seed locations
     warehouseId = await t.mutation(api.inventory.addLocation, {
@@ -167,7 +159,7 @@ describe("Inventory Management & Stock Lifecycle", () => {
         locationId: warehouseId,
         quantity: -5,
       })
-    ).rejects.toThrow(/Quantity must be positive/i);
+    ).rejects.toThrow(/Quantity must be a positive number/i);
   });
 
   it("records stock out and enforces insufficient stock protection", async () => {
@@ -251,7 +243,7 @@ describe("Inventory Management & Stock Lifecycle", () => {
         locationId: warehouseId,
         newOnHand: -5,
       })
-    ).rejects.toThrow(/New stock cannot be negative/i);
+    ).rejects.toThrow(/New stock must be a non-negative number/i);
   });
 
   it("transfers stock between locations transactionally", async () => {

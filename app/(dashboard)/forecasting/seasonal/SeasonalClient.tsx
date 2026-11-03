@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
@@ -12,10 +13,11 @@ import { Id } from "@/convex/_generated/dataModel";
 export function SeasonalClient() {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   
-  const products = useQuery(api.forecasting.getAllActiveProducts) || [];
+  const { token } = useAuth();
+  const products = useQuery(api.forecasting.getAllActiveProducts, token ? { token } : "skip") || [];
   const seasonalData = useQuery(
     api.forecasting.getSeasonalTrends,
-    selectedProductId ? { productId: selectedProductId as Id<"products"> } : "skip"
+    selectedProductId && token ? { token, productId: selectedProductId as Id<"products"> } : "skip"
   );
 
   return (

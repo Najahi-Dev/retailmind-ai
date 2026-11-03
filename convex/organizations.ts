@@ -1,6 +1,15 @@
 import { mutation, query, internalMutation } from "./_generated/server";
-import { v } from "convex/values";
-import { requireCallerOrg, requireRole, verifyEntityOrgAccess } from "./lib/roleGuard";
+import { ConvexError, v } from "convex/values";
+import {
+  getCallerUser,
+  isSuperAdminUser,
+  requireCallerOrg,
+  requireRole,
+} from "./lib/roleGuard";
+import { requireServerSecret } from "./lib/serverSecret";
+import { Id } from "./_generated/dataModel";
+import { revokeAllUserSessions } from "./authInternal";
+
 
 // ── 1. Get Current Organization Detail ──
 export const getCurrentOrganization = query({
@@ -10,9 +19,13 @@ export const getCurrentOrganization = query({
   handler: async (ctx, args) => {
     if (!args.token) return null;
     try {
-      const { organization, orgId, user } = await requireCallerOrg(ctx, args.token);
+      const { organization, user } = await requireCallerOrg(ctx, args.token);
+      const isAdmin = user.role === "admin" || user.role === "super_admin";
+      // Invite codes and billing identifiers are only exposed to workspace admins.
+      const { inviteCode, stripeCustomerId, stripeSubscriptionId, ...publicOrg } = organization as any;
       return {
-        ...organization,
+        ...publicOrg,
+        ...(isAdmin ? { inviteCode, stripeCustomerId, stripeSubscriptionId } : {}),
         userRole: user.role,
         isOwner: organization.ownerId === user._id,
       };
@@ -40,7 +53,21 @@ export const getUserOrganizations = query({
       const userOrgs = orgs.filter((org) => org._id === user.orgId || org.ownerId === user._id);
 
       return userOrgs.map((org) => ({
-        ...org,
+        _id: org._id,
+        _creationTime: org._creationTime,
+        name: org.name,
+        slug: org.slug,
+        plan: org.plan,
+        planTier: org.planTier,
+        subscriptionStatus: org.subscriptionStatus,
+        logoUrl: org.logoUrl,
+        isActive: org.isActive,
+        createdAt: org.createdAt,
+        ownerId: org.ownerId,
+        inviteCode:
+          org.ownerId === user._id || (org._id === user.orgId && user.role === "admin")
+            ? org.inviteCode
+            : undefined,
         isCurrent: user.orgId === org._id,
       }));
     } catch (err: any) {
@@ -101,15 +128,38 @@ export const joinOrganizationByInviteCode = mutation({
       .first();
 
     if (!org || !org.isActive) {
-      throw new Error("Invalid or expired workspace invitation code.");
+      throw new ConvexError("Invalid or expired workspace invitation code.");
+    }
+    if (isSuperAdminUser(user)) {
+      throw new ConvexError("Platform administrators cannot join a workspace by invite code.");
+    }
+    if (org._id === user.orgId) {
+      throw new ConvexError("You are already a member of this workspace.");
+    }
+    if (user.orgId) {
+      const currentOrg = await ctx.db.get(user.orgId as Id<"organizations">);
+      if (currentOrg && currentOrg.ownerId === user._id) {
+        throw new ConvexError("Workspace owners cannot leave their workspace by joining another one.");
+      }
     }
 
-    await ctx.db.patch(user._id, { orgId: org._id, plan: org.plan });
+    // Joining by invite code never carries over privileges: the user becomes a
+    // `pending` member until an administrator of the target workspace approves
+    // them and assigns a role. Pending users cannot authenticate, so all of the
+    // user's sessions are revoked.
+    await ctx.db.patch(user._id, {
+      orgId: org._id,
+      plan: org.plan,
+      role: "pending",
+      supplierId: undefined,
+    });
+    await revokeAllUserSessions(ctx, user._id, "joined_workspace_pending_approval");
 
     return {
       success: true,
       orgId: org._id,
       orgName: org.name,
+      pendingApproval: true,
     };
   },
 });
@@ -124,7 +174,18 @@ export const switchActiveOrganization = mutation({
     const user = await requireRole(ctx, args.token);
     const org = await ctx.db.get(args.orgId);
     if (!org || !org.isActive) {
-      throw new Error("Target workspace does not exist or is inactive.");
+      throw new ConvexError("Target workspace does not exist or is inactive.");
+    }
+    if (org._id === user.orgId) return { success: true };
+
+    // There is no membership table: a user belongs to exactly one org (users.orgId).
+    // The only other workspaces a user is a member of are the ones they own
+    // (created via createOrganization). Super admins may switch freely.
+    if (!isSuperAdminUser(user) && org.ownerId !== user._id) {
+      throw new ConvexError("Access Denied: You are not a member of this workspace.");
+    }
+    if (user._session.impersonatedBy) {
+      throw new ConvexError("Access denied: Not available while impersonating");
     }
 
     await ctx.db.patch(user._id, { orgId: org._id, plan: org.plan });
@@ -140,17 +201,10 @@ export const getTrialStatus = query({
   handler: async (ctx, args) => {
     if (!args.token) return null;
     try {
-      const session = await ctx.db
-        .query("sessions")
-        .withIndex("by_token", (q) => q.eq("token", args.token!))
-        .first();
-
-      if (!session || session.expiresAt < Date.now()) return null;
-
-      const user = await ctx.db.get(session.userId);
+      const user = await getCallerUser(ctx, args.token);
       if (!user || !user.orgId) return null;
 
-      const org = await ctx.db.get(user.orgId);
+      const org = await ctx.db.get(user.orgId as Id<"organizations">);
       if (!org) return null;
 
       const statusUpper = (org.subscriptionStatus || "").toUpperCase();
@@ -190,13 +244,15 @@ export const getTrialStatus = query({
 });
 
 // ── 7. Activate Paid Subscription Package ──
-export const activateSubscription = mutation({
+// INTERNAL ONLY: paid activation must come from verified Stripe webhooks
+// (updateSubscriptionFromStripeInternal) or super-admin tooling, never the client.
+export const activateSubscription = internalMutation({
   args: {
-    token: v.optional(v.string()),
+    orgId: v.id("organizations"),
     plan: v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise")),
   },
   handler: async (ctx, args) => {
-    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const orgId = args.orgId;
     const tier = args.plan.toUpperCase() as "STARTER" | "GROWTH" | "ENTERPRISE";
     await ctx.db.patch(orgId, {
       plan: args.plan,
@@ -222,7 +278,7 @@ export const activateFreeTrial = mutation({
     selectedPlan: v.union(v.literal("starter"), v.literal("growth")),
   },
   handler: async (ctx, args) => {
-    const { orgId, organization } = await requireCallerOrg(ctx, args.token);
+    const { orgId, organization } = await requireCallerOrg(ctx, args.token, ["admin"]);
     const org = organization as any;
     if (!org) throw new Error("Organization not found");
     if (org.isTrialUsed) {
@@ -298,12 +354,16 @@ export const getWorkspaceBilling = query({
 });
 
 // ── 8. Billing Mutations for Webhooks & Server APIs ──
+// These three mutations are called ONLY by the Next.js server (Stripe webhook /
+// checkout routes) through ConvexHttpClient and require AUTH_SERVER_SECRET.
 export const updateStripeCustomerIdInternal = mutation({
   args: {
+    serverSecret: v.string(),
     orgId: v.id("organizations"),
     stripeCustomerId: v.string(),
   },
   handler: async (ctx, args) => {
+    requireServerSecret(args.serverSecret);
     await ctx.db.patch(args.orgId, {
       stripeCustomerId: args.stripeCustomerId,
     });
@@ -312,6 +372,7 @@ export const updateStripeCustomerIdInternal = mutation({
 
 export const updateSubscriptionFromStripeInternal = mutation({
   args: {
+    serverSecret: v.string(),
     orgId: v.optional(v.id("organizations")),
     stripeCustomerId: v.optional(v.string()),
     stripeSubscriptionId: v.optional(v.string()),
@@ -329,6 +390,7 @@ export const updateSubscriptionFromStripeInternal = mutation({
     currentPeriodEnd: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    requireServerSecret(args.serverSecret);
     let targetOrg: any = null;
 
     if (args.orgId) {
@@ -370,14 +432,6 @@ export const updateSubscriptionFromStripeInternal = mutation({
     if (!targetOrg && args.stripeSubscriptionId) {
       const allOrgs = await ctx.db.query("organizations").collect();
       targetOrg = allOrgs.find((o) => o.stripeSubscriptionId === args.stripeSubscriptionId);
-    }
-
-    // Single organization fallback if webhook metadata was ambiguous
-    if (!targetOrg) {
-      const allOrgs = await ctx.db.query("organizations").collect();
-      if (allOrgs.length === 1) {
-        targetOrg = allOrgs[0];
-      }
     }
 
     if (!targetOrg) {
@@ -427,10 +481,11 @@ export const updateSubscriptionFromStripeInternal = mutation({
 });
 
 // ── 9. Direct Admin Upgrade / Sync Mutation ──
-export const syncCurrentOrgToGrowth = mutation({
-  args: { token: v.optional(v.string()) },
+// INTERNAL ONLY (CLI / super-admin tooling): grants a paid plan without payment.
+export const syncCurrentOrgToGrowth = internalMutation({
+  args: { orgId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const orgId = args.orgId;
     await ctx.db.patch(orgId, {
       plan: "growth",
       planTier: "GROWTH",
@@ -447,7 +502,8 @@ export const syncCurrentOrgToGrowth = mutation({
   },
 });
 
-export const forceUpgradeWorkspaceToGrowth = mutation({
+// INTERNAL ONLY (CLI): upgrades every workspace for free.
+export const forceUpgradeWorkspaceToGrowth = internalMutation({
   args: {},
   handler: async (ctx) => {
     const allOrgs = await ctx.db.query("organizations").collect();
@@ -471,11 +527,13 @@ export const forceUpgradeWorkspaceToGrowth = mutation({
 
 export const downgradeSubscriptionInternal = mutation({
   args: {
+    serverSecret: v.string(),
     orgId: v.optional(v.id("organizations")),
     stripeCustomerId: v.optional(v.string()),
     stripeSubscriptionId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerSecret(args.serverSecret);
     let targetOrg: any = null;
 
     if (args.orgId) {

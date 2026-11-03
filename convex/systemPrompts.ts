@@ -1,20 +1,7 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { requireSuperAdmin } from "./lib/roleGuard";
 
-async function requireSuperAdmin(ctx: any, token?: string) {
-  if (!token) throw new Error("Unauthorized");
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-  if (!session) throw new Error("Unauthorized");
-  
-  const user = await ctx.db.get(session.userId);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
-    throw new Error("Forbidden: Super Admin access required");
-  }
-  return user;
-}
 
 export const getSystemPrompts = query({
   args: { token: v.optional(v.string()) },
@@ -24,10 +11,10 @@ export const getSystemPrompts = query({
   }
 });
 
-export const getActivePrompt = query({
+export const getActivePrompt = internalQuery({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    // Public query for the backend/AI service to fetch the current prompt
+    // Internal only: prompts are platform IP; fetch from trusted backend code.
     return await ctx.db.query("systemPrompts")
       .withIndex("by_name", (q: any) => q.eq("name", args.name))
       .first();

@@ -1,9 +1,13 @@
 "use node";
 
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import bcrypt from "bcryptjs";
+import { validatePasswordStrength } from "./lib/password";
+
+const BCRYPT_ROUNDS = 12;
 
 export const addTenantUser = action({
   args: {
@@ -12,44 +16,39 @@ export const addTenantUser = action({
     email: v.string(),
     name: v.string(),
     password: v.string(),
-    role: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("manager"),
+      v.literal("staff"),
+      v.literal("supplier"),
+      v.literal("pending"),
+    ),
   },
-  handler: async (ctx, args): Promise<any> => {
-    // 1. Verify Super Admin Token
-    const admin: any = await ctx.runQuery(api.usersAdmin.verifySuperAdminToken, {
-      token: args.token,
-    });
+  handler: async (ctx, args): Promise<{ success: true; userId: Id<"users"> }> => {
+    // 1. Verify Super Admin Token (throws if not a super admin)
+    await ctx.runQuery(internal.usersAdmin.requireSuperAdminInternal, { token: args.token });
 
-    if (!admin) {
-      throw new ConvexError("Unauthorized: Super Admin access required");
-    }
+    // 2. Validate + hash password
+    validatePasswordStrength(args.password);
+    const passwordHash = await bcrypt.hash(args.password, BCRYPT_ROUNDS);
 
-    // 2. Hash Password
-    const passwordHash = bcrypt.hashSync(args.password, 10);
-
-    // 3. Create User Record via Internal Mutation
-    let userId: any;
+    // 3. Create User Record via Internal Mutation (active by default)
+    let userId: Id<"users">;
     try {
-      userId = await ctx.runMutation(api.authInternal.createUserRecord, {
+      userId = await ctx.runMutation(internal.authInternal.createUserRecord, {
         email: args.email.toLowerCase().trim(),
         passwordHash,
         name: args.name,
-        role: args.role as any,
+        role: args.role,
         orgId: args.orgId,
       });
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create user";
-      const cleanMessage = errorMessage.includes("already exists") 
-        ? "User with this email already exists" 
+      const errorMessage = error instanceof Error ? error.message : String(error?.data ?? "");
+      const cleanMessage = errorMessage.includes("already exists")
+        ? "User with this email already exists"
         : "Failed to create user";
       throw new ConvexError(cleanMessage);
     }
-
-    // 4. Activate User Immediately (since Super Admin created them)
-    await ctx.runMutation(api.authInternal.updateUserStatus, {
-      userId,
-      isActive: true,
-    });
 
     return { success: true, userId };
   },

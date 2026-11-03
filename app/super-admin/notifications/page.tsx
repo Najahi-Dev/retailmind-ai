@@ -33,7 +33,7 @@ export default function SuperAdminNotifications() {
   const saveTemplate = useMutation(api.communicationsAdmin.saveTemplate);
   const toggleTemplate = useMutation(api.communicationsAdmin.toggleTemplateStatus);
   const deleteTemplate = useMutation(api.communicationsAdmin.deleteTemplate);
-  const sendTestEmail = useAction(api.communications.sendTemplateEmail);
+  const sendTestEmail = useAction(api.communications.sendTemplateTestEmail);
 
   const [isOpen, setIsOpen] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -96,8 +96,8 @@ export default function SuperAdminNotifications() {
       toast.loading("Sending test email...", { id: "test-email" });
       
       await sendTestEmail({
-        templateName: formData.name,
-        targetEmail: "ahmednajahi2003@gmail.com", // Send to the admin's email for testing
+        token: token ?? undefined,
+        templateName: formData.name, // Sent to the signed-in super admin's own e-mail
         variables: {
           userName: "Test User",
           tenantName: "Acme Corp",

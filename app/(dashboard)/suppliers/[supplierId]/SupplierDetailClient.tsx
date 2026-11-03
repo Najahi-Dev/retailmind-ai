@@ -90,10 +90,10 @@ export default function SupplierDetailClient({
     status: "active",
   });
 
-  const detail = useQuery(api.suppliers.getSupplierDetail, {
-    supplierId: supplierId as Id<"suppliers">,
-    token: token ?? undefined,
-  });
+  const detail = useQuery(
+    api.suppliers.getSupplierDetail,
+    token ? { supplierId: supplierId as Id<"suppliers">, token } : "skip",
+  );
   const updateSupplier = useMutation(api.suppliers.updateSupplier);
 
   const formatCurrency = (val: number) =>

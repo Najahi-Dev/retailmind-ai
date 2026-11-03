@@ -27,7 +27,7 @@ export default function BillingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const { currentUser } = useAuth();
+  const { currentUser, token } = useAuth();
   const {
     organization,
     tier,
@@ -105,7 +105,7 @@ export default function BillingPage() {
   const handleCancelAtPeriodEnd = async () => {
     if (!currentUser?.id) return;
     try {
-      await cancelSub({ userId: currentUser.id });
+      await cancelSub({ userId: currentUser.id, token: token ?? undefined });
       toast.success("Subscription set to cancel at period end.");
     } catch (err: any) {
       toast.error(err.message || "Failed to cancel subscription.");

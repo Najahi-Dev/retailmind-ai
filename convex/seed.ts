@@ -1,5 +1,6 @@
 // convex/seed.ts
-import { mutation } from "./_generated/server";
+// Development seed data. All functions are INTERNAL (CLI only: npx convex run seed:<name>).
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -45,7 +46,7 @@ function pickUrgency(): Urgency {
 // ════════════════════════════════════════
 // STEP 1 — Seed base data
 // ════════════════════════════════════════
-export const seedBase = mutation({
+export const seedBase = internalMutation({
   args: {},
   handler: async (ctx) => {
     const existing = await ctx.db.query("locations").first();
@@ -126,7 +127,7 @@ export const seedBase = mutation({
 // ════════════════════════════════════════
 // STEP 2 — Seed products (2 batches)
 // ════════════════════════════════════════
-export const seedProductsBatch = mutation({
+export const seedProductsBatch = internalMutation({
   args: { batch: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const batch     = args.batch ?? 0;
@@ -215,7 +216,7 @@ export const seedProductsBatch = mutation({
 // ════════════════════════════════════════
 // STEP 3 — Seed inventory
 // ════════════════════════════════════════
-export const seedInventory = mutation({
+export const seedInventory = internalMutation({
   args: {},
   handler: async (ctx) => {
     const existing = await ctx.db.query("inventory").first();
@@ -251,7 +252,7 @@ export const seedInventory = mutation({
 // ════════════════════════════════════════
 // STEP 4 — Seed stock movements
 // ════════════════════════════════════════
-export const seedMovementsBatch = mutation({
+export const seedMovementsBatch = internalMutation({
   args: { batch: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const batch     = args.batch ?? 0;
@@ -303,7 +304,7 @@ export const seedMovementsBatch = mutation({
 // ════════════════════════════════════════
 // STEP 5 — Seed purchase orders
 // ════════════════════════════════════════
-export const seedPurchaseOrders = mutation({
+export const seedPurchaseOrders = internalMutation({
   args: {},
   handler: async (ctx) => {
     const existing = await ctx.db.query("purchaseOrders").first();
@@ -355,7 +356,7 @@ export const seedPurchaseOrders = mutation({
 // ════════════════════════════════════════
 // STEP 6 — Seed alerts + reorder suggestions
 // ════════════════════════════════════════
-export const seedAlertsAndReorders = mutation({
+export const seedAlertsAndReorders = internalMutation({
   args: {},
   handler: async (ctx) => {
     const existing = await ctx.db.query("alerts").first();
@@ -409,7 +410,7 @@ export const seedAlertsAndReorders = mutation({
 // ════════════════════════════════════════
 // CLEAR ALL
 // ════════════════════════════════════════
-export const clearDatabase = mutation({
+export const clearDatabase = internalMutation({
   args: {},
   handler: async (ctx) => {
     const tables = [
@@ -430,7 +431,7 @@ export const clearDatabase = mutation({
   },
 });
 
-export const clearSuggestions = mutation({
+export const clearSuggestions = internalMutation({
   args: {},
   handler: async (ctx) => {
     const records = await ctx.db
@@ -445,7 +446,7 @@ export const clearSuggestions = mutation({
   },
 });
 
-export const seedPriceSuggestions = mutation({
+export const seedPriceSuggestions = internalMutation({
   args: {},
   handler: async (ctx) => {
     const inventory = await ctx.db.query("inventory").collect();
@@ -525,75 +526,6 @@ export const seedPriceSuggestions = mutation({
 });
 
 // ── Seed Platform Users ──
-export const seedUsers = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", "admin@retailmind.com"))
-      .first();
-
-    if (existing) {
-      return { message: "Admin user already exists in database!" };
-    }
-
-    // Pre-calculated bcrypt hash for "admin123"
-    const defaultPasswordHash = "$2a$12$8K1p/a0dL.d.z.n.x.y.z.O.P.Q.R.S.T.U.V.W.X.Y.Z.0.1.2.3";
-
-    const sampleUsers = [
-      {
-        name: "Admin User",
-        email: "admin@retailmind.com",
-        passwordHash: defaultPasswordHash,
-        role: "admin" as const,
-        plan: "enterprise" as const,
-        isActive: true,
-        createdAt: Date.now(),
-      },
-      {
-        name: "Ashan",
-        email: "mohamedashan070@gmail.com",
-        passwordHash: defaultPasswordHash,
-        role: "staff" as const,
-        plan: "starter" as const,
-        isActive: true,
-        createdAt: Date.now() - 5 * 86400000,
-      },
-      {
-        name: "AHMADH NAJAHI",
-        email: "ahmednajahi2003@gmail.com",
-        passwordHash: defaultPasswordHash,
-        role: "supplier" as const,
-        plan: "starter" as const,
-        isActive: true,
-        createdAt: Date.now() - 90 * 86400000,
-      },
-      {
-        name: "Ahmadh Najahi",
-        email: "najinajahi1@gmail.com",
-        passwordHash: defaultPasswordHash,
-        role: "manager" as const,
-        plan: "growth" as const,
-        isActive: true,
-        createdAt: Date.now() - 90 * 86400000,
-      },
-      {
-        name: "Dev Naja",
-        email: "devnaja.arcade@gmail.com",
-        passwordHash: defaultPasswordHash,
-        role: "admin" as const,
-        plan: "starter" as const,
-        isActive: true,
-        createdAt: Date.now() - 90 * 86400000,
-      },
-    ];
-
-    for (const u of sampleUsers) {
-      await ctx.db.insert("users", u);
-    }
-
-    return {
-      message: `✓ Seeded ${sampleUsers.length} platform users! Login with admin@retailmind.com / admin123`,
-    };
-  },
-});
+// Removed: it created org-less accounts with a shared, hard-coded password hash.
+// Create users through registration, the admin "Add user" flow, or
+// `npx convex run authInternal:bootstrapSuperAdmin`.

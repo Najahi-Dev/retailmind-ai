@@ -1,188 +1,206 @@
 "use node";
 // convex/auth.ts
+// Authentication actions. All of these are invoked ONLY by the Next.js server
+// route handlers under app/api/auth/* (they require AUTH_SERVER_SECRET), which
+// supply the real client IP for rate limiting and manage the HttpOnly
+// refresh-token cookie.
+//
+// Token model:
+//   accessToken  – HS256 JWT, 15 min, bound to a session row (revocable)
+//   refreshToken – 256-bit random opaque token, stored hashed, rotated on every use
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
-import jwt from "jsonwebtoken";
+import { Id } from "./_generated/dataModel";
 import bcrypt from "bcryptjs";
-import { isSuperAdminUser } from "./lib/roleGuard";
+import { randomBytes } from "node:crypto";
+import { signAccessToken, randomToken, sha256Hex } from "./lib/jwt";
+import { requireServerSecret } from "./lib/serverSecret";
+import { validatePasswordStrength } from "./lib/password";
 
-const JWT_SECRET = process.env.JWT_SECRET || "retailmind-secret-jwt-key-2026";
-const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+const BCRYPT_ROUNDS = 12;
+// Hash of a random string: used to keep timing uniform for unknown accounts.
+const DUMMY_HASH = "$2b$12$RhZyDHraqB0Uan8WAkB6C.tjC1NzNPSk4j5ypapq2ZEp86NBEe1G2";
 
-// ── 1. LOGIN USER ──
+const clientMeta = {
+  serverSecret: v.string(),
+  ip: v.string(),
+  userAgent: v.optional(v.string()),
+};
+
+function normalizeEmail(email: string) {
+  const e = email.toLowerCase().trim();
+  if (e.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+    throw new ConvexError("Please enter a valid email address.");
+  }
+  return e;
+}
+
+type LoginRecord = { userId: Id<"users">; passwordHash: string | null; lockedUntil: number } | null;
+type SessionResult = {
+  sessionId: Id<"sessions">;
+  refreshExpiresAt: number;
+  user: SessionUser;
+};
+type TokenResponse = {
+  accessToken: string;
+  accessTokenExpiresAt: number;
+  refreshToken: string | null;
+  refreshTokenExpiresAt: number;
+  user: SessionUser;
+};
+
+type SessionUser = {
+  _id: string;
+  email: string;
+  name: string;
+  role: string;
+  orgId?: string;
+  imageUrl?: string;
+};
+
+async function issueTokens(sessionId: string, user: SessionUser) {
+  const access = await signAccessToken({
+    userId: user._id,
+    sessionId,
+    role: user.role,
+    orgId: user.orgId,
+    email: user.email,
+    name: user.name,
+  });
+  return { accessToken: access.token, accessTokenExpiresAt: access.expiresAt };
+}
+
+// ── LOGIN ────────────────────────────────────────────────────────────────────
 export const loginUser = action({
-  args: {
-    email: v.string(),
-    password: v.string(),
-  },
-  handler: async (ctx, args) => {
-    let user: any = await ctx.runQuery(api.authInternal.getUserByEmail, {
-      email: args.email.toLowerCase().trim(),
-    });
-
-    const cleanEmail = args.email.toLowerCase().trim();
-    let isSuperAdmin =
-      cleanEmail === "admin@retailmind.com" ||
-      cleanEmail === "ahmednajahi2003@gmail.com" ||
-      user?.role === "super_admin";
-
-    if (!user) {
-      // Auto-create default admin account or dev account if logging in for the first time
-      if (isSuperAdmin || cleanEmail === "devnaja.arcade@gmail.com") {
-        const passwordHash = bcrypt.hashSync(args.password, 10);
-        const role = isSuperAdmin ? "super_admin" : "admin";
-        const name = cleanEmail === "admin@retailmind.com" ? "Super Admin" : "Dev Naja";
-        
-        const userId: any = await ctx.runMutation(api.authInternal.createUserRecord, {
-          email: cleanEmail,
-          passwordHash,
-          name,
-          role,
-        });
-
-        user = {
-          _id: userId,
-          email: cleanEmail,
-          name,
-          role,
-          passwordHash,
-          isActive: true,
-        };
-      } else {
-        throw new ConvexError("User not found. Click 'Create Account' to register.");
-      }
-    }
-
-    isSuperAdmin = isSuperAdminUser(user);
-
-    // Auto-promote super admin accounts to super_admin role
-    if (isSuperAdmin && user.role !== "super_admin") {
-      await ctx.runMutation(api.authInternal.updateUserRole, {
-        userId: user._id,
-        role: "super_admin",
-      });
-      user.role = "super_admin";
-    }
-
-    // Auto-reactivate super admin account if inactive
-    if (isSuperAdmin && user.isActive === false) {
-      await ctx.runMutation(api.authInternal.updateUserStatus, {
-        userId: user._id,
-        isActive: true,
-      });
-      user.isActive = true;
-    }
-
-    if (user.role === "pending" && !isSuperAdmin) {
-      throw new ConvexError("Your user role is not assigned. Waiting for the admin approval.");
-    }
-
-    // Only non-super-admin users are blocked when their workspace is suspended
-    if (user.orgId && !isSuperAdmin) {
-      const org = await ctx.runQuery(api.authInternal.getOrganizationById, { orgId: user.orgId });
-      if (org) {
-        const isOrgSuspended =
-          org.isActive === false ||
-          (org.subscriptionStatus || "").toUpperCase() === "CANCELED";
-        if (isOrgSuspended) {
-          throw new ConvexError("Workspace suspended: Your organization account has been suspended or canceled by an administrator. Please contact support.");
-        }
-      }
-    }
-
-    if (user.isActive === false && !isSuperAdmin) {
-      if (user.role === "supplier") {
-        await ctx.runMutation(api.authInternal.updateUserStatus, {
-          userId: user._id,
-          isActive: true,
-        });
-        user.isActive = true;
-      } else {
-        throw new ConvexError("Account suspended: Your user account has been deactivated. Contact your administrator.");
-      }
-    }
-
-    if (!user.passwordHash) {
-      const defaultHash = bcrypt.hashSync(args.password, 10);
-      await ctx.runMutation(api.authInternal.updateUserPassword, {
-        userId: user._id,
-        passwordHash: defaultHash,
-      });
-      user.passwordHash = defaultHash;
-    }
-
-    const isValidPassword = bcrypt.compareSync(args.password, user.passwordHash);
-    if (!isValidPassword) {
+  args: { email: v.string(), password: v.string(), ...clientMeta },
+  handler: async (ctx, args): Promise<TokenResponse> => {
+    requireServerSecret(args.serverSecret);
+    const email = args.email.toLowerCase().trim();
+    if (!email || !args.password || args.password.length > 128) {
       throw new ConvexError("Invalid email or password");
     }
 
-    const expiresAt = Date.now() + SESSION_DURATION;
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        exp: Math.floor(expiresAt / 1000),
-      },
-      JWT_SECRET
-    );
+    // Rate limits (per IP + per email) are enforced inside beginLogin.
+    const record: LoginRecord = await ctx.runMutation(internal.authInternal.beginLogin, { email, ip: args.ip });
 
-    await ctx.runMutation(api.authInternal.createSessionRecord, {
-      userId: user._id,
-      token,
-      expiresAt,
+    if (record && record.lockedUntil > Date.now()) {
+      const mins = Math.ceil((record.lockedUntil - Date.now()) / 60000);
+      throw new ConvexError(`Account temporarily locked after too many failed attempts. Try again in ${mins} minute(s).`);
+    }
+
+    // Always run bcrypt so response time does not reveal whether the account exists.
+    const hash = record?.passwordHash || DUMMY_HASH;
+    const valid = await bcrypt.compare(args.password, hash);
+
+    if (!record || !record.passwordHash || !valid) {
+      if (record) {
+        await ctx.runMutation(internal.authInternal.recordFailedLogin, {
+          userId: record.userId,
+          ip: args.ip,
+        });
+      }
+      throw new ConvexError("Invalid email or password");
+    }
+
+    const refreshToken = randomBytes(32).toString("base64url");
+    const result: SessionResult = await ctx.runMutation(internal.authInternal.completeLogin, {
+      userId: record.userId,
+      email,
+      refreshTokenHash: await sha256Hex(refreshToken),
+      ip: args.ip,
+      userAgent: args.userAgent,
     });
 
+    const tokens = await issueTokens(result.sessionId, result.user);
     return {
-      token,
-      userId: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      imageUrl: user.imageUrl,
+      ...tokens,
+      refreshToken,
+      refreshTokenExpiresAt: result.refreshExpiresAt,
+      user: result.user,
     };
   },
 });
 
-// ── 2. REGISTER USER ──
+// ── REFRESH (rotating) ───────────────────────────────────────────────────────
+export const refreshSession = action({
+  args: { refreshToken: v.string(), ...clientMeta },
+  handler: async (ctx, args): Promise<TokenResponse | null> => {
+    requireServerSecret(args.serverSecret);
+    if (!args.refreshToken || args.refreshToken.length > 256) return null;
+
+    const newRefreshToken = randomBytes(32).toString("base64url");
+    const result: (SessionResult & { mode: "rotated" | "grace" }) | null = await ctx.runMutation(internal.authInternal.rotateRefreshToken, {
+      refreshTokenHash: await sha256Hex(args.refreshToken),
+      newRefreshTokenHash: await sha256Hex(newRefreshToken),
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+    if (!result) return null;
+
+    const tokens = await issueTokens(result.sessionId, result.user);
+    return {
+      ...tokens,
+      // In the multi-tab grace case the browser already holds the newest refresh token.
+      refreshToken: result.mode === "rotated" ? newRefreshToken : null,
+      refreshTokenExpiresAt: result.refreshExpiresAt,
+      user: result.user,
+    };
+  },
+});
+
+// ── LOGOUT ───────────────────────────────────────────────────────────────────
+export const logoutUser = action({
+  args: { refreshToken: v.optional(v.string()), serverSecret: v.string() },
+  handler: async (ctx, args) => {
+    requireServerSecret(args.serverSecret);
+    if (args.refreshToken) {
+      await ctx.runMutation(internal.authInternal.revokeSessionByRefreshHash, {
+        refreshTokenHash: await sha256Hex(args.refreshToken),
+        reason: "logout",
+      });
+    }
+    return { success: true };
+  },
+});
+
+// ── SELF REGISTRATION (pending approval) ─────────────────────────────────────
 export const registerUser = action({
   args: {
     email: v.string(),
     password: v.string(),
     name: v.string(),
     phone: v.optional(v.string()),
-    role: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
+    ...clientMeta,
   },
-  handler: async (ctx, args) => {
-    const email = args.email.toLowerCase().trim();
-    const role = "pending";
+  handler: async (ctx, args): Promise<{ isPending: true; userId: Id<"users">; email: string; name: string; role: "pending"; message: string }> => {
+    requireServerSecret(args.serverSecret);
+    await ctx.runMutation(internal.authInternal.checkRegisterRateLimit, { ip: args.ip });
+    const email = normalizeEmail(args.email);
+    validatePasswordStrength(args.password);
+    const name = args.name.trim().slice(0, 120);
+    if (!name) throw new ConvexError("Name is required.");
 
-    const passwordHash = bcrypt.hashSync(args.password, 10);
-
-    const userId: any = await ctx.runMutation(api.authInternal.createUserRecord, {
+    const userId: Id<"users"> = await ctx.runMutation(internal.authInternal.createPendingUser, {
       email,
-      passwordHash,
-      name: args.name,
-      phone: args.phone,
-      role,
-      imageUrl: args.imageUrl,
+      passwordHash: await bcrypt.hash(args.password, BCRYPT_ROUNDS),
+      name,
+      phone: args.phone?.trim().slice(0, 40) || undefined,
     });
 
     return {
       isPending: true,
       userId,
       email,
-      name: args.name,
+      name,
       role: "pending",
-      message: "Account registered successfully! Your account is currently pending administrator role assignment and approval.",
+      message:
+        "Account registered successfully! Your account is currently pending administrator role assignment and approval.",
     };
   },
 });
 
-// ── 3. REGISTER WORKSPACE & ADMIN OWNER ──
+// ── WORKSPACE + OWNER REGISTRATION ───────────────────────────────────────────
 export const registerWorkspaceAndOwner = action({
   args: {
     companyName: v.string(),
@@ -191,98 +209,76 @@ export const registerWorkspaceAndOwner = action({
     email: v.string(),
     phone: v.optional(v.string()),
     password: v.string(),
+    ...clientMeta,
   },
-  handler: async (ctx, args): Promise<any> => {
-    const passwordHash = bcrypt.hashSync(args.password, 10);
-    const { userId, orgId, inviteCode } = await ctx.runMutation(
-      api.authInternal.createWorkspaceAndOwnerRecord,
-      {
-        companyName: args.companyName.trim(),
-        slug: args.slug.toLowerCase().trim(),
-        name: args.name.trim(),
-        email: args.email.toLowerCase().trim(),
-        phone: args.phone?.trim() || undefined,
-        passwordHash,
-      }
-    );
+  handler: async (ctx, args): Promise<TokenResponse & { orgId: Id<"organizations">; inviteCode: string }> => {
+    requireServerSecret(args.serverSecret);
+    await ctx.runMutation(internal.authInternal.checkRegisterRateLimit, { ip: args.ip });
 
-    const expiresAt = Date.now() + SESSION_DURATION;
-    const token = jwt.sign(
-      {
-        userId,
-        orgId,
-        email: args.email.toLowerCase().trim(),
-        name: args.name.trim(),
-        role: "admin",
-        exp: Math.floor(expiresAt / 1000),
-      },
-      JWT_SECRET
-    );
+    const email = normalizeEmail(args.email);
+    validatePasswordStrength(args.password);
+    const companyName = args.companyName.trim().slice(0, 120);
+    const name = args.name.trim().slice(0, 120);
+    const slug = args.slug.toLowerCase().trim();
+    if (!companyName || !name) throw new ConvexError("Company name and your name are required.");
+    if (!/^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])?$/.test(slug)) {
+      throw new ConvexError("Workspace URL may only contain lowercase letters, numbers and dashes.");
+    }
 
-    await ctx.runMutation(api.authInternal.createSessionRecord, {
-      userId,
-      token,
-      expiresAt,
+    const refreshToken = randomBytes(32).toString("base64url");
+    const inviteCode = `INV-${randomToken(9).replace(/[-_]/g, "").slice(0, 10).toUpperCase()}`;
+    const result: { userId: Id<"users">; orgId: Id<"organizations">; sessionId: Id<"sessions">; refreshExpiresAt: number } = await ctx.runMutation(internal.authInternal.createWorkspaceAndOwnerRecord, {
+      companyName,
+      slug,
+      name,
+      email,
+      phone: args.phone?.trim().slice(0, 40) || undefined,
+      passwordHash: await bcrypt.hash(args.password, BCRYPT_ROUNDS),
+      inviteCode,
+      refreshTokenHash: await sha256Hex(refreshToken),
+      ip: args.ip,
+      userAgent: args.userAgent,
     });
 
+    const user: SessionUser = { _id: result.userId, email, name, role: "admin", orgId: result.orgId };
+    const tokens = await issueTokens(result.sessionId, user);
     return {
-      token,
-      userId,
-      orgId,
+      ...tokens,
+      refreshToken,
+      refreshTokenExpiresAt: result.refreshExpiresAt,
+      user,
+      orgId: result.orgId,
       inviteCode,
-      email: args.email.toLowerCase().trim(),
-      name: args.name.trim(),
-      role: "admin",
     };
   },
 });
 
-// ── 4. VALIDATE SESSION ──
-export const validateSession = action({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    try {
-      const decoded: any = jwt.verify(args.token, JWT_SECRET);
-      const res: any = await ctx.runQuery(api.authInternal.getSessionByToken, {
-        token: args.token,
-      });
-
-      if (!res || !res.user || (!res.user.isActive && !isSuperAdminUser(res.user))) {
-        return null;
-      }
-
-      if (res.organization && !isSuperAdminUser(res.user)) {
-        const isOrgSuspended =
-          res.organization.isActive === false ||
-          (res.organization.subscriptionStatus || "").toUpperCase() === "CANCELED";
-        if (isOrgSuspended) {
-          return null;
-        }
-      }
-
-      return {
-        id: res.user._id,
-        _id: res.user._id,
-        email: res.user.email,
-        name: res.user.name,
-        role: res.user.role,
-        plan: res.organization?.plan || "starter",
-        orgId: res.user.orgId,
-        imageUrl: res.user.imageUrl,
-        isActive: res.user.isActive,
-      };
-    } catch (err) {
-      return null;
-    }
+// ── CHANGE PASSWORD (revokes all other sessions) ─────────────────────────────
+export const changePassword = action({
+  args: {
+    token: v.string(),
+    currentPassword: v.string(),
+    newPassword: v.string(),
   },
-});
+  handler: async (ctx, args): Promise<{ success: true }> => {
+    const caller: { userId: Id<"users">; sessionId: Id<"sessions"> } | null = await ctx.runQuery(internal.sessions.resolveAccessToken, { token: args.token });
+    if (!caller) throw new ConvexError("Unauthorized: Invalid session");
+    await ctx.runMutation(internal.rateLimits.consume, {
+      key: `pwchange:user:${caller.userId}`,
+      policy: "passwordChangePerUser",
+    });
+    validatePasswordStrength(args.newPassword);
 
-// ── 5. LOGOUT USER ──
-export const logoutUser = action({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    await ctx.runMutation(api.authInternal.deleteSessionRecord, {
-      token: args.token,
+    const record: { passwordHash: string | null } | null = await ctx.runQuery(internal.authInternal.getUserForPasswordChange, {
+      userId: caller.userId,
+    });
+    if (!record?.passwordHash || !(await bcrypt.compare(args.currentPassword, record.passwordHash))) {
+      throw new ConvexError("Current password is incorrect.");
+    }
+    await ctx.runMutation(internal.authInternal.setPasswordHash, {
+      userId: caller.userId,
+      passwordHash: await bcrypt.hash(args.newPassword, BCRYPT_ROUNDS),
+      keepSessionId: caller.sessionId,
     });
     return { success: true };
   },

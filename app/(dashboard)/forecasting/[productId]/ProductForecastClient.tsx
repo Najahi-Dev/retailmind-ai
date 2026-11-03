@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useAuth } from "@/lib/auth-context";
 import { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,9 @@ export function ProductForecastClient({ productId }: { productId: string }) {
   const router = useRouter();
   const id = productId as Id<"products">;
   
-  const productData = useQuery(api.forecasting.getProductData, { productId: id });
-  const forecastData = useQuery(api.forecasting.getProductForecasts, { productId: id });
+  const { token } = useAuth();
+  const productData = useQuery(api.forecasting.getProductData, token ? { token, productId: id } : "skip");
+  const forecastData = useQuery(api.forecasting.getProductForecasts, token ? { token, productId: id } : "skip");
   const [timeRange, setTimeRange] = useState<number>(30);
   const [manualOverride, setManualOverride] = useState(false);
   

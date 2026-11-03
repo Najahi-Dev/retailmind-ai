@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import schema from "./schema";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { createTestSession } from "./lib/testAuth";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -40,16 +41,7 @@ describe("Alerts & Notification Lifecycle", () => {
         createdAt: Date.now(),
       });
     });
-    adminToken = "admin-alerts-token";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: adminId,
-        orgId,
-        token: adminToken,
-        expiresAt: Date.now() + 86400000,
-        createdAt: Date.now(),
-      });
-    });
+    adminToken = await createTestSession(t, adminId);
 
     warehouseId = await t.mutation(api.inventory.addLocation, {
       token: adminToken,

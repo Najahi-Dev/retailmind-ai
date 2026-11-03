@@ -1,19 +1,27 @@
 import { mutation, query, internalMutation, internalQuery, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { requireSuperAdmin } from "./lib/roleGuard";
+import { requireServerSecret } from "./lib/serverSecret";
 
 // ── Webhook Dead-Letter Queue (DLQ) ──
 
+// Called ONLY by the Next.js Stripe webhook route (requires AUTH_SERVER_SECRET).
 export const logStripeWebhookFailure = mutation({
   args: {
+    serverSecret: v.string(),
     eventId: v.string(),
     eventType: v.string(),
     payload: v.string(),
     error: v.string(),
   },
   handler: async (ctx, args) => {
+    requireServerSecret(args.serverSecret);
     await ctx.db.insert("stripeWebhookFailures", {
-      ...args,
+      eventId: args.eventId,
+      eventType: args.eventType,
+      payload: args.payload.slice(0, 200_000),
+      error: args.error.slice(0, 5_000),
       status: "pending",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -21,21 +29,6 @@ export const logStripeWebhookFailure = mutation({
   }
 });
 
-// Helper for super admin check
-async function requireSuperAdmin(ctx: any, token?: string) {
-  if (!token) throw new Error("Unauthorized");
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-  if (!session) throw new Error("Unauthorized");
-  
-  const user = await ctx.db.get(session.userId);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
-    throw new Error("Forbidden: Super Admin access required");
-  }
-  return user;
-}
 
 export const getWebhookFailures = query({
   args: { token: v.optional(v.string()) },
@@ -73,7 +66,9 @@ export const processOfflinePayment = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
-    
+    const org = await ctx.db.get(args.orgId);
+    if (!org) throw new Error("Organization not found");
+
     await ctx.db.patch(args.orgId, {
       paymentMethod: "offline",
       planTier: args.planTier,

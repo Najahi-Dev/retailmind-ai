@@ -1,16 +1,25 @@
-import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { internalMutation } from "../_generated/server";
+import { ConvexError, v } from "convex/values";
 
 /**
  * Multi-Tenant Data Migration & Backfill Script
  * Automatically provisions a default organization ("RetailMind Main Supermarket Network")
  * and attaches orgId to all pre-existing single-tenant records in safe batches.
+ *
+ * INTERNAL ONLY. Run from the CLI, supplying a freshly generated random invite code
+ * (only used if the default organization has to be created), e.g.:
+ *   npx convex run migrations/multiTenantMigration:migrateToMultiTenant  *     '{"inviteCode":"<output of: openssl rand -hex 12>"}'
  */
-export const migrateToMultiTenant = mutation({
+export const migrateToMultiTenant = internalMutation({
   args: {
+    inviteCode: v.string(),
     targetTable: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const inviteCode = args.inviteCode.trim().toUpperCase();
+    if (inviteCode.length < 16 || inviteCode === "RETAILMIND-MAIN-2026") {
+      throw new ConvexError("inviteCode must be a freshly generated random string (>= 16 chars).");
+    }
     // 1. Ensure default organization exists
     let defaultOrg = await ctx.db
       .query("organizations")
@@ -21,7 +30,7 @@ export const migrateToMultiTenant = mutation({
       const orgId = await ctx.db.insert("organizations", {
         name: "RetailMind Main Supermarket Network",
         slug: "retailmind-main",
-        inviteCode: "RETAILMIND-MAIN-2026",
+        inviteCode,
         plan: "enterprise",
         isActive: true,
         isTrialUsed: true,

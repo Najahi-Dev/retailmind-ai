@@ -104,6 +104,10 @@ export default defineSchema({
     plan: v.optional(v.union(v.literal("starter"), v.literal("growth"), v.literal("enterprise"))),
     isVipAccess: v.optional(v.boolean()),
     lastLogin: v.optional(v.number()),
+    // Brute-force protection
+    failedLoginCount: v.optional(v.number()),
+    lockedUntil: v.optional(v.number()),
+    passwordChangedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
@@ -113,13 +117,43 @@ export default defineSchema({
   sessions: defineTable({
     orgId: v.optional(v.id("organizations")),
     userId: v.id("users"),
-    token: v.string(),
+    // Legacy opaque token (pre-JWT sessions). No longer accepted for auth.
+    token: v.optional(v.string()),
+    // SHA-256 hashes of the current and previous refresh token (rotation + reuse detection)
+    refreshTokenHash: v.optional(v.string()),
+    prevRefreshTokenHash: v.optional(v.string()),
+    rotatedAt: v.optional(v.number()),
+    // Absolute session lifetime (refresh token expiry)
     expiresAt: v.number(),
     createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    revokedReason: v.optional(v.string()),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    // Set when a super admin is impersonating this user
+    impersonatedBy: v.optional(v.id("users")),
   })
     .index("by_token", ["token"])
+    .index("by_refresh_hash", ["refreshTokenHash"])
+    .index("by_prev_refresh_hash", ["prevRefreshTokenHash"])
     .index("by_org", ["orgId"])
     .index("by_user", ["userId"]),
+
+  // ── Rate limiting (token buckets) ──────────────
+  rateLimits: defineTable({
+    key: v.string(),
+    tokens: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  // ── Price-drop guardrail baseline (cumulative 30-day window per product) ──
+  priceReferences: defineTable({
+    productId: v.id("products"),
+    orgId: v.optional(v.id("organizations")),
+    referencePrice: v.number(),
+    windowStart: v.number(),
+  }).index("by_product", ["productId"]),
 
   // ── Locations ──────────────────────────────────
   locations: defineTable({

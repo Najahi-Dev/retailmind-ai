@@ -17,9 +17,9 @@ import { UpgradePrompt } from "@/components/upgrade-prompt";
 export function ForecastingClient() {
   const router = useRouter();
   const { token } = useAuth();
-  const overview = useQuery(api.forecasting.getForecastOverview);
+  const overview = useQuery(api.forecasting.getForecastOverview, token ? { token } : "skip");
   const access = useQuery(api.subscriptions.checkFeatureAccess, { token: token ?? undefined });
-  const generateForecasts = useAction(api.forecasting.generateAllForecasts);
+  const generateForecasts = useAction(api.forecasting.generateOrgForecasts);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [search, setSearch] = useState("");
@@ -27,7 +27,7 @@ export function ForecastingClient() {
   const handleGenerate = async () => {
     try {
       setIsGenerating(true);
-      await generateForecasts();
+      await generateForecasts({ token: token ?? undefined });
       toast.success("Forecasts generated successfully.");
     } catch (e) {
       toast.error("Failed to generate forecasts.");

@@ -1,6 +1,6 @@
 // app/(dashboard)/users/[userId]/UserDetailClient.tsx
 "use client";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useState, useEffect, useRef } from "react";
@@ -111,16 +111,18 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
   const { refreshUser, token } = useAuth();
   const canManageSystemRole = ["admin", "manager"].includes(callerRole);
 
-  const user = useQuery(api.users.getUserById, {
-    userId: userId as Id<"users">,
-  });
+  const user = useQuery(
+    api.users.getUserById,
+    token ? { userId: userId as Id<"users">, token } : "skip",
+  );
 
   const currentUser = useQuery(api.users.getCurrentUserRecord, { token: token ?? undefined });
   const isCurrentUser = currentUser?._id === user?._id;
 
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const updateUserProfileImage = useMutation(api.users.updateUserProfileImage);
-  const changePassword = useMutation(api.users.changePassword);
+  const updateUserFullDetail = useMutation(api.users.updateUserFullDetail);
+  const changePassword = useAction(api.auth.changePassword);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -150,7 +152,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
 
     setUploadingImage(true);
     try {
-      const postUrl = await generateUploadUrl();
+      const postUrl = await generateUploadUrl({ token: token ?? undefined });
       const result = await fetch(postUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -161,6 +163,7 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
       const { storageId } = await result.json();
 
       const res = await updateUserProfileImage({
+        token: token ?? undefined,
         userId: user._id,
         storageId,
       });
@@ -186,15 +189,19 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
       toast.error("New passwords do not match");
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters long");
+    if (newPassword.length < 10) {
+      toast.error("New password must be at least 10 characters long");
+      return;
+    }
+    if (!token) {
+      toast.error("Your session has expired. Please sign in again.");
       return;
     }
 
     setChangingPassword(true);
     try {
       await changePassword({
-        token: token ?? undefined,
+        token,
         currentPassword,
         newPassword,
       });
@@ -219,20 +226,14 @@ export default function UserDetailClient({ userId, role: callerRole }: Props) {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/users/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user._id,
-          name,
-          imageUrl,
-          role: userRole,
-          isActive,
-        }),
+      await updateUserFullDetail({
+        token: token ?? undefined,
+        userId: user._id,
+        name,
+        imageUrl: imageUrl || undefined,
+        role: userRole,
+        isActive,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update user");
 
       await refreshUser();
       toast.success("Profile Updated Successfully");

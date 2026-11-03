@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,8 @@ type FilterTab = "all" | "demand_spike" | "stockout_risk" | "slow_mover";
 
 export function InsightsClient() {
   const router = useRouter();
-  const insights = useQuery(api.forecasting.getAIInsights);
+  const { token } = useAuth();
+  const insights = useQuery(api.forecasting.getAIInsights, token ? { token } : "skip");
   const [filter, setFilter] = useState<FilterTab>("all");
 
   if (!insights) {

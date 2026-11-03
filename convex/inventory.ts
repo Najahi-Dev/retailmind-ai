@@ -1,10 +1,64 @@
 // convex/inventory.ts
 import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
-import { GUARDRAIL_PRICE_DROP_PCT } from "./guardrails";
-import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
+import { Doc, Id } from "./_generated/dataModel";
+import { MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  GUARDRAIL_PRICE_DROP_PCT,
+  computePriceDropPct,
+  notePriceChange,
+  requireNonNegativeFinite,
+  requirePositiveFinite,
+} from "./guardrails";
+import { getCallerUser, requireCallerOrg, getOrgEntity, getSupplierForUser } from "./lib/roleGuard";
+
+const MAX_STOCK_QUANTITY = 10_000_000;
+
+function requireStockQuantity(value: number, label = "Quantity"): number {
+  requirePositiveFinite(value, label);
+  if (value > MAX_STOCK_QUANTITY) throw new ConvexError(`${label} is too large.`);
+  return value;
+}
+
+/** Loads a product and enforces org ownership (and supplier ownership for supplier users). */
+async function getProductForCaller(
+  ctx: QueryCtx | MutationCtx,
+  caller: Doc<"users">,
+  orgId: Id<"organizations">,
+  productId: string,
+): Promise<Doc<"products">> {
+  const product = await getOrgEntity<Doc<"products">>(ctx, "products", productId, orgId);
+  if (caller.role === "supplier") {
+    const own = await getSupplierForUser(ctx, caller);
+    if (!own || product.primarySupplierId !== own._id) {
+      throw new ConvexError("Access Denied: Product is not supplied by your account.");
+    }
+  }
+  return product;
+}
+
+/** Verifies optional category / supplier references belong to the org. */
+async function verifyProductRefs(
+  ctx: MutationCtx,
+  orgId: Id<"organizations">,
+  refs: { categoryId?: Id<"categories">; primarySupplierId?: Id<"suppliers"> },
+) {
+  if (refs.categoryId) await getOrgEntity(ctx, "categories", refs.categoryId, orgId);
+  if (refs.primarySupplierId) await getOrgEntity(ctx, "suppliers", refs.primarySupplierId, orgId);
+}
+
+function validateProductNumbers(fields: {
+  costPrice?: number;
+  sellingPrice?: number;
+  reorderPoint?: number;
+  safetyStock?: number;
+}) {
+  if (fields.costPrice !== undefined) requireNonNegativeFinite(fields.costPrice, "Cost price");
+  if (fields.sellingPrice !== undefined) requireNonNegativeFinite(fields.sellingPrice, "Selling price");
+  if (fields.reorderPoint !== undefined) requireNonNegativeFinite(fields.reorderPoint, "Reorder point");
+  if (fields.safetyStock !== undefined) requireNonNegativeFinite(fields.safetyStock, "Safety stock");
+}
 
 // ── Stock Status Helper ───────────────────────────
 function calcStatus(
@@ -56,9 +110,15 @@ export const getInventoryOverview = query({
       ]);
 
     const inventoryRecords = allInventory.filter((i) => i.orgId === orgId);
-    const products = allProducts.filter((p) => p.orgId === orgId);
+    let products = allProducts.filter((p) => p.orgId === orgId);
     const categories = allCategories.filter((c) => c.orgId === orgId);
     const locations = allLocations.filter((l) => l.orgId === orgId);
+
+    // Supplier users only see stock (and cost) of products they supply.
+    if (caller.role === "supplier") {
+      const own = await getSupplierForUser(ctx, caller);
+      products = own ? products.filter((p) => p.primarySupplierId === own._id) : [];
+    }
 
     const productMap = new Map(products.map((p) => [p._id, p]));
     const categoryMap = new Map(categories.map((c) => [c._id, c]));
@@ -291,9 +351,13 @@ export const getSuppliers = query({
   handler: async (ctx, args) => {
     const caller = await getCallerUser(ctx, args?.token);
     if (!caller || !caller.orgId) return [];
-    const suppliers = await ctx.db.query("suppliers").collect();
+    const own = caller.role === "supplier" ? await getSupplierForUser(ctx, caller) : null;
+    const suppliers = await ctx.db
+      .query("suppliers")
+      .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+      .collect();
     return suppliers
-      .filter((s) => s.orgId === caller.orgId && s.isActive)
+      .filter((s) => s.isActive && (caller.role !== "supplier" || (own && s._id === own._id)))
       .map((s) => ({
         _id: s._id,
         name: s.name,
@@ -360,9 +424,11 @@ export const getNextSku = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args?.token);
-    const allProducts = await ctx.db.query("products").collect();
-    const products = caller && caller.orgId ? allProducts.filter((p) => p.orgId === caller.orgId) : allProducts;
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "staff"]);
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
 
     let max = 0;
     for (const p of products) {
@@ -446,27 +512,22 @@ export const getProductDetail = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args?.token);
-    const product = await ctx.db.get(args.productId);
-    if (!product) return null;
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token);
+    const exists = await ctx.db.get(args.productId);
+    if (!exists) return null;
+    const product = await getProductForCaller(ctx, caller, orgId, args.productId);
 
-    if (caller && caller.orgId && product.orgId && product.orgId !== caller.orgId) {
-      throw new Error("Access Denied: Product belongs to another workspace.");
-    }
-
-    const category = product.categoryId
-      ? await ctx.db.get(product.categoryId)
-      : null;
-    const supplier = product.primarySupplierId
-      ? await ctx.db.get(product.primarySupplierId)
-      : null;
+    const rawCategory = product.categoryId ? await ctx.db.get(product.categoryId) : null;
+    const category = rawCategory && rawCategory.orgId === orgId ? rawCategory : null;
+    const rawSupplier = product.primarySupplierId ? await ctx.db.get(product.primarySupplierId) : null;
+    const supplier = rawSupplier && rawSupplier.orgId === orgId ? rawSupplier : null;
     const inventory = await ctx.db
       .query("inventory")
       .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .filter((q) => q.eq(q.field("orgId"), orgId))
       .first();
-    const location = inventory?.locationId
-      ? await ctx.db.get(inventory.locationId)
-      : null;
+    const rawLocation = inventory?.locationId ? await ctx.db.get(inventory.locationId) : null;
+    const location = rawLocation && rawLocation.orgId === orgId ? rawLocation : null;
 
     const status = inventory
       ? calcStatus(
@@ -486,14 +547,15 @@ export const getStockHistory = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args?.token);
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token);
+    await getProductForCaller(ctx, caller, orgId, args.productId);
     const movements = await ctx.db
       .query("stockMovements")
       .withIndex("by_product_date", (q) => q.eq("productId", args.productId))
       .order("desc")
       .take(100);
 
-    const filtered = caller && caller.orgId ? movements.filter((m) => m.orgId === caller.orgId) : movements;
+    const filtered = movements.filter((m) => m.orgId === orgId);
 
     return await Promise.all(
       filtered.map(async (m) => {
@@ -518,9 +580,12 @@ export const getStockMovementChartData = query({
     const caller = await getCallerUser(ctx, args?.token);
     if (!caller || !caller.orgId) return [];
 
-    const numDays = args.days ?? 90;
-    const allMovements = await ctx.db.query("stockMovements").collect();
-    const movements = allMovements.filter((m) => m.orgId === caller.orgId);
+    const requested = args.days ?? 90;
+    const numDays = Number.isFinite(requested) ? Math.min(365, Math.max(1, Math.floor(requested))) : 90;
+    const movements = await ctx.db
+      .query("stockMovements")
+      .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+      .collect();
 
     const dataMap = new Map<string, { stockIn: number; stockOut: number }>();
     const now = new Date();
@@ -572,10 +637,19 @@ export const createProduct = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "staff"]);
+    validateProductNumbers(args);
+    await verifyProductRefs(ctx, orgId, args);
+    if (args.initialLocationId) await getOrgEntity(ctx, "locations", args.initialLocationId, orgId);
+    if (args.initialQuantity !== undefined && args.initialQuantity !== 0) {
+      requireStockQuantity(args.initialQuantity, "Initial quantity");
+    }
 
     // Check SKU duplicate
-    const allProducts = await ctx.db.query("products").collect();
-    const existing = allProducts.find((p) => p.sku === args.sku && (!p.orgId || p.orgId === orgId));
+    const allProducts = await ctx.db
+      .query("products")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const existing = allProducts.find((p) => p.sku === args.sku);
     if (existing) {
       throw new Error(`Product with SKU '${args.sku}' already exists in your workspace.`);
     }
@@ -657,18 +731,18 @@ export const updateProduct = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-    const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
-
-    if (orgId && product.orgId && product.orgId !== orgId) {
-      throw new Error("Access Denied: Product belongs to another workspace.");
-    }
+    const product = await getOrgEntity<Doc<"products">>(ctx, "products", args.productId, orgId);
+    validateProductNumbers(args);
+    await verifyProductRefs(ctx, orgId, args);
 
     // ── GUARDRAIL: Block massive price drops for Super Admin approval ───
-    if (args.sellingPrice !== undefined) {
+    // Measured against a stable reference price (highest price at the start of
+    // a rolling 30-day window, reset on Super-Admin approval) so repeated small
+    // cuts cannot add up to an unapproved large drop.
+    if (args.sellingPrice !== undefined && args.sellingPrice !== product.sellingPrice) {
+      const { referencePrice, dropPct } = await computePriceDropPct(ctx, product, args.sellingPrice);
       const currentPrice = product.sellingPrice;
-      if (currentPrice > 0) {
-        const dropPct = ((currentPrice - args.sellingPrice) / currentPrice) * 100;
+      {
         if (dropPct >= GUARDRAIL_PRICE_DROP_PCT) {
           const roundedDrop = Math.round(dropPct);
           await ctx.runMutation(internal.guardrails.createPendingApproval, {
@@ -680,6 +754,7 @@ export const updateProduct = mutation({
               productName:  product.name,
               productSku:   product.sku,
               currentPrice,
+              referencePrice,
               newPrice:     args.sellingPrice,
               dropPct:      roundedDrop,
               orgId,
@@ -694,9 +769,13 @@ export const updateProduct = mutation({
     }
     // ─────────────────────────────────────────────────────────────────────
 
+    if (args.sellingPrice !== undefined && args.sellingPrice !== product.sellingPrice) {
+      await notePriceChange(ctx, product, args.sellingPrice);
+    }
+
     const { productId, token, ...updates } = args;
     const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([_, val]) => val !== undefined));
-    await ctx.db.patch(productId, cleanUpdates);
+    await ctx.db.patch(productId, { ...cleanUpdates, updatedAt: Date.now() });
     return { success: true };
   },
 });
@@ -711,12 +790,7 @@ export const deleteProduct = mutation({
   },
   handler: async (ctx, args) => {
     const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-    const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
-
-    if (orgId && product.orgId && product.orgId !== orgId) {
-      throw new Error("Access Denied: Product belongs to another workspace.");
-    }
+    await getOrgEntity(ctx, "products", args.productId, orgId);
 
     await ctx.db.patch(args.productId, { isActive: false });
     return { success: true };
@@ -738,7 +812,9 @@ export const recordStockIn = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "staff"]);
-    if (args.quantity <= 0) throw new Error("Quantity must be positive.");
+    requireStockQuantity(args.quantity);
+    await getOrgEntity(ctx, "products", args.productId, orgId);
+    await getOrgEntity(ctx, "locations", args.locationId, orgId);
 
     const invList = await ctx.db
       .query("inventory")
@@ -797,7 +873,9 @@ export const recordStockOut = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "staff"]);
-    if (args.quantity <= 0) throw new Error("Quantity must be positive.");
+    requireStockQuantity(args.quantity);
+    await getOrgEntity(ctx, "products", args.productId, orgId);
+    await getOrgEntity(ctx, "locations", args.locationId, orgId);
 
     const invList = await ctx.db
       .query("inventory")
@@ -846,8 +924,12 @@ export const recordStockAdjustment = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-    const targetOnHand = args.newOnHand ?? args.adjustedOnHand ?? 0;
-    if (targetOnHand < 0) throw new Error("New stock cannot be negative.");
+    const targetOnHand = args.newOnHand ?? args.adjustedOnHand;
+    if (targetOnHand === undefined) throw new ConvexError("New stock level is required.");
+    requireNonNegativeFinite(targetOnHand, "New stock");
+    if (targetOnHand > MAX_STOCK_QUANTITY) throw new ConvexError("New stock is too large.");
+    await getOrgEntity(ctx, "products", args.productId, orgId);
+    await getOrgEntity(ctx, "locations", args.locationId, orgId);
 
     const invList = await ctx.db
       .query("inventory")
@@ -906,8 +988,11 @@ export const transferStockBetweenLocations = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-    if (args.quantity <= 0) throw new Error("Quantity must be positive.");
-    if (args.fromLocationId === args.toLocationId) throw new Error("Source and target locations must be different.");
+    requireStockQuantity(args.quantity);
+    if (args.fromLocationId === args.toLocationId) throw new ConvexError("Source and target locations must be different.");
+    await getOrgEntity(ctx, "products", args.productId, orgId);
+    await getOrgEntity(ctx, "locations", args.fromLocationId, orgId);
+    await getOrgEntity(ctx, "locations", args.toLocationId, orgId);
 
     // Source inventory check
     const fromList = await ctx.db
@@ -1174,7 +1259,7 @@ export const batchImportProducts = mutation({
             isActive: true,
             createdAt: Date.now(),
           });
-          
+
           const initialStock = parseFloat(String(item.minStockLevel || "0")) || 0;
           await ctx.db.insert("inventory", {
             orgId: orgId,
@@ -1242,9 +1327,17 @@ export const getProductPurchaseOrders = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args?.token);
-    const allPOs = await ctx.db.query("purchaseOrders").order("desc").collect();
-    const pos = caller && caller.orgId ? allPOs.filter((po) => po.orgId === caller.orgId) : allPOs;
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token);
+    await getProductForCaller(ctx, caller, orgId, args.productId);
+    let pos = await ctx.db
+      .query("purchaseOrders")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .order("desc")
+      .collect();
+    if (caller.role === "supplier") {
+      const own = await getSupplierForUser(ctx, caller);
+      pos = own ? pos.filter((po) => po.supplierId === own._id) : [];
+    }
 
     const matching = pos.filter((po) => po.lineItems.some((line) => line.productId === args.productId));
     return await Promise.all(
@@ -1269,15 +1362,13 @@ export const getProductForecasts = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args?.token);
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token);
+    await getProductForCaller(ctx, caller, orgId, args.productId);
     const forecasts = await ctx.db
       .query("forecasts")
       .withIndex("by_product", (q) => q.eq("productId", args.productId))
       .collect();
 
-    if (caller && caller.orgId) {
-      return forecasts.filter((f) => !f.orgId || f.orgId === caller.orgId);
-    }
-    return forecasts;
+    return forecasts.filter((f) => f.orgId === orgId);
   },
 });

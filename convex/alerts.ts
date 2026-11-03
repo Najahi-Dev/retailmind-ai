@@ -1,6 +1,19 @@
 import { internalMutation, mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getCallerUser, requireCallerOrg } from "./lib/roleGuard";
+import { MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+
+/** Loads an alert and enforces that it belongs to the caller's organization. */
+async function requireOwnedAlert(ctx: MutationCtx, token: string | undefined, alertId: Id<"alerts">) {
+  const { orgId } = await requireCallerOrg(ctx, token);
+  const alert = await ctx.db.get(alertId);
+  if (!alert) throw new ConvexError("Alert not found");
+  if (!alert.orgId || alert.orgId !== orgId) {
+    throw new ConvexError("Access Denied: Resource belongs to another organization.");
+  }
+  return alert;
+}
 
 const PRIORITY_ORDER: Record<string, number> = {
   critical: 4,
@@ -22,8 +35,11 @@ export const getAlerts = query({
     const caller = await getCallerUser(ctx, args?.token);
     if (!caller || !caller.orgId) return [];
 
-    let alerts = await ctx.db.query("alerts").collect();
-    alerts = alerts.filter((a) => a.orgId === caller.orgId);
+    const orgId = caller.orgId;
+    let alerts = await ctx.db
+      .query("alerts")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
 
     // Default: filter out dismissed alerts unless specified
     if (args.isDismissed !== undefined) {
@@ -135,8 +151,11 @@ export const getAlertStats = query({
       };
     }
 
-    const rawAlerts = await ctx.db.query("alerts").collect();
-    const allAlerts = rawAlerts.filter((a) => a.orgId === caller.orgId);
+    const orgId = caller.orgId;
+    const allAlerts = await ctx.db
+      .query("alerts")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
     const now = Date.now();
 
     const active = allAlerts.filter((a) => !a.isDismissed);
@@ -167,7 +186,8 @@ export const markAlertRead = mutation({
     alertId: v.id("alerts"),
   },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.alertId);
+    const alert = await requireOwnedAlert(ctx, args.token, args.alertId);
+    await ctx.db.delete(alert._id);
   },
 });
 
@@ -203,8 +223,9 @@ export const snoozeAlert = mutation({
     snoozeUntil: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const alert = await requireOwnedAlert(ctx, args.token, args.alertId);
     const snoozedUntil = args.snoozeUntil ?? (Date.now() + (args.snoozeHours ?? 24) * 60 * 60 * 1000);
-    await ctx.db.patch(args.alertId, { snoozedUntil });
+    await ctx.db.patch(alert._id, { snoozedUntil });
   },
 });
 
@@ -214,7 +235,8 @@ export const dismissAlert = mutation({
     alertId: v.id("alerts"),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.alertId, { isDismissed: true });
+    const alert = await requireOwnedAlert(ctx, args.token, args.alertId);
+    await ctx.db.patch(alert._id, { isDismissed: true });
   },
 });
 
@@ -291,22 +313,63 @@ export const getUserPreferences = query({
   },
 });
 
+const preferencesValidator = v.object({
+  alertTypes: v.optional(
+    v.object({
+      lowStock: v.optional(v.boolean()),
+      criticalStock: v.optional(v.boolean()),
+      overstock: v.optional(v.boolean()),
+      demandSpike: v.optional(v.boolean()),
+      system: v.optional(v.boolean()),
+      reorders: v.optional(v.boolean()),
+      pricing: v.optional(v.boolean()),
+      supplierDelay: v.optional(v.boolean()),
+    }),
+  ),
+  channels: v.optional(
+    v.object({
+      inApp: v.optional(v.boolean()),
+      email: v.optional(v.boolean()),
+      push: v.optional(v.boolean()),
+    }),
+  ),
+  thresholds: v.optional(
+    v.object({
+      lowStockMultiplier: v.number(),
+      criticalStockMultiplier: v.number(),
+    }),
+  ),
+});
+
+// Preferences are stored per organization, so only admins/managers may change them.
 export const saveNotificationPreferences = mutation({
   args: {
     token: v.optional(v.string()),
-    preferences: v.any(),
+    preferences: preferencesValidator,
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args.token);
-    if (!caller || !caller.orgId) return { success: false };
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+
+    const thresholds = args.preferences.thresholds;
+    if (
+      thresholds &&
+      (!Number.isFinite(thresholds.lowStockMultiplier) ||
+        !Number.isFinite(thresholds.criticalStockMultiplier) ||
+        thresholds.lowStockMultiplier < 0 ||
+        thresholds.lowStockMultiplier > 100 ||
+        thresholds.criticalStockMultiplier < 0 ||
+        thresholds.criticalStockMultiplier > 100)
+    ) {
+      throw new ConvexError("Invalid threshold values");
+    }
 
     const existing = await ctx.db
       .query("userPreferences")
-      .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .first();
 
     const data = {
-      orgId: caller.orgId,
+      orgId,
       clerkId: caller._id,
       alertTypes: args.preferences.alertTypes || {
         lowStock: true,
@@ -320,7 +383,7 @@ export const saveNotificationPreferences = mutation({
         email: Boolean(args.preferences.channels?.email ?? false),
         push: Boolean(args.preferences.channels?.push ?? true),
       },
-      thresholds: args.preferences.thresholds || {
+      thresholds: thresholds || {
         lowStockMultiplier: 1.5,
         criticalStockMultiplier: 0.5,
       },
@@ -330,7 +393,7 @@ export const saveNotificationPreferences = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, data);
     } else {
-      await ctx.db.insert("userPreferences", data as any);
+      await ctx.db.insert("userPreferences", data);
     }
 
     return { success: true };

@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect, beforeEach } from "vitest";
 import schema from "./schema";
 import { api } from "./_generated/api";
+import { createTestSession } from "./lib/testAuth";
 import { Id } from "./_generated/dataModel";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -44,16 +45,7 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
         createdAt: Date.now(),
       });
     });
-    adminToken = "token-metro-admin";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: adminId,
-        orgId,
-        token: adminToken,
-        expiresAt: Date.now() + 86400000,
-        createdAt: Date.now(),
-      });
-    });
+    adminToken = await createTestSession(t, adminId);
 
     // Seed staff
     staffId = await t.run(async (ctx) => {
@@ -66,16 +58,7 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
         createdAt: Date.now(),
       });
     });
-    staffToken = "token-metro-staff";
-    await t.run(async (ctx) => {
-      await ctx.db.insert("sessions", {
-        userId: staffId,
-        orgId,
-        token: staffToken,
-        expiresAt: Date.now() + 86400000,
-        createdAt: Date.now(),
-      });
-    });
+    staffToken = await createTestSession(t, staffId);
 
     // Seed location
     warehouseId = await t.mutation(api.inventory.addLocation, {
@@ -196,7 +179,7 @@ describe("Automated Reordering & Purchase Orders Engine", () => {
     // Verify PO was created in database
     const po = await t.query(api.purchaseOrders.getPODetail, {
       token: adminToken,
-      poId: approvalRes.poId,
+      poId: approvalRes.poId!,
     });
     expect(po).toBeDefined();
     expect(po?.totalValue).toBe(50 * 150);

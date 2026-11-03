@@ -1,15 +1,7 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCallerUser } from "./lib/roleGuard";
+import { requireSuperAdmin } from "./lib/roleGuard";
 
-// Shared function to authorize super admins
-async function requireSuperAdmin(ctx: any, token?: string) {
-  const user = await getCallerUser(ctx, token);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
-    throw new Error("Forbidden: Super Admin access required");
-  }
-  return user;
-}
 
 export const getPlatformOverview = query({
   args: { token: v.optional(v.string()) },

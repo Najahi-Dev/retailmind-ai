@@ -32,7 +32,7 @@ export default function SuperAdminUsers() {
   const handleRoleChange = async (userId: any, newRole: string) => {
     try {
       setRoleUpdatingId(userId);
-      await updateUserRole({ token: token ?? undefined, userId, newRole });
+      await updateUserRole({ token: token ?? undefined, userId, newRole: newRole as any });
       toast.success("User role updated successfully");
     } catch (e: any) {
       toast.error(e.message || "Failed to update role");
@@ -100,7 +100,6 @@ export default function SuperAdminUsers() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="super_admin">Super Admin</SelectItem>
                         <SelectItem value="admin">Shop Owner</SelectItem>
                         <SelectItem value="manager">Branch Manager</SelectItem>
                         <SelectItem value="staff">Sales Staff</SelectItem>

@@ -1,23 +1,11 @@
-import { query, mutation } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireSuperAdmin } from "./lib/roleGuard";
 
-// Helper to authenticate super admin
-async function requireSuperAdmin(ctx: any, token?: string) {
-  if (!token) throw new Error("Unauthorized");
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-  if (!session) throw new Error("Unauthorized");
-  
-  const user = await ctx.db.get(session.userId);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
-    throw new Error("Forbidden: Super Admin access required");
-  }
-  return user;
-}
 
-export const logAiUsage = mutation({
+// Internal only: called by trusted backend code (never by clients) so callers cannot
+// forge usage/cost records for arbitrary organizations.
+export const logAiUsage = internalMutation({
   args: {
     orgId: v.optional(v.id("organizations")),
     model: v.string(),
@@ -29,8 +17,6 @@ export const logAiUsage = mutation({
     isFallback: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // We allow internal logging without super admin, but in a real app 
-    // this would be called by a trusted backend function or checked via auth
     await ctx.db.insert("aiUsageLogs", {
       ...args,
       timestamp: Date.now(),

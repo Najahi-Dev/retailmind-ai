@@ -1,21 +1,18 @@
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
-import { isSuperAdminUser } from "./lib/roleGuard";
+import { query, mutation, internalMutation } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { isSuperAdminUser, requireSuperAdmin, sanitizeUser } from "./lib/roleGuard";
+import { createImpersonationSession, revokeAllUserSessions } from "./authInternal";
+import { IMPERSONATION_TTL_MS, signAccessToken } from "./lib/jwt";
 
-// Helper to authenticate super admin
-async function requireSuperAdmin(ctx: any, token?: string) {
-  if (!token) throw new Error("Unauthorized");
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-  if (!session) throw new Error("Unauthorized");
-  
-  const user = await ctx.db.get(session.userId);
-  if (!user || !isSuperAdminUser(user)) {
-    throw new Error("Forbidden: Super Admin access required");
+async function revokeOrgTenantSessions(ctx: any, orgId: any, reason: string) {
+  const orgUsers = await ctx.db
+    .query("users")
+    .withIndex("by_org", (q: any) => q.eq("orgId", orgId))
+    .collect();
+  for (const u of orgUsers) {
+    if (isSuperAdminUser(u)) continue; // Never purge super admin sessions!
+    await revokeAllUserSessions(ctx, u._id, reason);
   }
-  return user;
 }
 
 // ── QUERIES ──
@@ -351,35 +348,7 @@ export const updateOrganizationStatus = mutation({
 
     // If suspending, immediately purge all active sessions belonging to tenant users of this organization (never super admins)
     if (isSuspending) {
-      const orgUsers = await ctx.db
-        .query("users")
-        .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
-        .collect();
-
-      for (const u of orgUsers) {
-        if (isSuperAdminUser(u)) continue; // Never purge super admin sessions!
-
-        const userSessions = await ctx.db
-          .query("sessions")
-          .withIndex("by_user", (q) => q.eq("userId", u._id))
-          .collect();
-
-        for (const s of userSessions) {
-          await ctx.db.delete(s._id);
-        }
-      }
-
-      const orgSessions = await ctx.db
-        .query("sessions")
-        .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
-        .collect();
-
-      for (const s of orgSessions) {
-        const sessionUser = await ctx.db.get(s.userId);
-        if (!isSuperAdminUser(sessionUser)) {
-          await ctx.db.delete(s._id);
-        }
-      }
+      await revokeOrgTenantSessions(ctx, args.orgId, "org_suspended");
     }
     
     // Log audit
@@ -433,38 +402,45 @@ export const generateImpersonationToken = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
-    
+
+    const reason = args.reason.trim();
+    if (!reason) throw new ConvexError("A reason is required to impersonate a user.");
+
     const targetUser = await ctx.db.get(args.targetUserId);
-    if (!targetUser) throw new Error("Target user not found");
-    
-    // Find an existing session or create a new temporary one
-    let targetSession = await ctx.db
-      .query("sessions")
-      .filter((q) => q.eq(q.field("userId"), args.targetUserId))
-      .first();
-      
-    if (!targetSession) {
-      const newToken = crypto.randomUUID();
-      await ctx.db.insert("sessions", {
-        userId: args.targetUserId,
-        token: newToken,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 1000 * 60 * 60 * 24, // 1 day
-      });
-      targetSession = { token: newToken } as any;
+    if (!targetUser) throw new ConvexError("Target user not found");
+    if (isSuperAdminUser(targetUser)) {
+      throw new ConvexError("Access denied: Super administrators cannot be impersonated.");
     }
-    
-    // Log audit
+    if (targetUser._id === admin._id) {
+      throw new ConvexError("You cannot impersonate yourself.");
+    }
+    if (!targetUser.isActive || targetUser.role === "pending") {
+      throw new ConvexError("Cannot impersonate an inactive or pending account.");
+    }
+
+    // Fresh, short-lived, non-refreshable session bound to the impersonating admin.
+    const sessionId = await createImpersonationSession(ctx, targetUser, admin._id);
+    const { token, expiresAt } = await signAccessToken({
+      userId: targetUser._id,
+      sessionId,
+      role: targetUser.role,
+      orgId: targetUser.orgId,
+      email: targetUser.email,
+      name: targetUser.name,
+      impersonatedBy: admin._id,
+      ttlMs: IMPERSONATION_TTL_MS,
+    });
+
     await ctx.db.insert("adminAuditLogs", {
       adminId: admin._id,
       action: "IMPERSONATE",
       targetUserId: args.targetUserId,
       targetOrgId: targetUser.orgId,
-      details: `Reason: ${args.reason}`,
+      details: `Reason: ${reason.slice(0, 500)} (session ${sessionId}, expires ${new Date(expiresAt).toISOString()})`,
       timestamp: Date.now(),
     });
 
-    return { token: targetSession!.token, user: targetUser };
+    return { token, expiresAt, user: sanitizeUser(targetUser) };
   },
 });
 
@@ -554,31 +530,30 @@ export const globalKillSwitch = mutation({
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
 
-    // Revoke sessions
-    let sessionsToRevoke = [];
-
+    let revokedCount = 0;
     if (args.targetUserId) {
-      sessionsToRevoke = await ctx.db.query("sessions")
-        .withIndex("by_user", q => q.eq("userId", args.targetUserId!))
-        .collect();
+      const target = await ctx.db.get(args.targetUserId);
+      if (!target) throw new ConvexError("User not found");
+      if (isSuperAdminUser(target)) {
+        throw new ConvexError("Access denied: Kill switch cannot target a super administrator.");
+      }
+      revokedCount = (
+        await ctx.db.query("sessions").withIndex("by_user", (q) => q.eq("userId", target._id)).collect()
+      ).filter((s) => !s.revokedAt).length;
+      await revokeAllUserSessions(ctx, target._id, "kill_switch");
     } else if (args.targetOrgId) {
       const usersInOrg = await ctx.db.query("users")
         .withIndex("by_org", q => q.eq("orgId", args.targetOrgId!))
         .collect();
-        
       for (const user of usersInOrg) {
-        const userSessions = await ctx.db.query("sessions")
-          .withIndex("by_user", q => q.eq("userId", user._id))
-          .collect();
-        sessionsToRevoke.push(...userSessions);
+        if (isSuperAdminUser(user)) continue;
+        revokedCount += (
+          await ctx.db.query("sessions").withIndex("by_user", (q) => q.eq("userId", user._id)).collect()
+        ).filter((s) => !s.revokedAt).length;
+        await revokeAllUserSessions(ctx, user._id, "kill_switch");
       }
     } else {
-      throw new Error("Must provide either targetOrgId or targetUserId");
-    }
-
-    // Delete the sessions to instantly log out the targeted users
-    for (const session of sessionsToRevoke) {
-      await ctx.db.delete(session._id);
+      throw new ConvexError("Must provide either targetOrgId or targetUserId");
     }
 
     // Permanently deactivate to prevent future logins
@@ -607,7 +582,7 @@ export const globalKillSwitch = mutation({
       timestamp: Date.now(),
     });
 
-    return { success: true, revokedCount: sessionsToRevoke.length };
+    return { success: true, revokedCount };
   }
 });
 
@@ -711,7 +686,8 @@ export const deleteSystemBanner = mutation({
     return { success: true };
   }
 });
-export const emergencyReactivateOrgs = mutation({
+// INTERNAL ONLY (CLI: npx convex run superAdmin:emergencyReactivateOrgs)
+export const emergencyReactivateOrgs = internalMutation({
   args: {},
   handler: async (ctx) => {
     const orgs = await ctx.db.query("organizations").collect();

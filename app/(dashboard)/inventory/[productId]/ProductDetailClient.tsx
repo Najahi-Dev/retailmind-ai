@@ -5,6 +5,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   Tabs,
   TabsContent,
@@ -72,11 +73,13 @@ const MOVEMENT_CONFIG: Record<string, { color: string; sign: string }> = {
 
 export default function ProductDetailClient({ productId, role }: Props) {
   const router = useRouter();
+  const { token } = useAuth();
   const updateProduct = useMutation(api.inventory.updateProduct);
-  const detail   = useQuery(api.inventory.getProductDetail,   { productId: productId as Id<"products"> });
-  const history  = useQuery(api.inventory.getStockHistory,    { productId: productId as Id<"products"> });
-  const orders   = useQuery(api.inventory.getProductPurchaseOrders, { productId: productId as Id<"products"> });
-  const forecasts = useQuery(api.inventory.getProductForecasts, { productId: productId as Id<"products"> });
+  const productArgs = token ? { productId: productId as Id<"products">, token } : "skip";
+  const detail   = useQuery(api.inventory.getProductDetail,   productArgs);
+  const history  = useQuery(api.inventory.getStockHistory,    productArgs);
+  const orders   = useQuery(api.inventory.getProductPurchaseOrders, productArgs);
+  const forecasts = useQuery(api.inventory.getProductForecasts, productArgs);
   const [reorderPoint, setReorderPoint] = useState(0);
   const [safetyStock,  setSafetyStock]  = useState(0);
   const [costPrice,    setCostPrice]    = useState(0);
@@ -101,6 +104,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
     setSaving(true);
     try {
       await updateProduct({
+        token: token ?? undefined,
         productId: productId as Id<"products">,
         reorderPoint: Number(reorderPoint),
         safetyStock: Number(safetyStock),

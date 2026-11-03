@@ -1,6 +1,6 @@
 // app/(dashboard)/suppliers/AddSupplierDialog.tsx
 "use client";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api }         from "@/convex/_generated/api";
 import { useState }    from "react";
 import { useAuth }     from "@/lib/auth-context";
@@ -27,7 +27,7 @@ const PAYMENT_TERMS = ["Net 30", "Net 15", "Net 60", "COD", "Prepaid"];
 
 export default function AddSupplierDialog({ open, onOpenChange }: Props) {
   const createSupplier = useMutation(api.suppliers.createSupplier);
-  const createUser = useMutation(api.users.createUser);
+  const createUser = useAction(api.users.createUser);
   const { token } = useAuth();
 
   const [form, setForm] = useState({
@@ -43,12 +43,13 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
 
   const generatePassword = () => {
     // Generate a random password of length 12
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    // Cryptographically secure; always satisfies the server password policy.
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
+    const bytes = new Uint8Array(14);
+    crypto.getRandomValues(bytes);
     let password = "";
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(password);
+    for (const b of bytes) password += chars.charAt(b % chars.length);
+    setPassword(password + "Aa7");
   };
 
   const set = (key: string, val: string) =>
@@ -71,17 +72,21 @@ export default function AddSupplierDialog({ open, onOpenChange }: Props) {
 
       // Create a user record for this supplier so it appears in user management
       // The password will be hashed automatically by the createUser mutation
-      await createUser({
+      const res = await createUser({
         token: token ?? undefined,
         name: form.name,
         email: form.email,
         phone: form.phone || undefined,
-        password: password || undefined, // Use generated password or let system use default
+        password: password || undefined, // Server generates a strong temporary password if omitted
         role: "supplier",
         supplierId: supplierId, // Link the user to the newly created supplier
       });
 
-      toast.success(`${form.name} added successfully!`);
+      if (res.temporaryPassword) {
+        toast.success(`${form.name} added. Temporary password: ${res.temporaryPassword}`, { duration: 20000 });
+      } else {
+        toast.success(`${form.name} added successfully!`);
+      }
       setForm({ name: "", email: "", phone: "", address: "", paymentTerms: "Net 30", leadTimeDays: "7" });
       setPassword(""); // Clear password after successful submission
       onOpenChange(false);

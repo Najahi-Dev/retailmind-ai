@@ -1,17 +1,23 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation, query, internalQuery } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { isSuperAdminUser, requireSuperAdmin, sanitizeUser } from "./lib/roleGuard";
+import { revokeAllUserSessions } from "./authInternal";
 
-async function requireSuperAdmin(ctx: any, token?: string) {
-  if (!token) throw new Error("Unauthorized");
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-  if (!session) throw new Error("Unauthorized");
-  
-  const user = await ctx.db.get(session.userId);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
-    throw new Error("Forbidden: Super Admin access required");
+// Roles a super admin may assign to tenant users. `super_admin` is never
+// assignable through the API (bootstrap via internal authInternal.bootstrapSuperAdmin).
+const tenantRole = v.union(
+  v.literal("admin"),
+  v.literal("manager"),
+  v.literal("staff"),
+  v.literal("supplier"),
+  v.literal("pending"),
+);
+
+async function getModifiableTenantUser(ctx: any, admin: any, userId: any) {
+  const user = await ctx.db.get(userId);
+  if (!user) throw new ConvexError("User not found");
+  if (isSuperAdminUser(user) || user._id === admin._id) {
+    throw new ConvexError("Access denied: Super administrator accounts cannot be modified here.");
   }
   return user;
 }
@@ -19,7 +25,16 @@ async function requireSuperAdmin(ctx: any, token?: string) {
 export const verifySuperAdminToken = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    return await requireSuperAdmin(ctx, args.token);
+    return sanitizeUser(await requireSuperAdmin(ctx, args.token));
+  },
+});
+
+/** Used by actions (superAdminActions) to authorize the caller. */
+export const requireSuperAdminInternal = internalQuery({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx, args.token);
+    return { _id: admin._id, email: admin.email };
   },
 });
 
@@ -38,7 +53,7 @@ export const getAllPlatformUsers = query({
         const org = await ctx.db.get(u.orgId);
         if (org) orgName = org.name;
       }
-      return { ...u, orgName };
+      return { ...sanitizeUser(u), orgName };
     }));
   }
 });
@@ -47,16 +62,14 @@ export const updateUserRole = mutation({
   args: {
     token: v.optional(v.string()),
     userId: v.id("users"),
-    newRole: v.string(),
+    newRole: tenantRole,
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
-    
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User not found");
+    const user = await getModifiableTenantUser(ctx, admin, args.userId);
 
     await ctx.db.patch(args.userId, {
-      role: args.newRole as any,
+      role: args.newRole,
     });
 
     await ctx.db.insert("adminAuditLogs", {
@@ -80,9 +93,7 @@ export const toggleUserStatus = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
-    
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User not found");
+    const user = await getModifiableTenantUser(ctx, admin, args.userId);
 
     await ctx.db.patch(args.userId, {
       isActive: args.isActive,
@@ -90,13 +101,7 @@ export const toggleUserStatus = mutation({
 
     // If deactivating, also kill sessions
     if (!args.isActive) {
-      const sessions = await ctx.db.query("sessions")
-        .withIndex("by_user", q => q.eq("userId", args.userId))
-        .collect();
-      
-      for (const s of sessions) {
-        await ctx.db.delete(s._id);
-      }
+      await revokeAllUserSessions(ctx, args.userId, "deactivated_by_super_admin");
     }
 
     await ctx.db.insert("adminAuditLogs", {
@@ -118,28 +123,31 @@ export const updateTenantUser = mutation({
     userId: v.id("users"),
     name: v.string(),
     email: v.string(),
-    role: v.string(),
+    role: tenantRole,
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User not found");
+    const user = await getModifiableTenantUser(ctx, admin, args.userId);
+
+    const email = args.email.toLowerCase().trim();
+    if (email !== user.email) {
+      const clash = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+      if (clash) throw new ConvexError("User with this email already exists");
+    }
 
     await ctx.db.patch(args.userId, {
       name: args.name,
-      email: args.email.toLowerCase().trim(),
-      role: args.role as any,
+      email,
+      role: args.role,
       isActive: args.isActive,
     });
 
-    if (!args.isActive) {
-      const sessions = await ctx.db.query("sessions")
-        .withIndex("by_user", q => q.eq("userId", args.userId))
-        .collect();
-      for (const s of sessions) {
-        await ctx.db.delete(s._id);
-      }
+    if (!args.isActive || email !== user.email) {
+      await revokeAllUserSessions(ctx, args.userId, "updated_by_super_admin");
     }
 
     await ctx.db.insert("adminAuditLogs", {
@@ -162,8 +170,7 @@ export const deleteTenantUser = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User not found");
+    const user = await getModifiableTenantUser(ctx, admin, args.userId);
 
     const sessions = await ctx.db.query("sessions")
       .withIndex("by_user", q => q.eq("userId", args.userId))

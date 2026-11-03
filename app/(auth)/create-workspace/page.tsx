@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Input } from "@/components/ui/input";
@@ -29,7 +27,6 @@ import { toast } from "sonner";
 export default function CreateWorkspacePage() {
   const router = useRouter();
   const { loginWithToken } = useAuth();
-  const registerWorkspaceAction = useAction(api.auth.registerWorkspaceAndOwner);
 
   const [companyName, setCompanyName] = useState("");
   const [slug, setSlug] = useState("");
@@ -79,8 +76,8 @@ export default function CreateWorkspacePage() {
       setError("Please enter work email and password.");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError("Password must be at least 10 characters and include upper-case, lower-case letters and a number.");
       return;
     }
 
@@ -88,22 +85,30 @@ export default function CreateWorkspacePage() {
     setError(null);
 
     try {
-      const res = await registerWorkspaceAction({
-        companyName: companyName.trim(),
-        slug: slug.trim(),
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim() || undefined,
-        password: password.trim(),
+      const response = await fetch("/api/auth/register-workspace", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: companyName.trim(),
+          slug: slug.trim(),
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          password,
+        }),
       });
+      const res = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(res?.error || "Failed to create workspace.");
 
-      if (res?.token) {
-        loginWithToken(res.token, {
-          id: res.userId,
-          _id: res.userId,
-          email: res.email,
-          name: res.name,
-          role: res.role,
+      if (res?.accessToken) {
+        loginWithToken(res.accessToken, {
+          id: res.user._id,
+          _id: res.user._id,
+          email: res.user.email,
+          name: res.user.name,
+          role: res.user.role,
+          orgId: res.user.orgId,
         });
         toast.success(`Workspace "${companyName}" created! Please select a plan.`);
         router.replace("/select-plan");

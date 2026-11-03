@@ -1,22 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import { requireSuperAdmin } from "./lib/roleGuard";
 import { Id } from "./_generated/dataModel";
-
-async function requireSuperAdmin(ctx: any, token?: string) {
-  if (!token) throw new Error("Unauthorized");
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-  if (!session) throw new Error("Unauthorized");
-  
-  const user = await ctx.db.get(session.userId);
-  if (!user || (user.role !== "super_admin" && user.email !== "admin@retailmind.com" && user.email !== "ahmednajahi2003@gmail.com")) {
-    throw new Error("Forbidden: Super Admin access required");
-  }
-  return user;
-}
 
 // ── PURCHASE ORDERS ──
 export const getPlatformPurchaseOrders = query({
@@ -108,7 +94,15 @@ export const updateApprovalStatus = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx, args.token);
-    
+
+    const approval = await ctx.db.get(args.approvalId);
+    if (!approval) throw new ConvexError("Approval not found");
+    // Only pending approvals can be reviewed: no re-approval, no flipping a
+    // rejected request to approved (which would re-execute the action).
+    if (approval.status !== "pending") {
+      throw new ConvexError(`Approval has already been ${approval.status}.`);
+    }
+
     await ctx.db.patch(args.approvalId, {
       status:     args.status,
       reviewedBy: admin._id,

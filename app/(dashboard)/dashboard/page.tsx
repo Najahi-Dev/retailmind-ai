@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const role = user.role;
 
   // Redirect super admins directly to super admin dashboard
-  if (role === "super_admin" || user.email === "admin@retailmind.com" || user.email === "ahmednajahi2003@gmail.com") {
+  if (role === "super_admin") {
     redirect("/super-admin");
   }
 

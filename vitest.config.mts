@@ -9,6 +9,10 @@ export default defineConfig({
   },
   test: {
     environment: "edge-runtime",
+    env: {
+      JWT_SECRET: "test-only-jwt-secret-0123456789abcdef0123456789abcdef",
+      AUTH_SERVER_SECRET: "test-only-server-secret-0123456789abcdef0123456789",
+    },
     include: ["convex/**/*.test.ts", "lib/**/*.test.ts", "test/**/*.test.ts", "app/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/agent-skills/**", "**/.next/**"],
     server: {

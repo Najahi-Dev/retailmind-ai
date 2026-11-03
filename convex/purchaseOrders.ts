@@ -1,9 +1,73 @@
 // convex/purchaseOrders.ts
 import { query, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
-import { requireCallerOrg, getCallerUser, getSupplierForUser, requireRole, verifyEntityOrgAccess } from "./lib/roleGuard";
-import { GUARDRAIL_PO_THRESHOLD } from "./guardrails";
+import { ConvexError, v } from "convex/values";
+import { requireCallerOrg, getCallerUser, getSupplierForUser, getOrgEntity } from "./lib/roleGuard";
+import { GUARDRAIL_PO_THRESHOLD, requirePositiveFinite } from "./guardrails";
+import { Doc, Id } from "./_generated/dataModel";
+import { MutationCtx, QueryCtx } from "./_generated/server";
+
+type POStatus = Doc<"purchaseOrders">["status"];
+
+/**
+ * Allowed PO status transitions. Terminal states (delivered / cancelled) can
+ * never be left, so a PO can only be stocked-in once.
+ */
+export const PO_TRANSITIONS: Record<POStatus, POStatus[]> = {
+  draft: ["sent", "cancelled"],
+  sent: ["confirmed", "shipped", "delivered", "cancelled"],
+  confirmed: ["shipped", "delivered", "cancelled"],
+  shipped: ["delivered", "cancelled"],
+  delivered: [],
+  cancelled: [],
+};
+
+/** Transitions a supplier user may perform on its own POs. */
+const SUPPLIER_TRANSITIONS: Partial<Record<POStatus, POStatus[]>> = {
+  sent: ["confirmed", "cancelled"],
+  confirmed: ["shipped"],
+};
+
+/**
+ * Loads a PO for the caller: must belong to the caller's org and, for supplier
+ * users, must be addressed to the supplier linked to that user.
+ */
+async function getPOForCaller(
+  ctx: QueryCtx | MutationCtx,
+  caller: Doc<"users">,
+  orgId: Id<"organizations">,
+  poId: string,
+): Promise<Doc<"purchaseOrders">> {
+  const po = await getOrgEntity<Doc<"purchaseOrders">>(ctx, "purchaseOrders", poId, orgId);
+  if (caller.role === "supplier") {
+    const userSupplier = await getSupplierForUser(ctx, caller);
+    if (!userSupplier || po.supplierId !== userSupplier._id) {
+      throw new ConvexError("Access Denied: PO belongs to another supplier.");
+    }
+  }
+  return po;
+}
+
+/** Validates PO lines and verifies the supplier and every product belong to the org. */
+export async function validatePOInputs(
+  ctx: MutationCtx,
+  orgId: Id<"organizations">,
+  supplierId: Id<"suppliers">,
+  lineItems: { productId: Id<"products">; quantityOrdered: number; unitCost: number }[],
+) {
+  if (lineItems.length === 0) {
+    throw new ConvexError("Purchase order must contain at least one item.");
+  }
+  if (lineItems.length > 500) {
+    throw new ConvexError("Purchase order has too many line items.");
+  }
+  await getOrgEntity(ctx, "suppliers", supplierId, orgId);
+  for (const line of lineItems) {
+    requirePositiveFinite(line.quantityOrdered, "Quantity ordered");
+    requirePositiveFinite(line.unitCost, "Unit cost");
+    await getOrgEntity(ctx, "products", line.productId, orgId);
+  }
+}
 
 export const getPurchaseOrders = query({
   args: {
@@ -115,13 +179,10 @@ export const getPODetail = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args.token);
-    const po = await ctx.db.get(args.poId);
-    if (!po) return null;
-
-    if (caller && caller.orgId) {
-      verifyEntityOrgAccess(po, caller.orgId);
-    }
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token);
+    const exists = await ctx.db.get(args.poId);
+    if (!exists) return null;
+    const po = await getPOForCaller(ctx, caller, orgId, args.poId);
 
     const supplier = await ctx.db.get(po.supplierId);
     const createdBy = po.createdBy ? await ctx.db.get(po.createdBy) : null;
@@ -179,9 +240,7 @@ export const createPurchaseOrder = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
-    if (args.lineItems.length === 0) {
-      throw new Error("Purchase order must contain at least one item.");
-    }
+    await validatePOInputs(ctx, orgId, args.supplierId, args.lineItems);
 
     const poNumber = `PO-${Date.now()}`;
     const formattedLines = args.lineItems.map((line) => ({
@@ -274,19 +333,31 @@ export const updatePOStatus = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "supplier"]);
-    const po = await ctx.db.get(args.poId);
-    if (!po) throw new Error("Purchase order not found");
+    const po = await getPOForCaller(ctx, caller, orgId, args.poId);
 
-    if (orgId && po.orgId && po.orgId !== orgId) {
-      throw new Error("Access Denied: PO belongs to another workspace.");
+    if (po.status === args.status) return { success: true };
+
+    const allowed =
+      caller.role === "supplier"
+        ? SUPPLIER_TRANSITIONS[po.status] ?? []
+        : PO_TRANSITIONS[po.status];
+    if (!allowed.includes(args.status)) {
+      throw new ConvexError(`Invalid status transition: ${po.status} -> ${args.status}.`);
     }
 
-    // If status is delivered, auto-stock in the received items
-    if (args.status === "delivered" && po.status !== "delivered") {
-      const locations = await ctx.db.query("locations").collect();
-      const defaultLoc = locations.find((l) => !l.orgId || l.orgId === orgId) ?? (locations.length > 0 ? locations[0] : null);
+    // If status is delivered, auto-stock in the received items. The transition
+    // map guarantees this runs at most once per PO (delivered is terminal).
+    if (args.status === "delivered") {
+      const orgLocations = await ctx.db
+        .query("locations")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect();
+      const defaultLoc = orgLocations.find((l) => l.isActive) ?? orgLocations[0] ?? null;
+      if (!defaultLoc) {
+        throw new ConvexError("No location exists in your workspace to receive this delivery.");
+      }
 
-      if (defaultLoc) {
+      {
         for (const line of po.lineItems) {
           const invList = await ctx.db
             .query("inventory")
@@ -335,6 +406,15 @@ export const updatePOStatus = mutation({
     await ctx.db.patch(args.poId, {
       status: args.status,
       updatedAt: Date.now(),
+      // Record receipt so a line can never be stocked in twice.
+      ...(args.status === "delivered"
+        ? {
+            lineItems: po.lineItems.map((line) => ({
+              ...line,
+              quantityReceived: Math.max(line.quantityReceived ?? 0, line.quantityOrdered),
+            })),
+          }
+        : {}),
     });
 
     // ── EMAIL NOTIFICATION: Notify supplier when PO is sent ──
@@ -343,10 +423,9 @@ export const updatePOStatus = mutation({
       if (supplier && supplier.email) {
         const tenant = orgId ? await ctx.db.get(orgId) : null;
         const tenantName = tenant ? (tenant as any).name : "RetailMind";
-        
+
         // Use the new communications API to schedule the email action
-        const { api } = await import("./_generated/api");
-        await ctx.scheduler.runAfter(0, api.communications.sendTemplateEmail, {
+        await ctx.scheduler.runAfter(0, internal.communications.sendTemplateEmail, {
           templateName: "ORDER_CONFIRMED",
           targetEmail: supplier.email,
           variables: {
@@ -419,7 +498,7 @@ export const setPOPaymentMethod = mutation({
     const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
     const po = await ctx.db.get(args.poId);
     if (!po) throw new Error("Purchase order not found");
-    if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+    if (po.orgId !== orgId) throw new ConvexError("Access Denied");
 
     // Derive initial payment status based on method
     let paymentStatus: "PENDING_ON_DELIVERY" | "CHEQUE_PENDING" | "DUE";
@@ -474,19 +553,26 @@ export const recordPOPayment = mutation({
   },
   handler: async (ctx, args) => {
     const { user: caller, orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager", "supplier"]);
-    const po = await ctx.db.get(args.poId);
-    if (!po) throw new Error("Purchase order not found");
-    
-    if (caller.role === "supplier") {
-      const userSupplier = await getSupplierForUser(ctx, caller);
-      if (!userSupplier || po.supplierId !== userSupplier._id) {
-        throw new Error("Access Denied: PO belongs to another supplier.");
-      }
-      if (args.method !== "CASH_ON_DELIVERY" && args.method !== "cash_on_delivery") {
-        throw new Error("Suppliers can only record Cash on Delivery payments.");
-      }
-    } else {
-      if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+    const po = await getPOForCaller(ctx, caller, orgId, args.poId);
+
+    if (caller.role === "supplier" && args.method !== "CASH_ON_DELIVERY" && args.method !== "cash_on_delivery") {
+      throw new ConvexError("Suppliers can only record Cash on Delivery payments.");
+    }
+    if (po.status === "cancelled") {
+      throw new ConvexError("Cannot record a payment for a cancelled purchase order.");
+    }
+    requirePositiveFinite(args.amount, "Payment amount");
+
+    const existingPayments = await ctx.db
+      .query("poPayments")
+      .withIndex("by_po", (q) => q.eq("poId", args.poId))
+      .collect();
+    const alreadyPaid = existingPayments.reduce((sum, p) => sum + p.amount, 0);
+    const outstanding = Math.max(0, po.totalValue - alreadyPaid);
+    if (args.amount > outstanding + 0.005) {
+      throw new ConvexError(
+        "Payment exceeds the outstanding balance (LKR " + outstanding.toLocaleString() + ").",
+      );
     }
 
     // Insert payment record
@@ -552,7 +638,7 @@ export const updateChequeStatus = mutation({
     const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
     const po = await ctx.db.get(args.poId);
     if (!po) throw new Error("Purchase order not found");
-    if (po.orgId && po.orgId !== orgId) throw new Error("Access Denied");
+    if (po.orgId !== orgId) throw new ConvexError("Access Denied");
 
     // When cheque clears, mark PO as PAID
     const paymentStatus =
@@ -580,8 +666,8 @@ export const getPOPayments = query({
     poId: v.id("purchaseOrders"),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args.token);
-    if (!caller || !caller.orgId) return [];
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token);
+    await getPOForCaller(ctx, caller, orgId, args.poId);
 
     const payments = await ctx.db
       .query("poPayments")

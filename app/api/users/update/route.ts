@@ -1,60 +1,61 @@
 // app/api/users/update/route.ts
 import { NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
+import { z } from "zod";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { getServerUser } from "@/lib/get-server-user";
+import type { Id } from "@/convex/_generated/dataModel";
+import { convexErrorResponse, getConvexServerClient } from "@/lib/server/request";
+import { jsonError, readJson, requireCaller } from "../../_lib/guard";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Authorization (who may edit whom, which fields, org scoping) is enforced by
+// Convex `users.updateUserFullDetail` using the caller's verified access token.
+const bodySchema = z.object({
+  userId: z.string().min(1).max(64).regex(/^[A-Za-z0-9_]+$/),
+  name: z.string().trim().min(1).max(120),
+  imageUrl: z
+    .string()
+    .max(2048)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : undefined))
+    .refine((v) => v === undefined || /^https?:\/\//i.test(v), "imageUrl must be http(s)"),
+  role: z.enum(["admin", "manager", "staff", "supplier", "pending"]).optional(),
+  isActive: z.boolean().optional(),
+});
 
 export async function POST(req: Request) {
   try {
-    const caller = await getServerUser();
-    if (!caller) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCaller(req);
+    if ("response" in auth) return auth.response;
+    const { token } = auth;
 
-    const body = await req.json();
-    const { userId, name, imageUrl, role, plan, isActive } = body;
+    const parsed = bodySchema.safeParse(await readJson(req));
+    if (!parsed.success) return jsonError(400, "Invalid request body");
+    const { userId, name, imageUrl, role, isActive } = parsed.data;
 
-    if (!userId || !name) {
-      return NextResponse.json({ error: "Missing required user fields" }, { status: 400 });
-    }
+    const client = getConvexServerClient();
+    const existingUser = await client.query(api.users.getUserById, {
+      token,
+      userId: userId as Id<"users">,
+    });
+    if (!existingUser) return jsonError(404, "User not found");
 
-    const isSelf = caller.id === userId;
-    const isAdminOrManager = ["admin", "manager"].includes(caller.role);
+    const finalRole = role ?? existingUser.role;
+    if (finalRole === "super_admin") return jsonError(403, "Forbidden");
 
-    if (!isAdminOrManager && !isSelf) {
-      return NextResponse.json({ error: "Access Denied: You cannot edit another user's profile" }, { status: 403 });
-    }
-
-    // Fetch existing user to preserve role/plan/isActive if non-admin is updating self
-    const existingUser = await convex.query(api.users.getUserById, { userId: userId as Id<"users"> });
-    if (!existingUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const finalRole = isAdminOrManager ? role : existingUser.role;
-    const finalIsActive = isAdminOrManager ? isActive : existingUser.isActive;
-
-    // Update Convex Database Document
-    await convex.mutation(api.users.updateUserFullDetail, {
+    await client.mutation(api.users.updateUserFullDetail, {
+      token,
       userId: userId as Id<"users">,
       name,
       imageUrl: imageUrl ?? existingUser.imageUrl,
+      // Fields not supplied keep their current value; Convex rejects changes the
+      // caller is not allowed to make.
       role: finalRole,
-      isActive: finalIsActive,
+      isActive: isActive ?? existingUser.isActive,
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Updated Successfully",
-    });
-  } catch (error) {
-    console.error("Failed to update user profile:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update user" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, message: "Updated Successfully" });
+  } catch (err) {
+    const { status, message } = convexErrorResponse(err, "Failed to update user");
+    return jsonError(status, message);
   }
 }

@@ -44,7 +44,6 @@ export function DashboardClient() {
   const reorders = useQuery(api.reorder.getReorderSuggestions, { token: token ?? undefined, status: "pending" });
   const pricingSuggestions = useQuery(api.pricing.getPriceSuggestions, { token: token ?? undefined, status: "pending" });
   const approvePricing = useMutation(api.pricing.approvePriceSuggestion);
-  const activateSub = useMutation(api.organizations.activateSubscription);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -54,14 +53,14 @@ export function DashboardClient() {
       if (params.get("subscription") === "success" || params.get("billing") === "success") {
         const planName = params.get("plan") || "growth";
         const targetPlan = (planName.toLowerCase() === "starter" ? "starter" : planName.toLowerCase() === "enterprise" ? "enterprise" : "growth") as "starter" | "growth" | "enterprise";
-        activateSub({ token: token ?? undefined, plan: targetPlan }).catch(() => {});
+        // Plan activation is applied server-side by the verified Stripe webhook.
         toast.success(`🎉 Subscription Activated! Welcome to RetailMind AI ${targetPlan.toUpperCase()} plan. All features unlocked!`, {
           duration: 7000,
         });
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
-  }, [token, activateSub]);
+  }, []);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-LK", {
@@ -73,8 +72,9 @@ export function DashboardClient() {
   const handleApplyPriceCut = async (id: Id<"priceSuggestions">) => {
     setProcessingId(id);
     try {
-      await approvePricing({ suggestionId: id });
-      toast.success("AI Dynamic Price Cut applied successfully!");
+      const result = await approvePricing({ token: token ?? undefined, suggestionId: id });
+      if (result.blocked) toast.warning(result.reason);
+      else toast.success("AI Dynamic Price Cut applied successfully!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to apply price cut");
     } finally {

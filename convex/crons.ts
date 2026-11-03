@@ -1,6 +1,6 @@
 // convex/crons.ts
 import { cronJobs } from "convex/server";
-import { internal, api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
@@ -15,7 +15,7 @@ crons.daily(
 crons.daily(
   "generate-forecasts",
   { hourUTC: 19, minuteUTC: 30 }, // 1:00 AM Sri Lanka time (UTC+5:30)
-  api.forecasting.generateAllForecasts,
+  internal.forecasting.generateAllForecasts,
   {},
 );
 
@@ -29,6 +29,14 @@ crons.daily(
   "run-dunning-engine",
   { hourUTC: 21, minuteUTC: 30 },  // 3:00 AM Sri Lanka
   internal.billingEngine.runDunningEngine
+);
+
+// Purge expired / revoked sessions and stale rate-limit buckets
+crons.interval(
+  "purge-expired-auth-data",
+  { hours: 6 },
+  internal.authInternal.purgeExpiredAuthData,
+  {},
 );
 
 export default crons;

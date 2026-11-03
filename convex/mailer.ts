@@ -1,5 +1,5 @@
 "use node";
-import { action } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import nodemailer from "nodemailer";
 
@@ -21,7 +21,35 @@ const getTransporter = () => {
   });
 };
 
-export const sendWorkspaceUserInviteEmail = action({
+/** HTML-escapes untrusted text before interpolating it into an e-mail body. */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Strips CR/LF and quotes so a value is safe inside a header display name/subject. */
+function headerSafe(value: unknown, max = 120): string {
+  return String(value ?? "").replace(/[\r\n"<>]/g, " ").trim().slice(0, max);
+}
+
+/** Login URL is always derived from server configuration, never from caller input. */
+function getAppLoginUrl(): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://app.retailmind.ai";
+  try {
+    const url = new URL(base);
+    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("bad protocol");
+    return new URL("/login", url.origin).toString();
+  } catch {
+    return "https://app.retailmind.ai/login";
+  }
+}
+
+// Internal only: scheduled by convex/users.ts after an authorized admin creates a user.
+export const sendWorkspaceUserInviteEmail = internalAction({
   args: {
     toEmail: v.string(),
     toName: v.string(),
@@ -29,12 +57,19 @@ export const sendWorkspaceUserInviteEmail = action({
     inviterEmail: v.string(),
     workspaceName: v.string(),
     temporaryPassword: v.string(),
-    loginUrl: v.string(),
+    // Ignored: the login link is always built from NEXT_PUBLIC_APP_URL / APP_URL.
+    loginUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     try {
       const transporter = getTransporter();
       const user = process.env.GMAIL_USER || process.env.GMAIL_EMAIL;
+      const workspaceName = escapeHtml(args.workspaceName);
+      const toName = escapeHtml(args.toName);
+      const inviterName = escapeHtml(args.inviterName);
+      const inviterEmail = escapeHtml(args.inviterEmail);
+      const temporaryPassword = escapeHtml(args.temporaryPassword);
+      const loginUrl = escapeHtml(getAppLoginUrl());
 
       const htmlBody = `
         <!DOCTYPE html>
@@ -64,36 +99,34 @@ export const sendWorkspaceUserInviteEmail = action({
         <body>
           <div class="container">
             <div class="header">
-              <h2>Join ${args.workspaceName}</h2>
+              <h2>Join ${workspaceName}</h2>
             </div>
             <div class="content">
-              <p>Hi ${args.toName},</p>
-              <p><strong>${args.inviterName}</strong> has invited you to join their workspace <strong>${args.workspaceName}</strong> on RetailMind AI.</p>
+              <p>Hi ${toName},</p>
+              <p><strong>${inviterName}</strong> has invited you to join their workspace <strong>${workspaceName}</strong> on RetailMind AI.</p>
               
               <div class="password-block">
                 <p class="password-label">Your temporary password</p>
-                <p class="password-value">${args.temporaryPassword}</p>
+                <p class="password-value">${temporaryPassword}</p>
               </div>
               
               <div class="button-container">
-                <a href="${args.loginUrl}" class="button">Login to Workspace</a>
+                <a href="${loginUrl}" class="button">Login to Workspace</a>
               </div>
             </div>
             <div class="footer">
-              <p style="margin: 0;">Replies to this email will be sent directly to ${args.inviterName} (${args.inviterEmail})</p>
+              <p style="margin: 0;">This invitation was sent on behalf of ${inviterName} (${inviterEmail}). If you were not expecting it, you can ignore this email.</p>
             </div>
           </div>
         </body>
         </html>
       `;
 
-      const fromField = `"${args.inviterName} from ${args.workspaceName} (RetailMind AI)" <${user}>`;
-
+      // Fixed sender display name; no caller-controlled From/Reply-To.
       const info = await transporter.sendMail({
-        from: fromField,
+        from: `"RetailMind AI" <${user}>`,
         to: args.toEmail,
-        replyTo: args.inviterEmail,
-        subject: `You've been invited to join ${args.workspaceName}`,
+        subject: `You've been invited to join ${headerSafe(args.workspaceName)} on RetailMind AI`,
         html: htmlBody,
       });
 

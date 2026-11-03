@@ -110,14 +110,14 @@ export default function PODetailClient({
   const [paymentNotes, setPaymentNotes] = useState("");
   const [recordingPayment, setRecordingPayment] = useState(false);
 
-  const po = useQuery(api.purchaseOrders.getPODetail, {
-    poId: poId as Id<"purchaseOrders">,
-    token: token ?? undefined,
-  });
-  const payments = useQuery(api.purchaseOrders.getPOPayments, {
-    poId: poId as Id<"purchaseOrders">,
-    token: token ?? undefined,
-  });
+  const po = useQuery(
+    api.purchaseOrders.getPODetail,
+    token ? { poId: poId as Id<"purchaseOrders">, token } : "skip",
+  );
+  const payments = useQuery(
+    api.purchaseOrders.getPOPayments,
+    token ? { poId: poId as Id<"purchaseOrders">, token } : "skip",
+  );
   const updateStatus    = useMutation(api.purchaseOrders.updatePOStatus);
   const recordPayment   = useMutation(api.purchaseOrders.recordPOPayment);
   const setPayMethodMutation = useMutation(api.purchaseOrders.setPOPaymentMethod);

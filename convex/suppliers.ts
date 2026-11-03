@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
-import { getCallerUser, requireCallerOrg, verifyEntityOrgAccess } from "./lib/roleGuard";
+import { ConvexError, v } from "convex/values";
+import { Doc } from "./_generated/dataModel";
+import { getCallerUser, requireCallerOrg, getOrgEntity, getSupplierForUser } from "./lib/roleGuard";
 
 // ── Get all suppliers (Strict Org Scoped) ─────────────────────────────
 export const getSuppliers = query({
@@ -12,8 +13,16 @@ export const getSuppliers = query({
     const caller = await getCallerUser(ctx, args.token);
     if (!caller || !caller.orgId) return [];
 
-    let suppliers = await ctx.db.query("suppliers").collect();
-    suppliers = suppliers.filter((s) => s.orgId === caller.orgId);
+    let suppliers = await ctx.db
+      .query("suppliers")
+      .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+      .collect();
+
+    // Supplier users may only see their own supplier record.
+    if (caller.role === "supplier") {
+      const own = await getSupplierForUser(ctx, caller);
+      suppliers = own ? suppliers.filter((s) => s._id === own._id) : [];
+    }
 
     const filtered =
       args.status && args.status !== "all"
@@ -64,12 +73,17 @@ export const getSupplierDetail = query({
     token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const caller = await getCallerUser(ctx, args.token);
-    const supplier = await ctx.db.get(args.supplierId);
-    if (!supplier) return null;
+    const { user: caller, orgId } = await requireCallerOrg(ctx, args.token);
+    const exists = await ctx.db.get(args.supplierId);
+    if (!exists) return null;
+    const supplier = await getOrgEntity<Doc<"suppliers">>(ctx, "suppliers", args.supplierId, orgId);
 
-    if (caller && caller.orgId) {
-      verifyEntityOrgAccess(supplier, caller.orgId);
+    // Supplier users may only view their own supplier profile.
+    if (caller.role === "supplier") {
+      const own = await getSupplierForUser(ctx, caller);
+      if (!own || own._id !== supplier._id) {
+        throw new ConvexError("Access Denied: Supplier profile belongs to another supplier.");
+      }
     }
 
     // Recent POs
@@ -79,7 +93,7 @@ export const getSupplierDetail = query({
       .order("desc")
       .take(10);
 
-    const orgPOs = caller && caller.orgId ? pos.filter((po) => po.orgId === caller.orgId) : pos;
+    const orgPOs = pos.filter((po) => po.orgId === orgId);
 
     const posWithDetails = await Promise.all(
       orgPOs.map(async (po) => {
@@ -96,16 +110,17 @@ export const getSupplierDetail = query({
     // Products supplied by this supplier
     const products = await ctx.db
       .query("products")
-      .filter((q) => q.eq(q.field("primarySupplierId"), args.supplierId))
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect();
 
-    const orgProducts = caller && caller.orgId ? products.filter((p) => p.orgId === caller.orgId) : products;
+    const orgProducts = products.filter((p) => p.primarySupplierId === args.supplierId);
 
     const productsWithInventory = await Promise.all(
       orgProducts.map(async (p) => {
         const inv = await ctx.db
           .query("inventory")
           .withIndex("by_product", (q) => q.eq("productId", p._id))
+          .filter((q) => q.eq(q.field("orgId"), orgId))
           .first();
         const category = p.categoryId ? await ctx.db.get(p.categoryId) : null;
         return {
@@ -121,7 +136,7 @@ export const getSupplierDetail = query({
       .withIndex("by_supplier", (q) => q.eq("supplierId", args.supplierId))
       .collect();
 
-    const filteredAllPOs = caller && caller.orgId ? allPos.filter((po) => po.orgId === caller.orgId) : allPos;
+    const filteredAllPOs = allPos.filter((po) => po.orgId === orgId);
 
     const totalValue = filteredAllPOs.reduce((sum, po) => sum + po.totalValue, 0);
     const delivered = filteredAllPOs.filter((p) => p.status === "delivered").length;
@@ -227,8 +242,8 @@ export const updateSupplier = mutation({
     const supplier = await ctx.db.get(args.supplierId);
     if (!supplier) throw new Error("Supplier not found");
 
-    if (orgId && supplier.orgId && supplier.orgId !== orgId) {
-      throw new Error("Access Denied: Supplier belongs to another workspace.");
+    if (supplier.orgId !== orgId) {
+      throw new ConvexError("Access Denied: Supplier belongs to another workspace.");
     }
 
     const { supplierId, token, ...fields } = args;
@@ -250,8 +265,8 @@ export const deleteSupplier = mutation({
     const supplier = await ctx.db.get(args.supplierId);
     if (!supplier) throw new Error("Supplier not found");
 
-    if (orgId && supplier.orgId && supplier.orgId !== orgId) {
-      throw new Error("Access Denied: Supplier belongs to another workspace.");
+    if (supplier.orgId !== orgId) {
+      throw new ConvexError("Access Denied: Supplier belongs to another workspace.");
     }
 
     // Delete associated user if exists (users with supplierId pointing to this supplier)
@@ -278,11 +293,17 @@ export const getActiveSuppliers = query({
     const caller = await getCallerUser(ctx, args.token);
     if (!caller || !caller.orgId) return [];
 
-    const suppliers = await ctx.db
-      .query("suppliers")
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .collect();
+    const suppliers = (
+      await ctx.db
+        .query("suppliers")
+        .withIndex("by_org", (q) => q.eq("orgId", caller.orgId))
+        .collect()
+    ).filter((s) => s.status === "active");
 
-    return suppliers.filter((s) => s.orgId === caller.orgId);
+    if (caller.role === "supplier") {
+      const own = await getSupplierForUser(ctx, caller);
+      return own ? suppliers.filter((s) => s._id === own._id) : [];
+    }
+    return suppliers;
   },
 });
