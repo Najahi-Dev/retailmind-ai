@@ -1,5 +1,5 @@
 // convex/inventory.ts
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
@@ -793,6 +793,181 @@ export const deleteProduct = mutation({
 
     await ctx.db.patch(args.productId, { isActive: false });
     return { success: true };
+  },
+});
+
+// ── Permanent product deletion ──────────────────────────────────────
+// Unlike `deleteProduct` (soft delete / archive), this removes the product
+// and every row that belongs to it. Stock movement history can be large, so
+// it is purged in scheduled batches after the product itself is gone.
+
+const OPEN_PO_STATUSES = new Set(["draft", "sent", "confirmed", "shipped"]);
+const MOVEMENT_PURGE_BATCH = 500;
+const IMPACT_COUNT_CAP = 1000;
+
+async function collectDeletionBlockers(
+  ctx: QueryCtx | MutationCtx,
+  orgId: Id<"organizations">,
+  product: Doc<"products">,
+) {
+  const blockers: string[] = [];
+
+  const inventory = await ctx.db
+    .query("inventory")
+    .withIndex("by_product", (q) => q.eq("productId", product._id))
+    .collect();
+  const reserved = inventory.reduce((sum, r) => sum + (r.reserved ?? 0), 0);
+  if (reserved > 0) {
+    blockers.push(`${reserved} units are reserved for open orders.`);
+  }
+
+  const pos = await ctx.db
+    .query("purchaseOrders")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .collect();
+  const openPOs = pos.filter(
+    (po) => OPEN_PO_STATUSES.has(po.status) && po.lineItems.some((l) => l.productId === product._id),
+  );
+  if (openPOs.length > 0) {
+    blockers.push(
+      `It is on ${openPOs.length} open purchase order${openPOs.length === 1 ? "" : "s"} (${openPOs
+        .slice(0, 3)
+        .map((po) => po.poNumber)
+        .join(", ")}${openPOs.length > 3 ? ", …" : ""}). Deliver or cancel them first.`,
+    );
+  }
+
+  // Pending approvals that point at this product or one of its suggestions.
+  const [reorderSugs, priceSugs] = await Promise.all([
+    ctx.db.query("reorderSuggestions").withIndex("by_product", (q) => q.eq("productId", product._id)).collect(),
+    ctx.db.query("priceSuggestions").withIndex("by_product", (q) => q.eq("productId", product._id)).collect(),
+  ]);
+  const relatedIds = [product._id as string, ...reorderSugs.map((r) => r._id), ...priceSugs.map((r) => r._id)];
+  const approvals = await ctx.db
+    .query("approvals")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .filter((q) => q.eq(q.field("status"), "pending"))
+    .collect();
+  const pendingApprovals = approvals.filter((a) => {
+    const json = JSON.stringify(a.details ?? {});
+    return relatedIds.some((id) => json.includes(id));
+  });
+  if (pendingApprovals.length > 0) {
+    blockers.push(
+      `${pendingApprovals.length} approval request${pendingApprovals.length === 1 ? " is" : "s are"} still pending for it. Approve or reject first.`,
+    );
+  }
+
+  return { blockers, inventory, reorderSugs, priceSugs };
+}
+
+export const getProductDeletionImpact = query({
+  args: {
+    token: v.optional(v.string()),
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
+    const product = await getOrgEntity<Doc<"products">>(ctx, "products", args.productId, orgId);
+    const { blockers, inventory, reorderSugs, priceSugs } = await collectDeletionBlockers(ctx, orgId, product);
+
+    const [movements, forecasts, alerts, priceRefs] = await Promise.all([
+      ctx.db
+        .query("stockMovements")
+        .withIndex("by_product", (q) => q.eq("productId", args.productId))
+        .take(IMPACT_COUNT_CAP + 1),
+      ctx.db
+        .query("forecasts")
+        .withIndex("by_product", (q) => q.eq("productId", args.productId))
+        .take(IMPACT_COUNT_CAP + 1),
+      ctx.db.query("alerts").withIndex("by_product", (q) => q.eq("productId", args.productId)).collect(),
+      ctx.db.query("priceReferences").withIndex("by_product", (q) => q.eq("productId", args.productId)).collect(),
+    ]);
+
+    return {
+      sku: product.sku,
+      name: product.name,
+      blockers,
+      counts: {
+        locations: inventory.length,
+        onHand: inventory.reduce((sum, r) => sum + r.onHand, 0),
+        stockMovements: Math.min(movements.length, IMPACT_COUNT_CAP),
+        stockMovementsCapped: movements.length > IMPACT_COUNT_CAP,
+        forecasts: Math.min(forecasts.length, IMPACT_COUNT_CAP),
+        reorderSuggestions: reorderSugs.length,
+        priceSuggestions: priceSugs.length,
+        alerts: alerts.length,
+        priceReferences: priceRefs.length,
+      },
+    };
+  },
+});
+
+export const deleteProductPermanently = mutation({
+  args: {
+    token: v.optional(v.string()),
+    productId: v.id("products"),
+    // The caller must re-type the SKU, so a stale click can't delete the wrong product.
+    confirmSku: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin"]);
+    const product = await getOrgEntity<Doc<"products">>(ctx, "products", args.productId, orgId);
+
+    if (args.confirmSku.trim() !== product.sku) {
+      throw new ConvexError("The SKU you typed does not match this product.");
+    }
+
+    const { blockers, inventory, reorderSugs, priceSugs } = await collectDeletionBlockers(ctx, orgId, product);
+    if (blockers.length > 0) {
+      throw new ConvexError(`Cannot delete ${product.sku}: ${blockers.join(" ")}`);
+    }
+
+    const [forecasts, alerts, priceRefs] = await Promise.all([
+      ctx.db.query("forecasts").withIndex("by_product", (q) => q.eq("productId", args.productId)).collect(),
+      ctx.db.query("alerts").withIndex("by_product", (q) => q.eq("productId", args.productId)).collect(),
+      ctx.db.query("priceReferences").withIndex("by_product", (q) => q.eq("productId", args.productId)).collect(),
+    ]);
+
+    const rows = [...inventory, ...reorderSugs, ...priceSugs, ...forecasts, ...alerts, ...priceRefs];
+    for (const row of rows) {
+      await ctx.db.delete(row._id);
+    }
+    await ctx.db.delete(args.productId);
+
+    // Movement history is purged in the background in bounded batches.
+    await ctx.scheduler.runAfter(0, internal.inventory.purgeProductMovements, { productId: args.productId });
+
+    return {
+      success: true,
+      sku: product.sku,
+      name: product.name,
+      deleted: {
+        inventory: inventory.length,
+        reorderSuggestions: reorderSugs.length,
+        priceSuggestions: priceSugs.length,
+        forecasts: forecasts.length,
+        alerts: alerts.length,
+        priceReferences: priceRefs.length,
+      },
+    };
+  },
+});
+
+export const purgeProductMovements = internalMutation({
+  args: { productId: v.id("products") },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db
+      .query("stockMovements")
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
+      .take(MOVEMENT_PURGE_BATCH);
+    for (const m of batch) {
+      await ctx.db.delete(m._id);
+    }
+    if (batch.length === MOVEMENT_PURGE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.inventory.purgeProductMovements, args);
+    }
+    return { deleted: batch.length };
   },
 });
 

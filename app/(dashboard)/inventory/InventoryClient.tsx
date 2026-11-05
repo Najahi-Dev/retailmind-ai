@@ -55,10 +55,12 @@ import {
   ChevronRight,
   QrCode,
   Tag,
+  Trash2,
 } from "lucide-react";
 
 import ImportProductsDialog from "./ImportProductsDialog";
 import { BarcodeModal } from "./BarcodeModal";
+import DeleteProductDialog, { DeleteTarget } from "./DeleteProductDialog";
 
 interface Props {
   role: string;
@@ -104,6 +106,9 @@ export default function InventoryClient({ role }: Props) {
 
   const PAGE_SIZE = 25;
   const canViewFinancials = ["admin", "manager"].includes(role);
+  // Permanent deletion is admin-only (enforced on the server too).
+  const canDelete = role === "admin";
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-LK", {
@@ -580,13 +585,18 @@ export default function InventoryClient({ role }: Props) {
                     </TableHead>
                   )}
                   <TableHead className="font-bold text-sm text-slate-800 dark:text-slate-200">Status</TableHead>
+                  {canDelete && (
+                    <TableHead className="w-12 text-right font-bold text-sm text-slate-800 dark:text-slate-200">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginated.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={canViewFinancials ? 11 : 10}
+                      colSpan={(canViewFinancials ? 11 : 10) + (canDelete ? 1 : 0)}
                       className="text-center py-16 text-slate-500"
                     >
                       <div className="flex flex-col items-center gap-2">
@@ -684,6 +694,22 @@ export default function InventoryClient({ role }: Props) {
                             {statusCfg.label}
                           </Badge>
                         </TableCell>
+                        {canDelete && (
+                          <TableCell className="text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget({ productId: item!.productId, sku: item!.sku, name: item!.name });
+                              }}
+                              className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                              title={`Delete ${item!.sku} permanently`}
+                              aria-label={`Delete ${item!.name} permanently`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })
@@ -733,6 +759,9 @@ export default function InventoryClient({ role }: Props) {
         }}
         product={selectedBarcodeProduct}
       />
+      {canDelete && (
+        <DeleteProductDialog target={deleteTarget} token={token} onClose={() => setDeleteTarget(null)} />
+      )}
     </div>
   );
 }
