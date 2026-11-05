@@ -381,4 +381,60 @@ describe("Inventory Management & Stock Lifecycle", () => {
     // Total valuation: 5*100 + 15*50 + 40*200 + 100*10 = 500 + 750 + 8000 + 1000 = 10250
     expect(stats.totalValue).toBe(10250);
   });
+  it("stock adjustment: blocks no-op and below-reserved counts, records reference, lists history", async () => {
+    const productId = await t.mutation(api.inventory.createProduct, {
+      token,
+      sku: "SKU-ADJ-1",
+      name: "Adjust Test Butter",
+      unit: "pcs",
+      costPrice: 100,
+      sellingPrice: 150,
+      reorderPoint: 10,
+      safetyStock: 2,
+      trackBatches: false,
+      initialLocationId: warehouseId,
+      initialQuantity: 20,
+    });
+
+    // No change -> rejected
+    await expect(
+      t.mutation(api.inventory.recordStockAdjustment, {
+        token, productId, locationId: warehouseId, adjustedOnHand: 20,
+      }),
+    ).rejects.toThrow(/nothing to adjust/i);
+
+    // Reserve 8 units, then try to count below that
+    await t.run(async (ctx) => {
+      const inv = (await ctx.db.query("inventory").collect()).find(
+        (r) => r.productId === productId && r.locationId === warehouseId,
+      )!;
+      await ctx.db.patch(inv._id, { reserved: 8, available: 12 });
+    });
+    await expect(
+      t.mutation(api.inventory.recordStockAdjustment, {
+        token, productId, locationId: warehouseId, adjustedOnHand: 5,
+      }),
+    ).rejects.toThrow(/reserved/i);
+
+    const res = await t.mutation(api.inventory.recordStockAdjustment, {
+      token, productId, locationId: warehouseId, adjustedOnHand: 17,
+      reason: "Damaged / broken", reference: "AUDIT-01", notes: "3 crushed",
+    });
+    expect(res).toMatchObject({ delta: -3, previousOnHand: 20, newOnHand: 17 });
+
+    const history = await t.query(api.inventory.getRecentAdjustments, { token, productId });
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      quantity: -3, reason: "Damaged / broken", reference: "AUDIT-01",
+      productSku: "SKU-ADJ-1", locationName: "Central Warehouse", userName: "Admin John",
+    });
+
+    const all = await t.query(api.inventory.getRecentAdjustments, { token });
+    expect(all.every((m) => m.quantity !== 0)).toBe(true);
+    expect(all.some((m) => m.reference === "AUDIT-01")).toBe(true);
+
+    // Form data includes cost for admins
+    const form = await t.query(api.inventory.getStockControlFormData, { token });
+    expect(form.products.find((p) => p._id === productId)?.costPrice).toBe(100);
+  });
 });

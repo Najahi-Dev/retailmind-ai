@@ -5,6 +5,9 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useRole } from "@/hooks/useRole";
+import { ConvexError } from "convex/values";
+import { toast } from "sonner";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -74,6 +77,34 @@ export default function ReordersClient() {
   });
   const dismiss = useMutation(api.reorder.dismissSuggestion);
   const cleanup = useMutation(api.reorder.cleanupDuplicateSuggestions);
+  const generate = useMutation(api.reorder.generateReorderSuggestionsPublic);
+  const { canApproveReorders } = useRole();
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const { created } = await generate({ token: token ?? undefined });
+      if (created > 0) {
+        toast.success(`Generated ${created} new reorder suggestion${created === 1 ? "" : "s"}.`);
+        setStatusFilter("pending");
+      } else {
+        toast.info(
+          "No new suggestions. Items below their reorder point already have a pending suggestion, an open PO, were dismissed in the last 48h, or have no active supplier.",
+        );
+      }
+    } catch (err) {
+      const msg =
+        err instanceof ConvexError && typeof err.data === "string"
+          ? err.data
+          : err instanceof Error
+          ? err.message
+          : "Failed to generate reorder suggestions";
+      toast.error(msg);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   useEffect(() => {
     if (token) {
@@ -141,6 +172,20 @@ export default function ReordersClient() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {canApproveReorders && (
+              <Button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="h-9 rounded-xl text-xs font-bold text-indigo-950 bg-white hover:bg-indigo-50 px-4 shadow-md border-0"
+              >
+                {generating ? (
+                  <RefreshCwIcon className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <SparklesIcon className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                )}
+                {generating ? "Scanning stock..." : "Generate Suggestions"}
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => router.push("/reorders/purchase-orders")}

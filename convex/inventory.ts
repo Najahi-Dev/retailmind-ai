@@ -375,15 +375,13 @@ export const getStockControlFormData = query({
     if (!caller || !caller.orgId) return { products: [], locations: [], inventory: [] };
     const orgId = caller.orgId;
 
-    const [allProducts, allLocations, allInventory] = await Promise.all([
-      ctx.db.query("products").collect(),
-      ctx.db.query("locations").collect(),
-      ctx.db.query("inventory").collect(),
+    // Org-scoped index reads (previously full-table scans across every tenant).
+    const [products, locations, inventory] = await Promise.all([
+      ctx.db.query("products").withIndex("by_org", (q) => q.eq("orgId", orgId)).collect(),
+      ctx.db.query("locations").withIndex("by_org", (q) => q.eq("orgId", orgId)).collect(),
+      ctx.db.query("inventory").withIndex("by_org", (q) => q.eq("orgId", orgId)).collect(),
     ]);
-
-    const products = allProducts.filter((p) => p.orgId === orgId);
-    const locations = allLocations.filter((l) => l.orgId === orgId);
-    const inventory = allInventory.filter((i) => i.orgId === orgId);
+    const canViewCost = ["admin", "manager", "super_admin"].includes(caller.role);
 
     return {
       products: products
@@ -395,6 +393,7 @@ export const getStockControlFormData = query({
           unit: product.unit,
           reorderPoint: product.reorderPoint,
           safetyStock: product.safetyStock,
+          costPrice: canViewCost ? product.costPrice : undefined,
         }))
         .sort((left, right) => left.name.localeCompare(right.name)),
       locations: locations
@@ -939,6 +938,14 @@ export const recordStockAdjustment = mutation({
     const inv = invList.length > 0 ? invList[0] : null;
     const currentOnHand = inv ? inv.onHand : 0;
     const diff = targetOnHand - currentOnHand;
+    if (diff === 0) {
+      throw new ConvexError("Counted stock matches the system quantity — nothing to adjust.");
+    }
+    if (inv && targetOnHand < inv.reserved) {
+      throw new ConvexError(
+        `Counted stock (${targetOnHand}) is below the ${inv.reserved} units reserved for open orders. Release the reservations first.`,
+      );
+    }
 
     if (inv) {
       await ctx.db.patch(inv._id, {
@@ -964,13 +971,65 @@ export const recordStockAdjustment = mutation({
       locationId: args.locationId,
       userId: caller._id,
       type: "adjustment",
-      reason: args.reason ?? args.reference ?? "Manual Count Adjustment",
+      reason: args.reason?.trim() || "Manual Count Adjustment",
+      reference: args.reference?.trim() || undefined,
       quantity: diff,
       notes: args.notes,
       createdAt: Date.now(),
     });
 
-    return { success: true, delta: diff };
+    return { success: true, delta: diff, previousOnHand: currentOnHand, newOnHand: targetOnHand };
+  },
+});
+
+// ── Recent stock adjustments (audit trail for the adjust page) ──
+export const getRecentAdjustments = query({
+  args: {
+    token: v.optional(v.string()),
+    productId: v.optional(v.id("products")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, ["admin", "manager"]);
+    const limit = Math.min(Math.max(Math.floor(args.limit ?? 10), 1), 50);
+
+    const movements = args.productId
+      ? await ctx.db
+          .query("stockMovements")
+          .withIndex("by_product_date", (q) => q.eq("productId", args.productId!))
+          .order("desc")
+          .filter((q) => q.and(q.eq(q.field("orgId"), orgId), q.eq(q.field("type"), "adjustment")))
+          .take(limit)
+      : await ctx.db
+          .query("stockMovements")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .order("desc")
+          .filter((q) => q.eq(q.field("type"), "adjustment"))
+          .take(limit);
+
+    return await Promise.all(
+      movements.map(async (m) => {
+        const [product, location, user] = await Promise.all([
+          ctx.db.get(m.productId),
+          ctx.db.get(m.locationId),
+          m.userId ? ctx.db.get(m.userId) : null,
+        ]);
+        return {
+          _id: m._id,
+          createdAt: m.createdAt,
+          quantity: m.quantity,
+          reason: m.reason,
+          reference: m.reference,
+          notes: m.notes,
+          productId: m.productId,
+          productName: product?.name ?? "Deleted product",
+          productSku: product?.sku ?? "—",
+          unit: product?.unit ?? "",
+          locationName: location?.name ?? "Unknown location",
+          userName: user?.name ?? "System",
+        };
+      }),
+    );
   },
 });
 

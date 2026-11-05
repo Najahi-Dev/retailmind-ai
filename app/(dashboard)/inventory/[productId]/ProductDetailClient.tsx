@@ -233,7 +233,7 @@ export default function ProductDetailClient({ productId, role }: Props) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => router.push("/inventory/adjust")}
+              onClick={() => router.push(`/inventory/adjust?productId=${productId}`)}
               className="h-9 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 px-3"
             >
               <TrendingDownIcon className="w-3.5 h-3.5 mr-1.5 text-amber-500" /> Adjust Qty
