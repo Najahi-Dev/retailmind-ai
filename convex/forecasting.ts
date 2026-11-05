@@ -598,3 +598,197 @@ export const getAIInsights = query({
     return insights;
   }
 });
+
+// ══════════════════════════════════════════════════════════════════
+//  Product demand insights (inventory → product → "Demand Forecasts" tab)
+//
+//  Uses the stored ML forecast when one exists for the coming days.
+//  Otherwise falls back to a weekday-adjusted sales baseline computed
+//  here, so any product with recent sales always gets a forecast.
+// ══════════════════════════════════════════════════════════════════
+
+const DAY = 86_400_000;
+const HISTORY_DAYS = 60;
+const HORIZON_DAYS = 30;
+
+const dayKey = (ts: number) => new Date(ts).toISOString().split("T")[0];
+const startOfUtcDay = (ts: number) => Math.floor(ts / DAY) * DAY;
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+export const getProductDemandInsights = query({
+  args: { token: v.optional(v.string()), productId: v.id("products") },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token);
+    const product = await getOrgEntity<Doc<"products">>(ctx, "products", args.productId, orgId);
+
+    const now = Date.now();
+    const today = startOfUtcDay(now);
+    const historyStart = today - (HISTORY_DAYS - 1) * DAY;
+
+    // ── Stock position (all locations) ──
+    const inventory = (
+      await ctx.db
+        .query("inventory")
+        .withIndex("by_product", (q) => q.eq("productId", product._id))
+        .collect()
+    ).filter((i) => i.orgId === orgId);
+    const onHand = inventory.reduce((s, i) => s + i.onHand, 0);
+    const available = inventory.reduce((s, i) => s + i.available, 0);
+
+    // ── Daily sales history (stock_out only), zero-filled ──
+    const movements = await ctx.db
+      .query("stockMovements")
+      .withIndex("by_product_date", (q) =>
+        q.eq("productId", product._id).gte("createdAt", historyStart),
+      )
+      .collect();
+    const salesByDay = new Map<string, number>();
+    for (const m of movements) {
+      if (m.type !== "stock_out" || (m.orgId && m.orgId !== orgId)) continue;
+      const k = dayKey(m.createdAt);
+      salesByDay.set(k, (salesByDay.get(k) ?? 0) + Math.abs(m.quantity));
+    }
+    const history: { date: string; units: number }[] = [];
+    for (let i = 0; i < HISTORY_DAYS; i++) {
+      const k = dayKey(historyStart + i * DAY);
+      history.push({ date: k, units: salesByDay.get(k) ?? 0 });
+    }
+
+    const sum = (arr: { units: number }[]) => arr.reduce((s, h) => s + h.units, 0);
+    // Today is only partly over — rates, trend and the baseline use completed
+    // days only, otherwise steady sellers look like they're slowing down.
+    const complete = history.slice(0, -1);
+    const last7 = complete.slice(-7);
+    const last14 = complete.slice(-14);
+    const prev14 = complete.slice(-28, -14);
+    const last28 = complete.slice(-28);
+    const last30 = complete.slice(-30);
+    const sold7 = sum(last7);
+    const sold30 = sum(last30);
+    const avgDaily30 = sold30 / 30;
+    const activeSalesDays = history.filter((h) => h.units > 0).length;
+    const trendPct = sum(prev14) > 0 ? ((sum(last14) - sum(prev14)) / sum(prev14)) * 100 : null;
+
+    // ── Forecast: stored ML model first ──
+    const stored = (
+      await ctx.db
+        .query("forecasts")
+        .withIndex("by_product_date", (q) => q.eq("productId", product._id).gte("forecastDate", today))
+        .collect()
+    )
+      .filter((f) => f.orgId === orgId)
+      .sort((a, b) => a.forecastDate - b.forecastDate)
+      .slice(0, HORIZON_DAYS);
+
+    let source: "model" | "baseline" | "none" = "none";
+    let modelUsed: string | null = null;
+    let confidence: number | null = null;
+    let generatedAt: number | null = null;
+    let forecast: { date: string; predicted: number; lower: number; upper: number }[] = [];
+
+    if (stored.length > 0) {
+      source = "model";
+      modelUsed = stored[0].modelUsed;
+      confidence = stored[0].confidenceScore;
+      generatedAt = stored[0].generatedAt;
+      forecast = stored.map((f) => ({
+        date: dayKey(f.forecastDate),
+        predicted: r1(Math.max(0, f.predictedDemand)),
+        lower: r1(Math.max(0, f.lowerBound)),
+        upper: r1(Math.max(0, f.upperBound)),
+      }));
+    } else if (activeSalesDays > 0) {
+      // Baseline: 28-day average level × weekday factor (from up to 8 weeks).
+      source = "baseline";
+      modelUsed = "Sales baseline (weekday-adjusted average)";
+      generatedAt = now;
+      const level = sum(last28) / 28;
+      const window = complete.slice(-56);
+      const overall = sum(window) / window.length;
+      const weekdayTotals = new Array(7).fill(0);
+      const weekdayCounts = new Array(7).fill(0);
+      for (const h of window) {
+        const wd = new Date(h.date + "T00:00:00Z").getUTCDay();
+        weekdayTotals[wd] += h.units;
+        weekdayCounts[wd]++;
+      }
+      // Only trust weekday shape with enough selling days; shrink toward 1.
+      const useWeekday = activeSalesDays >= 14 && overall > 0;
+      const factor = (wd: number) => {
+        if (!useWeekday || weekdayCounts[wd] === 0) return 1;
+        const raw = weekdayTotals[wd] / weekdayCounts[wd] / overall;
+        return 0.5 + 0.5 * raw;
+      };
+      // Spread from day-to-day variation over the last 28 days.
+      const mean = level;
+      const variance = last28.reduce((s, h) => s + (h.units - mean) ** 2, 0) / last28.length;
+      const sd = Math.sqrt(variance);
+      for (let d = 0; d < HORIZON_DAYS; d++) {
+        const ts = today + d * DAY;
+        const p = level * factor(new Date(ts).getUTCDay());
+        forecast.push({
+          date: dayKey(ts),
+          predicted: r1(p),
+          lower: r1(Math.max(0, p - 1.28 * sd)),
+          upper: r1(p + 1.28 * sd),
+        });
+      }
+      confidence = activeSalesDays >= 30 ? 0.7 : activeSalesDays >= 14 ? 0.6 : activeSalesDays >= 7 ? 0.5 : 0.35;
+    }
+
+    const forecast7 = r1(forecast.slice(0, 7).reduce((s, f) => s + f.predicted, 0));
+    const forecast30 = r1(forecast.reduce((s, f) => s + f.predicted, 0));
+
+    // ── Stock-out & reorder projection (against unreserved stock) ──
+    let stockoutDate: string | null = null;
+    let reorderByDate: string | null = null;
+    let daysOfCover: number | null = null;
+    if (forecast.length > 0 && forecast30 > 0) {
+      let remaining = available;
+      if (remaining <= product.reorderPoint) reorderByDate = dayKey(today);
+      for (let i = 0; i < forecast.length; i++) {
+        remaining -= forecast[i].predicted;
+        if (!reorderByDate && remaining <= product.reorderPoint) reorderByDate = forecast[i].date;
+        if (!stockoutDate && remaining <= 0) {
+          stockoutDate = forecast[i].date;
+          daysOfCover = i;
+          break;
+        }
+      }
+      if (daysOfCover === null) {
+        // Beyond the horizon — extrapolate with the average forecast rate.
+        const rate = forecast30 / forecast.length;
+        daysOfCover = Math.round(available / rate);
+      }
+    }
+    const suggestedOrderQty =
+      forecast.length > 0 ? Math.max(0, Math.ceil(forecast30 + product.safetyStock - available)) : 0;
+
+    return {
+      unit: product.unit,
+      onHand,
+      available,
+      reorderPoint: product.reorderPoint,
+      safetyStock: product.safetyStock,
+      history,
+      forecast,
+      source,
+      modelUsed,
+      confidence,
+      generatedAt,
+      stats: {
+        sold7,
+        sold30,
+        avgDaily30: r1(avgDaily30),
+        trendPct: trendPct === null ? null : Math.round(trendPct),
+        activeSalesDays,
+        forecast7,
+        forecast30,
+        daysOfCover,
+        stockoutDate,
+        reorderByDate,
+        suggestedOrderQty,
+      },
+    };
+  },
+});

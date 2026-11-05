@@ -114,6 +114,7 @@ export default function TransferClient({ role }: Props) {
     setSubmitting(true);
     try {
       await transferStock({
+        token: token ?? undefined,
         productId: selectedProduct._id as Id<"products">,
         fromLocationId: fromLocation._id as Id<"locations">,
         toLocationId: toLocation._id as Id<"locations">,

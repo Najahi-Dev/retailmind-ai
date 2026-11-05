@@ -70,7 +70,7 @@ const ROLE_CONFIG: Record<string, { label: string; icon: any; className: string 
 }
 
 export function SiteHeader() {
-  const { role, isSuperAdmin } = useRole()
+  const { role, isSuperAdmin, isLoading: roleLoading } = useRole()
   const { token } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -82,7 +82,10 @@ export function SiteHeader() {
 
   const activeAlertCount = supplierAlerts?.length ?? 0
 
-  const roleInfo = isSuperAdmin
+  // Don't show a badge until the real role is known (avoids a "staff" flash on refresh).
+  const roleInfo = roleLoading
+    ? null
+    : isSuperAdmin
     ? ROLE_CONFIG["super_admin"]
     : role ? (ROLE_CONFIG[role.toLowerCase()] ?? {
         label: role.toUpperCase(),

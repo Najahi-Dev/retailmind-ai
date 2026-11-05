@@ -78,6 +78,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
     setSaving(true);
     try {
       const result = await edit({
+        token: token ?? undefined,
         productId: productId as Id<"products">,
         sku,
         name,
@@ -108,7 +109,7 @@ export default function EditProductClient({ productId, role }: { productId: stri
 
   const handleDelete = async () => {
     try {
-      await del({ productId: productId as Id<"products"> });
+      await del({ token: token ?? undefined, productId: productId as Id<"products"> });
       toast.success("Product removed from catalog");
       router.push(`/inventory`);
     } catch (err) {

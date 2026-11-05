@@ -79,6 +79,7 @@ export default function StockInClient({ role }: Props) {
     setSubmitting(true);
     try {
       await recordStockIn({
+        token: token ?? undefined,
         productId: productId as Id<"products">,
         locationId: locationId as Id<"locations">,
         quantity: qtyNum,

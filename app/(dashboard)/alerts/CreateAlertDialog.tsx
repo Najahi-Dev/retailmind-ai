@@ -59,6 +59,7 @@ export default function CreateAlertDialog({ open, onOpenChange }: Props) {
       const selectedProduct = uniqueProducts.find((p) => p._id === form.productId);
 
       await createAlert({
+        token: token ?? undefined,
         productId: form.productId !== "none" ? (form.productId as Id<"products">) : undefined,
         type: form.type,
         priority: form.priority,

@@ -6,6 +6,7 @@ import { useMutation } from "convex/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import DemandForecastTab from "./DemandForecastTab";
 import {
   Tabs,
   TabsContent,
@@ -79,7 +80,6 @@ export default function ProductDetailClient({ productId, role }: Props) {
   const detail   = useQuery(api.inventory.getProductDetail,   productArgs);
   const history  = useQuery(api.inventory.getStockHistory,    productArgs);
   const orders   = useQuery(api.inventory.getProductPurchaseOrders, productArgs);
-  const forecasts = useQuery(api.inventory.getProductForecasts, productArgs);
   const [reorderPoint, setReorderPoint] = useState(0);
   const [safetyStock,  setSafetyStock]  = useState(0);
   const [costPrice,    setCostPrice]    = useState(0);
@@ -327,11 +327,6 @@ export default function ProductDetailClient({ productId, role }: Props) {
           <TabsTrigger value="stock-history" className="rounded-xl text-xs font-bold px-4 py-2">Stock Movement History</TabsTrigger>
           <TabsTrigger value="forecasts" className="rounded-xl text-xs font-bold px-4 py-2">
             Demand Forecasts
-            {(!forecasts || forecasts.length === 0) && (
-              <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 bg-indigo-500/10 text-indigo-600">
-                Phase 3
-              </Badge>
-            )}
           </TabsTrigger>
           <TabsTrigger value="purchase-orders" className="rounded-xl text-xs font-bold px-4 py-2">
             Purchase Orders
@@ -597,74 +592,11 @@ export default function ProductDetailClient({ productId, role }: Props) {
 
         {/* ══ Tab 3 — Forecasts ═════════════════ */}
         <TabsContent value="forecasts">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <CardTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <TrendingUpIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                AI Neural Demand Predictions
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
-                Machine learning forecast trajectory & velocity predictions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {!forecasts || forecasts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                  <div className="size-14 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                    <TrendingUpIcon className="size-7 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <p className="font-bold text-slate-900 dark:text-white text-base">AI Demand Engine Active</p>
-                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                    Neural forecasting runs continuously across stock sales data to generate predictive reorder triggers.
-                  </p>
-                  <Badge variant="outline" className="mt-2 text-xs font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5">
-                    Phase 3 Live Service
-                  </Badge>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100/90 dark:bg-slate-800/90 h-10">
-                      <tr>
-                        <th className="text-left px-4 py-2 font-bold text-slate-700 dark:text-slate-300">Target Date</th>
-                        <th className="text-right px-4 py-2 font-bold text-slate-700 dark:text-slate-300">Predicted Demand</th>
-                        <th className="text-right px-4 py-2 font-bold text-slate-700 dark:text-slate-300 hidden sm:table-cell">Lower Bound</th>
-                        <th className="text-right px-4 py-2 font-bold text-slate-700 dark:text-slate-300 hidden sm:table-cell">Upper Bound</th>
-                        <th className="text-right px-4 py-2 font-bold text-slate-700 dark:text-slate-300 hidden md:table-cell">AI Confidence</th>
-                        <th className="text-left px-4 py-2 font-bold text-slate-700 dark:text-slate-300 hidden lg:table-cell">Model Architecture</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {forecasts.map((f) => (
-                        <tr key={f._id} className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/60 h-11 transition-colors">
-                          <td className="px-4 py-2 text-slate-600 dark:text-slate-300 font-medium">
-                            {formatDate(f.forecastDate)}
-                          </td>
-                          <td className="px-4 py-2 text-right font-bold text-indigo-600 dark:text-indigo-400 text-sm">
-                            {f.predictedDemand.toFixed(1)} {product.unit}
-                          </td>
-                          <td className="px-4 py-2 text-right text-slate-500 hidden sm:table-cell">
-                            {f.lowerBound.toFixed(1)}
-                          </td>
-                          <td className="px-4 py-2 text-right text-slate-500 hidden sm:table-cell">
-                            {f.upperBound.toFixed(1)}
-                          </td>
-                          <td className="px-4 py-2 text-right hidden md:table-cell">
-                            <Badge variant="outline" className="text-xs font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5">
-                              {(f.confidenceScore * 100).toFixed(0)}%
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2 text-slate-500 text-xs hidden lg:table-cell capitalize font-mono">
-                            {f.modelUsed}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DemandForecastTab
+            productId={productId as Id<"products">}
+            token={token}
+            canRunForecast={canEdit}
+          />
         </TabsContent>
 
         {/* ══ Tab 4 — Purchase Orders ═══════════ */}

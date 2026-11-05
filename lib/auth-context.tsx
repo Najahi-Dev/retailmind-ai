@@ -340,6 +340,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   };
 
+  // On a page refresh the access-token cookie is often still valid, so the
+  // bootstrap finishes instantly while the user record (and therefore the role)
+  // is still in flight from Convex. Treat that gap as "loading" so role-based
+  // UI never renders with a placeholder role (useRole falls back to "staff").
+  const isResolvingUser = !!token && currentUser === null;
+
   return (
     <AuthContext.Provider
       value={{
@@ -353,7 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         impersonateUser,
         exitImpersonation,
         isImpersonating,
-        isLoading,
+        isLoading: isLoading || isResolvingUser,
         isAuthenticated: !!currentUser,
       }}
     >

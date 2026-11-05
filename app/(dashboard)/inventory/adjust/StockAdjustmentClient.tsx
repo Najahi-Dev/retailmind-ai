@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
@@ -48,9 +48,9 @@ export default function StockAdjustmentClient({ role = "admin" }: Props) {
 
   const canAdjust = ["admin", "manager"].includes(role);
 
-  const products = data?.products ?? [];
-  const locations = data?.locations ?? [];
-  const inventory = data?.inventory ?? [];
+  const products = useMemo(() => data?.products ?? [], [data]);
+  const locations = useMemo(() => data?.locations ?? [], [data]);
+  const inventory = useMemo(() => data?.inventory ?? [], [data]);
 
   useEffect(() => {
     if (!productId && products[0]) {
@@ -76,6 +76,40 @@ export default function StockAdjustmentClient({ role = "admin" }: Props) {
     [inventory, productId, locationId],
   );
 
+  // Dropdown options — the secondary line shows stock for the other selection
+  // so the right product/location pair is easy to spot while searching.
+  const productOptions = useMemo<SearchableSelectOption[]>(
+    () =>
+      products.map((product) => {
+        const entry = inventory.find((e) => e.productId === product._id && e.locationId === locationId);
+        return {
+          value: product._id,
+          label: `${product.sku} · ${product.name}`,
+          description: selectedLocation
+            ? `${entry?.onHand ?? 0} ${product.unit} on hand at ${selectedLocation.name}`
+            : product.unit,
+        };
+      }),
+    [products, inventory, locationId, selectedLocation],
+  );
+
+  const locationOptions = useMemo<SearchableSelectOption[]>(
+    () =>
+      locations.map((location) => {
+        const entry = inventory.find((e) => e.productId === productId && e.locationId === location._id);
+        const type = location.type ? location.type.replace(/_/g, " ") : "location";
+        return {
+          value: location._id,
+          label: location.name,
+          description: selectedProduct
+            ? `${type} · ${entry?.onHand ?? 0} ${selectedProduct.unit} of ${selectedProduct.sku}`
+            : type,
+          keywords: type,
+        };
+      }),
+    [locations, inventory, productId, selectedProduct],
+  );
+
   const currentOnHand = currentEntry?.onHand ?? 0;
   const delta = adjustedOnHand - currentOnHand;
 
@@ -99,6 +133,7 @@ export default function StockAdjustmentClient({ role = "admin" }: Props) {
     setSubmitting(true);
     try {
       const result = await adjustStock({
+        token: token ?? undefined,
         productId: selectedProduct._id as Id<"products">,
         locationId: selectedLocation._id as Id<"locations">,
         adjustedOnHand,
@@ -180,36 +215,30 @@ export default function StockAdjustmentClient({ role = "admin" }: Props) {
                   <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     Product SKU <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={productId} onValueChange={setProductId}>
-                    <SelectTrigger className="w-full text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                      <SelectValue placeholder="Choose product..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product._id} value={product._id}>
-                          {product.sku} · {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={productOptions}
+                    value={productId}
+                    onValueChange={setProductId}
+                    placeholder="Choose product..."
+                    searchPlaceholder="Search by SKU or product name..."
+                    emptyText="No products match your search."
+                    className="text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     Location <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={locationId} onValueChange={setLocationId}>
-                    <SelectTrigger className="w-full text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                      <SelectValue placeholder="Choose location..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((location) => (
-                        <SelectItem key={location._id} value={location._id}>
-                          {location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={locationOptions}
+                    value={locationId}
+                    onValueChange={setLocationId}
+                    placeholder="Choose location..."
+                    searchPlaceholder="Search locations..."
+                    emptyText="No locations match your search."
+                    className="text-xs rounded-xl border-slate-200 dark:border-slate-800"
+                  />
                 </div>
 
                 <div className="space-y-1.5">

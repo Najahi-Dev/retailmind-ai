@@ -81,6 +81,7 @@ export default function StockInEntryClient({ role = "admin" }: Props) {
     setSubmitting(true);
     try {
       await recordStockIn({
+        token: token ?? undefined,
         productId: productId as Id<"products">,
         locationId: locationId as Id<"locations">,
         quantity,

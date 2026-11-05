@@ -165,6 +165,7 @@ export default function PODetailClient({
     setUpdating(true);
     try {
       await updateStatus({
+        token: token ?? undefined,
         poId: poId as Id<"purchaseOrders">,
         status: "cancelled",
       });
