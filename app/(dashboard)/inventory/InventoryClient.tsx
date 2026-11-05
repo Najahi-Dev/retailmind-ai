@@ -179,6 +179,7 @@ export default function InventoryClient({ role }: Props) {
       "Reorder Point",
       "Safety Stock",
       "Status",
+      "Selling Price (LKR)",
       ...(canViewFinancials ? ["Stock Value (LKR)"] : []),
     ];
 
@@ -195,6 +196,7 @@ export default function InventoryClient({ role }: Props) {
         escapeCSV(item!.reorderPoint ?? 0),
         escapeCSV(item!.safetyStock ?? 0),
         escapeCSV(item!.status ?? "healthy"),
+        escapeCSV((item!.sellingPrice ?? 0).toFixed(2)),
         ...(canViewFinancials ? [escapeCSV(item!.stockValue ? item!.stockValue.toFixed(2) : "0.00")] : []),
       ];
     });
@@ -569,6 +571,9 @@ export default function InventoryClient({ role }: Props) {
                   <TableHead className="text-right hidden sm:table-cell font-bold text-sm text-slate-800 dark:text-slate-200">Available</TableHead>
                   <TableHead className="text-right hidden lg:table-cell font-bold text-sm text-slate-800 dark:text-slate-200">Reorder Pt.</TableHead>
                   <TableHead className="hidden xl:table-cell font-bold text-sm text-slate-800 dark:text-slate-200">Stock Level</TableHead>
+                  <TableHead className="text-right hidden md:table-cell font-bold text-sm text-slate-800 dark:text-slate-200">
+                    Selling Price
+                  </TableHead>
                   {canViewFinancials && (
                     <TableHead className="text-right hidden xl:table-cell font-bold text-sm text-slate-800 dark:text-slate-200">
                       Stock Value
@@ -581,7 +586,7 @@ export default function InventoryClient({ role }: Props) {
                 {paginated.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={canViewFinancials ? 10 : 9}
+                      colSpan={canViewFinancials ? 11 : 10}
                       className="text-center py-16 text-slate-500"
                     >
                       <div className="flex flex-col items-center gap-2">
@@ -663,6 +668,10 @@ export default function InventoryClient({ role }: Props) {
                               {item!.stockPct}%
                             </span>
                           </div>
+                        </TableCell>
+
+                        <TableCell className="text-right font-semibold text-sm text-slate-900 dark:text-white hidden md:table-cell tabular-nums">
+                          {formatCurrency(item!.sellingPrice ?? 0)}
                         </TableCell>
 
                         {canViewFinancials && (

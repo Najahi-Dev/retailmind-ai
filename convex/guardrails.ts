@@ -258,7 +258,16 @@ export const executeApprovedAction = internalMutation({
         const sid = ctx.db.normalizeId("priceSuggestions", suggestionId);
         const suggestion = sid ? await ctx.db.get(sid) : null;
         if (suggestion && suggestion.orgId === orgId && suggestion.status === "pending") {
-          await ctx.db.patch(suggestion._id, { status: "approved", suggestedPrice: newPrice, appliedAt: now });
+          await ctx.db.patch(suggestion._id, {
+            status: "approved",
+            suggestedPrice: newPrice,
+            priceChange:
+              suggestion.currentPrice > 0
+                ? Math.round(((newPrice - suggestion.currentPrice) / suggestion.currentPrice) * 1000) / 10
+                : suggestion.priceChange,
+            appliedAt: now,
+            decidedAt: now,
+          });
         }
       }
       return { executed: "PRICE_DROP", productId: product._id, newPrice };

@@ -37,7 +37,13 @@ import {
   Filter,
   ShieldCheck,
   Tag,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  X,
 } from "lucide-react";
+
+const PAGE_SIZE = 10;
 import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 const DIRECTION_CONFIG = {
@@ -73,11 +79,46 @@ const DIRECTION_CONFIG = {
 import { useAuth } from "@/lib/auth-context";
 
 type SuggestionStatus = "pending" | "approved" | "rejected" | undefined;
+type DirectionFilter = "all" | "increase" | "decrease";
+type StockFilter = "all" | "critical" | "low" | "overstock";
+type ConfidenceFilter = "all" | "90" | "80" | "70";
+type SortKey = "newest" | "change" | "confidence" | "impact" | "name";
+
+const DIRECTION_LABELS: Record<Exclude<DirectionFilter, "all">, string> = {
+  increase: "Price increases",
+  decrease: "Markdowns",
+};
+const STOCK_LABELS: Record<Exclude<StockFilter, "all">, string> = {
+  critical: "Critical stock",
+  low: "Low stock",
+  overstock: "Overstock",
+};
+const SORT_LABELS: Record<SortKey, string> = {
+  newest: "Newest first",
+  change: "Largest % change",
+  confidence: "Highest confidence",
+  impact: "Biggest 30d impact",
+  name: "Product A–Z",
+};
 
 export default function PricingClient() {
   const { token } = useAuth();
   const [statusFilter, setStatusFilter] = useState<SuggestionStatus>("pending");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>("all");
+  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>("all");
+  const [sortBy, setSortBy] = useState<SortKey>("newest");
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setDirectionFilter("all");
+    setStockFilter("all");
+    setConfidenceFilter("all");
+    setSortBy("newest");
+    setPage(1);
+  };
 
   const access = useQuery(api.subscriptions.checkFeatureAccess, { token: token ?? undefined });
   const suggestions = useQuery(api.pricing.getPriceSuggestions, { token: token ?? undefined, status: statusFilter });
@@ -85,6 +126,8 @@ export default function PricingClient() {
   const approve = useMutation(api.pricing.approvePriceSuggestion);
   const reject = useMutation(api.pricing.rejectPriceSuggestion);
   const cleanup = useMutation(api.pricing.cleanupDuplicatePriceSuggestions);
+  const runScan = useMutation(api.pricing.generatePriceSuggestionsPublic);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -125,6 +168,20 @@ export default function PricingClient() {
     }
   };
 
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      const r = await runScan({ token: token ?? undefined });
+      toast.success(
+        `Price scan complete: ${r.created} new, ${r.updated} refreshed, ${r.removed} no longer needed.`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Price scan failed");
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const handleReject = async (id: Id<"priceSuggestions">) => {
     setProcessing(id);
     try {
@@ -146,15 +203,75 @@ export default function PricingClient() {
     );
   }
 
-  const filteredSuggestions = suggestions.filter((s) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      s.productName.toLowerCase().includes(query) ||
-      s.productSku.toLowerCase().includes(query) ||
-      s.reason.toLowerCase().includes(query)
-    );
-  });
+  const pctOf = (s: { currentPrice: number; suggestedPrice: number }) =>
+    s.currentPrice > 0 ? ((s.suggestedPrice - s.currentPrice) / s.currentPrice) * 100 : 0;
+
+  const query = searchQuery.trim().toLowerCase();
+  const filteredSuggestions = suggestions
+    .filter((s) => {
+      if (
+        query &&
+        !(
+          s.productName.toLowerCase().includes(query) ||
+          s.productSku.toLowerCase().includes(query) ||
+          s.reason.toLowerCase().includes(query)
+        )
+      ) {
+        return false;
+      }
+      if (directionFilter !== "all" && s.changeDirection !== directionFilter) return false;
+      // factors.stockLevel looks like "12 units · critical · 2 locations"
+      if (stockFilter !== "all" && !s.factors.stockLevel.toLowerCase().includes(stockFilter)) return false;
+      if (confidenceFilter !== "all" && s.confidence * 100 < Number(confidenceFilter)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "change":
+          return Math.abs(pctOf(b)) - Math.abs(pctOf(a));
+        case "confidence":
+          return b.confidence - a.confidence;
+        case "impact":
+          return Math.abs(b.projectedImpact ?? 0) - Math.abs(a.projectedImpact ?? 0);
+        case "name":
+          return a.productName.localeCompare(b.productName);
+        default:
+          return (b.createdAt ?? b._creationTime) - (a.createdAt ?? a._creationTime);
+      }
+    });
+
+  const activeChips: { key: string; label: string; clear: () => void }[] = [];
+  if (query) activeChips.push({ key: "q", label: `“${searchQuery.trim()}”`, clear: () => setSearchQuery("") });
+  if (directionFilter !== "all")
+    activeChips.push({ key: "dir", label: DIRECTION_LABELS[directionFilter], clear: () => setDirectionFilter("all") });
+  if (stockFilter !== "all")
+    activeChips.push({ key: "stock", label: STOCK_LABELS[stockFilter], clear: () => setStockFilter("all") });
+  if (confidenceFilter !== "all")
+    activeChips.push({
+      key: "conf",
+      label: `≥ ${confidenceFilter}% confidence`,
+      clear: () => setConfidenceFilter("all"),
+    });
+  const hasActiveFilters = activeChips.length > 0;
+  if (sortBy !== "newest")
+    activeChips.push({ key: "sort", label: `Sort: ${SORT_LABELS[sortBy]}`, clear: () => setSortBy("newest") });
+
+  const statusTabs: { value: SuggestionStatus; label: string; count: number }[] = [
+    { value: "pending", label: "Pending", count: stats.pending },
+    { value: "approved", label: "Approved", count: stats.approved },
+    { value: "rejected", label: "Rejected", count: stats.rejected },
+    { value: undefined, label: "All", count: stats.total },
+  ];
+
+  const totalPages = Math.max(1, Math.ceil(filteredSuggestions.length / PAGE_SIZE));
+  // Clamp: approving/rejecting can empty the last page.
+  const currentPage = Math.min(page, totalPages);
+  const paginatedSuggestions = filteredSuggestions.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+  const rangeStart = filteredSuggestions.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, filteredSuggestions.length);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:p-5 w-full">
@@ -184,10 +301,16 @@ export default function PricingClient() {
         <div className="flex items-center gap-2.5 z-10">
           <Button
             size="sm"
-            onClick={() => toast.info("AI Neural Engine automatically recalculates price markdowns nightly at 00:00 UTC.")}
+            onClick={handleScan}
+            disabled={scanning}
             className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-md border-0 rounded-xl"
           >
-            <Zap className="w-4 h-4 mr-1.5" /> Run AI Price Scan
+            {scanning ? (
+              <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4 mr-1.5" />
+            )}
+            {scanning ? "Scanning..." : "Run AI Price Scan"}
           </Button>
         </div>
       </div>
@@ -210,7 +333,10 @@ export default function PricingClient() {
           </CardHeader>
           <CardFooter className="pt-0 text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
             <span className="text-indigo-600 dark:text-indigo-400 font-semibold">Open for approval</span>
-            <span>Est LKR 185k value</span>
+            <span title="Price change × units expected to sell in the next 30 days">
+              Est. {stats.totalPotentialProfit >= 0 ? "+" : ""}
+              {formatCurrency(stats.totalPotentialProfit)} / 30d
+            </span>
           </CardFooter>
         </Card>
 
@@ -228,7 +354,7 @@ export default function PricingClient() {
             </CardTitle>
           </CardHeader>
           <CardFooter className="pt-0 text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
-            <span className="text-red-600 dark:text-red-400 font-semibold">Near-expiry liquidation</span>
+            <span className="text-red-600 dark:text-red-400 font-semibold">Overstock clearance</span>
             <span>Prevent waste</span>
           </CardFooter>
         </Card>
@@ -275,65 +401,215 @@ export default function PricingClient() {
 
       {/* ── 3. SEARCH, FILTER & LIST CONTAINER ── */}
       <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
-        <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800 space-y-4">
+          {/* Title + status tabs */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Tag className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 AI Price Recommendations Queue
               </CardTitle>
               <CardDescription className="text-xs text-slate-600 dark:text-slate-400">
-                Showing {filteredSuggestions.length} price suggestions
+                {filteredSuggestions.length === suggestions.length
+                  ? `${suggestions.length} price suggestions`
+                  : `${filteredSuggestions.length} of ${suggestions.length} price suggestions match your filters`}
               </CardDescription>
             </div>
 
-            {/* Filter & Search Bar */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative min-w-[220px]">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Search SKU or product..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
-                />
-              </div>
+            <div
+              role="tablist"
+              aria-label="Suggestion status"
+              className="inline-flex w-full lg:w-auto overflow-x-auto rounded-xl bg-slate-100 dark:bg-slate-800/70 p-1 gap-1"
+            >
+              {statusTabs.map((tab) => {
+                const active = statusFilter === tab.value;
+                return (
+                  <button
+                    key={tab.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => {
+                      setStatusFilter(tab.value);
+                      setPage(1);
+                    }}
+                    className={`flex-1 lg:flex-none whitespace-nowrap px-3 h-8 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                      active
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    {tab.label}
+                    <span
+                      className={`tabular-nums text-[10px] px-1.5 py-0.5 rounded-md ${
+                        active
+                          ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                          : "bg-slate-200/70 dark:bg-slate-700/60"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
+          {/* Search + filters */}
+          <div className="flex flex-col xl:flex-row xl:items-center gap-2.5">
+            <div className="relative flex-1 min-w-0">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Search product, SKU or reason..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-9 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 xl:flex xl:items-center">
               <Select
-                value={statusFilter ?? "all"}
-                onValueChange={(v) =>
-                  setStatusFilter(v === "all" ? undefined : (v as SuggestionStatus))
-                }
+                value={directionFilter}
+                onValueChange={(v) => {
+                  setDirectionFilter(v as DirectionFilter);
+                  setPage(1);
+                }}
               >
-                <SelectTrigger className="w-36 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
-                  <Filter className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+                <SelectTrigger className="w-full xl:w-40 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending Review</SelectItem>
-                  <SelectItem value="approved">Approved & Active</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="increase">Price increases</SelectItem>
+                  <SelectItem value="decrease">Markdowns</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={stockFilter}
+                onValueChange={(v) => {
+                  setStockFilter(v as StockFilter);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full xl:w-40 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All stock levels</SelectItem>
+                  <SelectItem value="critical">Critical stock</SelectItem>
+                  <SelectItem value="low">Low stock</SelectItem>
+                  <SelectItem value="overstock">Overstock</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={confidenceFilter}
+                onValueChange={(v) => {
+                  setConfidenceFilter(v as ConfidenceFilter);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full xl:w-40 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any confidence</SelectItem>
+                  <SelectItem value="90">≥ 90% confidence</SelectItem>
+                  <SelectItem value="80">≥ 80% confidence</SelectItem>
+                  <SelectItem value="70">≥ 70% confidence</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={sortBy}
+                onValueChange={(v) => {
+                  setSortBy(v as SortKey);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full xl:w-44 h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800">
+                  <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {SORT_LABELS[k]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {/* Active filter chips */}
+          {activeChips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5" /> Active:
+              </span>
+              {activeChips.map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => {
+                    chip.clear();
+                    setPage(1);
+                  }}
+                  className="inline-flex items-center gap-1 h-6 pl-2.5 pr-1.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
+                  aria-label={`Remove filter ${chip.label}`}
+                >
+                  {chip.label}
+                  <X className="w-3 h-3" />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white underline-offset-2 hover:underline"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="pt-6">
           {filteredSuggestions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-500 text-center">
               <Sparkles className="w-10 h-10 text-indigo-500/50" />
-              <p className="font-bold text-slate-900 dark:text-white">No Price Suggestions Found</p>
-              <p className="text-xs text-slate-500 max-w-sm">
-                AI pricing runs nightly and generates automated suggestions based on inventory velocity and expiration dates.
+              <p className="font-bold text-slate-900 dark:text-white">
+                {hasActiveFilters ? "No suggestions match your filters" : "No Price Suggestions Found"}
               </p>
+              <p className="text-xs text-slate-500 max-w-sm">
+                {hasActiveFilters
+                  ? "Try removing a filter or searching for something else."
+                  : "AI pricing runs nightly and suggests changes based on stock levels and sales velocity. Use “Run AI Price Scan” to check now."}
+              </p>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="h-8 rounded-xl text-xs mt-1"
+                >
+                  Clear filters
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredSuggestions.map((s) => {
+              {paginatedSuggestions.map((s) => {
                 const config = DIRECTION_CONFIG[s.changeDirection];
                 const isProcessing = processing === s._id;
+                // Derive % from the prices themselves so older rows that stored
+                // an LKR difference in `priceChange` still display correctly.
+                const changePct =
+                  s.currentPrice > 0 ? ((s.suggestedPrice - s.currentPrice) / s.currentPrice) * 100 : 0;
 
                 return (
                   <div
@@ -367,8 +643,8 @@ export default function PricingClient() {
                               {s.productName}
                             </span>
                             <Badge className={`text-[11px] font-bold px-2 py-0.5 ${config.badgeClass}`}>
-                              {s.priceChange > 0 ? "+" : ""}
-                              {s.priceChange.toFixed(1)}%
+                              {changePct > 0 ? "+" : ""}
+                              {changePct.toFixed(1)}%
                             </Badge>
                             <Badge variant="outline" className="text-[11px] font-semibold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5">
                               {(s.confidence * 100).toFixed(0)}% AI Confidence
@@ -388,7 +664,10 @@ export default function PricingClient() {
                               { k: "Stock", v: s.factors.stockLevel },
                               { k: "Demand", v: s.factors.demandTrend },
                               { k: "Season", v: s.factors.seasonality },
-                              { k: "Days Left", v: `${s.factors.daysOfStock}d` },
+                              {
+                                k: "Days Left",
+                                v: s.factors.daysOfStock >= 0 ? `${s.factors.daysOfStock}d` : "No sales data",
+                              },
                             ].map((f) => (
                               <span
                                 key={f.k}
@@ -474,6 +753,38 @@ export default function PricingClient() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 mt-5 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                Showing <span className="font-bold text-slate-900 dark:text-white">{rangeStart}–{rangeEnd}</span> of{" "}
+                <span className="font-bold text-slate-900 dark:text-white">{filteredSuggestions.length}</span> suggestions
+                {" "}— page <span className="font-bold text-slate-900 dark:text-white">{currentPage}</span> of{" "}
+                <span className="font-bold text-slate-900 dark:text-white">{totalPages}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 rounded-xl text-xs border-slate-300 dark:border-slate-800"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 rounded-xl text-xs border-slate-300 dark:border-slate-800"
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

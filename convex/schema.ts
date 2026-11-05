@@ -498,6 +498,10 @@ export default defineSchema({
       v.literal("rejected"),
     ),
     appliedAt: v.optional(v.number()),
+    // When an admin approved/rejected it — drives the re-suggestion cooldowns.
+    decidedAt: v.optional(v.number()),
+    // Estimated 30-day profit impact (LKR): price delta × expected units sold.
+    projectedImpact: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_product", ["productId"])
