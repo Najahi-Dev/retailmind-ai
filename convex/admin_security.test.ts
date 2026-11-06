@@ -159,6 +159,53 @@ describe("User administration & super-admin security", () => {
     expect(created?.passwordHash).toMatch(/^\$2[aby]\$12\$/);
   }, 30000);
 
+  it("setSupplierPassword is admin/manager-only, same-org, and revokes sessions", async () => {
+    const mkSupplier = (orgId: Id<"organizations">, email: string) =>
+      t.run(async (ctx) =>
+        ctx.db.insert("suppliers", {
+          orgId, name: "Vendor", email, leadTimeDays: 3, status: "active", isActive: true, createdAt: Date.now(),
+        }),
+      );
+    const supA = await mkSupplier(orgA, "vendor@a.com");
+    const supB = await mkSupplier(orgB, "vendor@b.com");
+    const supplierUser = await mkUser(orgA, "vendor@a.com", "supplier");
+    await t.run(async (ctx) => ctx.db.patch(supplierUser, { supplierId: supA }));
+    const supplierToken = await createTestSession(t, supplierUser);
+
+    const good = "NewVendorPass9";
+    await expect(
+      t.action(api.users.setSupplierPassword, { supplierId: supA, password: good }),
+    ).rejects.toThrow(/Unauthorized/);
+    await expect(
+      t.action(api.users.setSupplierPassword, { token: staffAToken, supplierId: supA, password: good }),
+    ).rejects.toThrow(/Access denied/i);
+    await expect(
+      t.action(api.users.setSupplierPassword, { token: supplierToken, supplierId: supA, password: good }),
+    ).rejects.toThrow(/Access denied/i);
+    await expect(
+      t.action(api.users.setSupplierPassword, { token: adminAToken, supplierId: supB, password: good }),
+    ).rejects.toThrow(/not found in your organization/i);
+    await expect(
+      t.action(api.users.setSupplierPassword, { token: adminAToken, supplierId: supA, password: "supplier12345" }),
+    ).rejects.toThrow(/Password/);
+
+    expect(
+      (await t.query(api.users.getSupplierLoginAccount, { token: managerAToken, supplierId: supA }))?.email,
+    ).toBe("vendor@a.com");
+
+    const res = await t.action(api.users.setSupplierPassword, {
+      token: managerAToken, supplierId: supA, password: good,
+    });
+    expect(res.email).toBe("vendor@a.com");
+    const updated = await t.run(async (ctx) => ctx.db.get(supplierUser));
+    expect(updated?.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+    expect(updated?.passwordChangedAt).toBeDefined();
+    const sessions = await t.run(async (ctx) =>
+      ctx.db.query("sessions").withIndex("by_user", (q) => q.eq("userId", supplierUser)).collect(),
+    );
+    expect(sessions.every((s) => s.revokedAt)).toBe(true);
+  }, 30000);
+
   it("deactivation is mandatory-auth and revokes the target's sessions", async () => {
     await expect(
       t.mutation(api.users.toggleUserStatus, { userId: staffA, isActive: false }),

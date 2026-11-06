@@ -5,6 +5,8 @@ import { api }         from "@/convex/_generated/api";
 import { useState }    from "react";
 import { toast }       from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { convexErrorMessage } from "@/lib/convex-error";
+import { PasswordRequirements, isPasswordValid } from "@/components/auth/password-requirements";
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
@@ -77,7 +79,7 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
       setSendEmail(true);
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create user");
+      toast.error(convexErrorMessage(err, "Failed to create user"));
     } finally {
       setSubmitting(false);
     }
@@ -148,6 +150,7 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
                 className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-800"
               />
             </div>
+            <PasswordRequirements password={password} />
             <Button
               variant="outline"
               size="sm"
@@ -214,7 +217,7 @@ export default function AddUserModal({ open, onOpenChange }: Props) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!form.name || !form.email || submitting}
+            disabled={!form.name || !form.email || (!!password && !isPasswordValid(password)) || submitting}
             className="h-9 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-5 shadow-md border-0"
           >
             {submitting

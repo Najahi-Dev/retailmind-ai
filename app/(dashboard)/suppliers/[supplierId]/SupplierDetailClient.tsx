@@ -6,6 +6,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import SupplierLoginAccessCard from "./SupplierLoginAccessCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -499,6 +500,8 @@ export default function SupplierDetailClient({
                 )}
               </CardContent>
             </Card>
+
+            <SupplierLoginAccessCard supplier={supplier} />
           </div>
         </TabsContent>
 

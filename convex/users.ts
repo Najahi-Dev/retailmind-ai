@@ -474,6 +474,97 @@ export const createUser = action({
   },
 });
 
+// ── Supplier login access (admin / manager) ────────────────────────────────
+
+/** Finds the login account linked to a supplier (by supplierId, then by email). */
+async function findSupplierLoginUser(ctx: any, orgId: Id<"organizations">, supplierId: Id<"suppliers">) {
+  const supplier = await ctx.db.get(supplierId);
+  if (!supplier || supplier.orgId !== orgId) {
+    throw new ConvexError("Supplier not found in your organization.");
+  }
+  const orgUsers = await ctx.db
+    .query("users")
+    .withIndex("by_org", (q: any) => q.eq("orgId", orgId))
+    .collect();
+  const supplierEmail = supplier.email?.trim().toLowerCase();
+  const user =
+    orgUsers.find((u: any) => u.supplierId === supplierId) ??
+    orgUsers.find(
+      (u: any) => u.role === "supplier" && supplierEmail && u.email.trim().toLowerCase() === supplierEmail,
+    ) ??
+    null;
+  return { supplier, user };
+}
+
+export const getSupplierLoginAccount = query({
+  args: { token: v.optional(v.string()), supplierId: v.id("suppliers") },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireCallerOrg(ctx, args.token, USER_MANAGER_ROLES);
+    const { user } = await findSupplierLoginUser(ctx, orgId, args.supplierId);
+    if (!user) return null;
+    return {
+      userId: user._id,
+      email: user.email,
+      isActive: user.isActive,
+      lastLogin: user.lastLogin,
+      passwordChangedAt: user.passwordChangedAt,
+    };
+  },
+});
+
+async function assertCanSetSupplierPassword(ctx: any, token: string | undefined, supplierId: Id<"suppliers">) {
+  const { user: caller, orgId, organization } = await requireCallerOrg(ctx, token, USER_MANAGER_ROLES);
+  const { user } = await findSupplierLoginUser(ctx, orgId, supplierId);
+  if (!user) throw new ConvexError("This supplier has no login account yet.");
+  assertCanManageUser(caller, organization, user);
+  if (user._id === caller._id) {
+    throw new ConvexError("Use Settings to change your own password.");
+  }
+  return user;
+}
+
+export const authorizeSupplierPasswordUpdate = internalQuery({
+  args: { token: v.optional(v.string()), supplierId: v.id("suppliers") },
+  handler: async (ctx, args) => {
+    await assertCanSetSupplierPassword(ctx, args.token, args.supplierId);
+    return null;
+  },
+});
+
+export const applySupplierPassword = internalMutation({
+  args: { token: v.optional(v.string()), supplierId: v.id("suppliers"), passwordHash: v.string() },
+  handler: async (ctx, args) => {
+    const user = await assertCanSetSupplierPassword(ctx, args.token, args.supplierId);
+    await ctx.db.patch(user._id, {
+      passwordHash: args.passwordHash,
+      passwordChangedAt: Date.now(),
+      failedLoginCount: 0,
+      lockedUntil: undefined,
+    });
+    // Existing sessions must sign in again with the new password.
+    await revokeAllUserSessions(ctx, user._id, "password_reset_by_admin");
+    return { email: user.email };
+  },
+});
+
+export const setSupplierPassword = action({
+  args: { token: v.optional(v.string()), supplierId: v.id("suppliers"), password: v.string() },
+  handler: async (ctx, args): Promise<{ email: string }> => {
+    // Cheap authorization check before spending CPU on bcrypt.
+    await ctx.runQuery(internal.users.authorizeSupplierPasswordUpdate, {
+      token: args.token,
+      supplierId: args.supplierId,
+    });
+    validatePasswordStrength(args.password);
+    const passwordHash = await bcrypt.hash(args.password, 12);
+    return await ctx.runMutation(internal.users.applySupplierPassword, {
+      token: args.token,
+      supplierId: args.supplierId,
+      passwordHash,
+    });
+  },
+});
+
 // Get user detail by ID: self, or admin/manager of the same workspace.
 export const getUserById = query({
   args: {
