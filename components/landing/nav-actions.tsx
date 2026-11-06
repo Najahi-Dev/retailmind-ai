@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { IntentLink } from "@/components/landing/intent-link";
 import { ChevronRight, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { useAuth } from "@/lib/auth-context";
-import { useRole } from "@/hooks/useRole";
+import { useSessionHint } from "@/lib/session-hint";
 
 const LINKS = [
   { href: "#features", label: "Features" },
@@ -20,23 +19,24 @@ const primary =
 
 /** Auth-aware navbar actions + mobile menu (the only interactive part of the header). */
 export function LandingNavActions() {
-  const { isAuthenticated } = useAuth();
-  const { isSuperAdmin } = useRole();
+  // Cookie hint only (no Convex/AuthProvider on the landing page).
+  const { isAuthenticated, role } = useSessionHint();
+  const isSuperAdmin = role === "super_admin";
   const [open, setOpen] = useState(false);
   const home = isSuperAdmin ? "/super-admin" : "/dashboard";
 
   const authButtons = (mobile: boolean) =>
     isAuthenticated ? (
       <Button asChild className={`${primary} ${mobile ? "w-full" : "px-5"}`}>
-        <Link href={home}>
+        <IntentLink href={home}>
           {isSuperAdmin ? "Super Admin" : "Dashboard"} <ChevronRight className="w-4 h-4 ml-1" />
-        </Link>
+        </IntentLink>
       </Button>
     ) : (
       <>
         {mobile ? (
           <Button variant="outline" asChild className="w-full border-slate-800 text-slate-200 hover:bg-slate-900">
-            <Link href="/sign-in">Sign In</Link>
+            <IntentLink href="/sign-in">Sign In</IntentLink>
           </Button>
         ) : (
           <Button
@@ -44,11 +44,11 @@ export function LandingNavActions() {
             asChild
             className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900"
           >
-            <Link href="/sign-in">Sign In</Link>
+            <IntentLink href="/sign-in">Sign In</IntentLink>
           </Button>
         )}
         <Button asChild className={`${primary} ${mobile ? "w-full" : "px-5"}`}>
-          <Link href="/create-workspace">Start Free Trial</Link>
+          <IntentLink href="/create-workspace">Start Free Trial</IntentLink>
         </Button>
       </>
     );

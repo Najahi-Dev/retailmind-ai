@@ -1,7 +1,9 @@
 // Landing page — a SERVER component. Interactive bits are small client islands:
 // LandingNavActions (auth buttons + mobile menu), WatchDemoButton, CookieSettingsButton,
-// Reveal (IntersectionObserver scroll-reveal) and PricingSection.
+// Reveal (IntersectionObserver scroll-reveal) and PlanCtas. No Convex client or
+// AuthProvider is loaded on this route (see components/app-providers-gate.tsx).
 import Link from "next/link";
+import { IntentLink } from "@/components/landing/intent-link";
 import {
   TrendingDown,
   PackageMinus,
@@ -21,10 +23,13 @@ import {
 import { Button, Badge } from "@/components/landing/client-ui";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/logo";
-import { PricingSection } from "@/components/pricing-section";
+import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingNavActions } from "@/components/landing/nav-actions";
 import { WatchDemoButton, CookieSettingsButton } from "@/components/landing/demo-dialog";
 import { Reveal } from "@/components/landing/reveal";
+
+// Statically generated; pricing plans refresh at most every 5 minutes.
+export const revalidate = 300;
 
 export default function Home() {
   return (
@@ -108,10 +113,10 @@ export default function Home() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
             >
               <Button asChild size="lg" className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-lg shadow-indigo-600/30 px-8 h-12 text-base rounded-xl group">
-                <Link href="/create-workspace">
+                <IntentLink href="/create-workspace">
                   Start Free Trial
                   <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </IntentLink>
               </Button>
 
               <WatchDemoButton />
@@ -536,7 +541,7 @@ export default function Home() {
       </section>
 
       {/* 7. PRICING SECTION */}
-      <PricingSection />
+      <LandingPricing />
 
       {/* 8. CTA SECTION */}
       <section className="py-24 relative overflow-hidden bg-indigo-50/40 dark:bg-slate-950 border-t border-indigo-100 dark:border-slate-800/80 transition-colors duration-300">
@@ -570,9 +575,9 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Button asChild size="lg" className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-xl shadow-indigo-500/30 dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] px-8 h-14 text-base rounded-xl transition-all hover:scale-105">
-                  <Link href="/create-workspace">
+                  <IntentLink href="/create-workspace">
                     Start Free Trial
-                  </Link>
+                  </IntentLink>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="bg-white/50 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 font-medium px-8 h-14 text-base rounded-xl backdrop-blur-sm transition-all shadow-sm">
                   <Link href="#about">

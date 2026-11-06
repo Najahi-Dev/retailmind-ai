@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { IntentLink } from "@/components/landing/intent-link";
 import { BrainCircuit, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,9 +49,9 @@ export function WatchDemoButton() {
               </p>
             </div>
             <Button asChild className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-6">
-              <Link href="/sign-in" onClick={() => setOpen(false)}>
+              <IntentLink href="/sign-in" onClick={() => setOpen(false)}>
                 Try RetailMind AI Live
-              </Link>
+              </IntentLink>
             </Button>
           </div>
         </DialogContent>

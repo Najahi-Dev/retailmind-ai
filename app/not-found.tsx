@@ -1,19 +1,16 @@
-"use client";
-
+// Server Component. The root not-found boundary's client code ships with EVERY page,
+// so it must stay free of heavy client libraries (it previously pulled the
+// animation library into the landing page bundle).
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   Compass,
   LayoutDashboard,
   Package,
-  TrendingUp,
   ArrowLeft,
   Sparkles,
   ShoppingBag,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/logo";
-import { ModeToggle } from "@/components/mode-toggle";
+import { Button } from "@/components/landing/client-ui";
 
 export default function NotFound() {
   return (
@@ -21,11 +18,8 @@ export default function NotFound() {
       {/* Ambient background glow orbs */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full bg-[radial-gradient(circle,rgba(79,70,229,0.15),transparent_60%)] pointer-events-none animate-pulse-glow" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="sm:max-w-lg w-[95vw] sm:w-full w-full text-center space-y-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-xl relative z-10 overflow-hidden mx-auto my-auto"
+      <div
+        className="animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-400 ease-out motion-reduce:animate-none sm:max-w-lg w-[95vw] sm:w-full w-full text-center space-y-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-xl relative z-10 overflow-hidden mx-auto my-auto"
       >
         {/* Glowing 404 Hero Illustration */}
         <div className="flex flex-col items-center gap-3 pt-2">
@@ -44,7 +38,7 @@ export default function NotFound() {
             Page Not Found
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-            The page or retail intelligence module you are looking for doesn't exist, has been relocated, or is temporarily unavailable.
+            The page or retail intelligence module you are looking for doesn&apos;t exist, has been relocated, or is temporarily unavailable.
           </p>
         </div>
 
@@ -97,7 +91,7 @@ export default function NotFound() {
             </Link>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
