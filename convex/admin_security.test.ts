@@ -16,7 +16,7 @@ import * as users from "./users";
 const modules = import.meta.glob("./**/*.ts");
 
 describe("User administration & super-admin security", () => {
-  let t: ReturnType<typeof convexTest>;
+  let t: ReturnType<typeof convexTest<typeof schema.tables>>;
   let orgA: Id<"organizations">;
   let orgB: Id<"organizations">;
   let adminA: Id<"users">;
@@ -40,7 +40,7 @@ describe("User administration & super-admin security", () => {
         createdAt: Date.now(),
       }),
     );
-  const mkUser = (orgId: Id<"organizations"> | undefined, email: string, role: any) =>
+  const mkUser = (orgId: Id<"organizations"> | undefined, email: string, role: any): Promise<Id<"users">> =>
     t.run(async (ctx: any) =>
       ctx.db.insert("users", {
         orgId,

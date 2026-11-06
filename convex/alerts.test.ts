@@ -9,7 +9,7 @@ import { createTestSession } from "./lib/testAuth";
 const modules = import.meta.glob("./**/*.ts");
 
 describe("Alerts & Notification Lifecycle", () => {
-  let t: ReturnType<typeof convexTest>;
+  let t: ReturnType<typeof convexTest<typeof schema.tables>>;
   let orgId: Id<"organizations">;
   let adminId: Id<"users">;
   let adminToken: string;
