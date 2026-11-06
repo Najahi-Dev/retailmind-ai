@@ -21,6 +21,7 @@ import type * as communications from "../communications.js";
 import type * as communicationsAdmin from "../communicationsAdmin.js";
 import type * as communicationsQueries from "../communicationsQueries.js";
 import type * as crons from "../crons.js";
+import type * as demoData from "../demoData.js";
 import type * as forecasting from "../forecasting.js";
 import type * as guardrails from "../guardrails.js";
 import type * as inventory from "../inventory.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   communicationsAdmin: typeof communicationsAdmin;
   communicationsQueries: typeof communicationsQueries;
   crons: typeof crons;
+  demoData: typeof demoData;
   forecasting: typeof forecasting;
   guardrails: typeof guardrails;
   inventory: typeof inventory;

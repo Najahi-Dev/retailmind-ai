@@ -19,7 +19,7 @@ export default function NotFound() {
   return (
     <div className="w-full flex-1 min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative overflow-hidden transition-colors duration-300 mx-auto">
       {/* Ambient background glow orbs */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-indigo-600/15 dark:bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full bg-[radial-gradient(circle,rgba(79,70,229,0.15),transparent_60%)] pointer-events-none animate-pulse-glow" />
 
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}

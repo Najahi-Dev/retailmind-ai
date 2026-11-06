@@ -39,6 +39,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // NOTE: experimental.inlineCss was measured and rejected — it inlines the whole
+  // app stylesheet into every page (doc 24KB → 148KB) and made FCP/LCP worse.
   async headers() {
     return [
       {

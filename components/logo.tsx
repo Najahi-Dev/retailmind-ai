@@ -21,16 +21,11 @@ export function Logo({
   textClassName,
   layout = "vertical"
 }: LogoProps) {
-  const containerSizes = {
-    sm: "h-9 w-9 rounded-xl",
-    md: "h-12 w-12 rounded-xl",
-    lg: "h-16 w-16 rounded-xl",
-  };
-
-  const horizontalContainerSizes = {
-    sm: "h-9 w-auto rounded-xl",
-    md: "h-11 w-auto rounded-xl",
-    lg: "h-16 w-auto rounded-lg",
+  // Square mark; the SVG carries its own rounded tile (corner radius ≈ 22.6%).
+  const markSizes = {
+    sm: "h-9 w-9",
+    md: "h-11 w-11",
+    lg: "h-16 w-16",
   };
 
   const textSizes = {
@@ -55,19 +50,18 @@ export function Logo({
         className
       )}
     >
-      {/* Logo Image Container */}
-      <div
+      {/* Logo mark */}
+      <img
+        src="/logo.svg"
+        alt="RetailMind AI"
+        width={64}
+        height={64}
+        draggable={false}
         className={cn(
-          "relative shrink-0 flex items-center justify-center overflow-hidden border border-indigo-500/40 shadow-[0_0_18px_rgba(99,102,241,0.35)] group-hover:shadow-[0_0_24px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-all duration-300 bg-slate-950 p-1.5",
-          isVertical ? containerSizes[size] : horizontalContainerSizes[size]
+          "shrink-0 rounded-[22.6%] shadow-[0_4px_14px_-4px_rgba(79,70,229,0.55)] group-hover:shadow-[0_6px_20px_-4px_rgba(124,58,237,0.6)] group-hover:-translate-y-px transition-all duration-300",
+          markSizes[size]
         )}
-      >
-        <img
-          src="/logo.png"
-          alt="RetailMind AI Logo"
-          className="h-full w-full object-contain rounded-lg"
-        />
-      </div>
+      />
 
       {showText && (
         <div className="flex items-center justify-center gap-1.5">

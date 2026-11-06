@@ -1,25 +1,7 @@
-'use client';
-
-import { useAuth } from '@/lib/auth-context';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { motion, Variants } from 'framer-motion';
-
-const fadeInVariants: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
-};
-
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15
-    }
-  }
-};
+// Landing page — a SERVER component. Interactive bits are small client islands:
+// LandingNavActions (auth buttons + mobile menu), WatchDemoButton, CookieSettingsButton,
+// Reveal (IntersectionObserver scroll-reveal) and PricingSection.
+import Link from "next/link";
 import {
   TrendingDown,
   PackageMinus,
@@ -30,80 +12,21 @@ import {
   ClipboardList,
   Truck,
   Zap,
-  Check,
   ArrowRight,
-  Menu,
-  X,
   Sparkles,
-  ShieldCheck,
-  ChevronRight,
-  Store,
-  BarChart3,
   TrendingUp,
-  AlertTriangle,
-  Play,
   CheckCircle2,
   Boxes,
-  Layers,
-  ArrowUpRight,
-  Loader2
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription
-} from '@/components/ui/dialog';
-import { Logo } from '@/components/logo';
-import { ModeToggle } from '@/components/mode-toggle';
-import { PricingSection } from '@/components/pricing-section';
-import { useRole } from '@/hooks/useRole';
+} from "lucide-react";
+import { Button, Badge } from "@/components/landing/client-ui";
+import { Card } from "@/components/ui/card";
+import { Logo } from "@/components/logo";
+import { PricingSection } from "@/components/pricing-section";
+import { LandingNavActions } from "@/components/landing/nav-actions";
+import { WatchDemoButton, CookieSettingsButton } from "@/components/landing/demo-dialog";
+import { Reveal } from "@/components/landing/reveal";
 
 export default function Home() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const { isSuperAdmin } = useRole();
-  const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [demoOpen, setDemoOpen] = useState(false);
-  const [stripeLoading, setStripeLoading] = useState(false);
-
-  const handleStartCheckout = async (plan: string) => {
-    try {
-      setStripeLoading(true);
-      const res = await fetch("/api/stripe/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        } else if (data.redirectUrl) {
-          router.push(data.redirectUrl);
-          return;
-        }
-      }
-
-      // Fallback for unauthenticated users
-      router.push("/sign-in");
-    } catch (err) {
-      console.error("Checkout error:", err);
-      router.push("/sign-in");
-    } finally {
-      setStripeLoading(false);
-    }
-  };
-
-  // Landing page renders for all visitors (public or authenticated)
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 overflow-x-hidden transition-colors duration-300 no-scrollbar relative">
       {/* Dynamic Animated Background Overlay */}
@@ -111,17 +34,15 @@ export default function Home() {
         {/* Animated Radial Dot Grid Pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(#6366f1_1.2px,transparent_1.2px)] [background-size:36px_36px] opacity-[0.15] dark:opacity-[0.25]" />
         
-        {/* Floating Glowing Gradient Orbs */}
-        <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] rounded-full bg-indigo-600/15 dark:bg-indigo-600/20 blur-[140px] animate-float-slow" />
-        <div className="absolute top-[40%] right-[10%] w-[600px] h-[600px] rounded-full bg-purple-600/15 dark:bg-purple-600/20 blur-[160px] animate-pulse-glow" />
-        <div className="absolute bottom-[15%] left-[20%] w-[550px] h-[550px] rounded-full bg-violet-600/15 dark:bg-violet-600/20 blur-[150px] animate-float-slow" />
+        {/* Soft glows: static radial gradients (no filter: blur, no infinite animation) */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_35%_at_25%_20%,rgba(79,70,229,0.12),transparent_70%),radial-gradient(ellipse_45%_40%_at_80%_50%,rgba(147,51,234,0.10),transparent_70%),radial-gradient(ellipse_40%_35%_at_30%_85%,rgba(124,58,237,0.10),transparent_70%)] dark:bg-[radial-gradient(ellipse_40%_35%_at_25%_20%,rgba(79,70,229,0.18),transparent_70%),radial-gradient(ellipse_45%_40%_at_80%_50%,rgba(147,51,234,0.15),transparent_70%),radial-gradient(ellipse_40%_35%_at_30%_85%,rgba(124,58,237,0.14),transparent_70%)]" />
         
         {/* Ambient Subtle Grid Line Overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:40px_40px]" />
       </div>
 
       {/* 1. NAVBAR */}
-      <header className="fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
+      <header className="fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-md bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 h-20 sm:h-22 flex items-center justify-between relative">
           {/* Logo */}
           <Logo href="/" size="md" layout="horizontal" />
@@ -145,161 +66,45 @@ export default function Home() {
             </a> */}
           </nav>
 
-          {/* Desktop Auth CTA & Theme Toggle */}
-          <div className="hidden md:flex items-center gap-4">
-            <ModeToggle />
-            {isAuthenticated ? (
-              <Button asChild className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 font-medium px-5">
-                <Link href={isSuperAdmin ? "/super-admin" : "/dashboard"}>
-                  {isSuperAdmin ? "Super Admin" : "Dashboard"} <ChevronRight className="w-4 h-4 ml-1" />
-                </Link>
-              </Button>
-            ) : (
-              <>
-                <Button variant="ghost" asChild className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900">
-                  <Link href="/sign-in">Sign In</Link>
-                </Button>
-                <Button asChild className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 font-medium px-5">
-                  <Link href="/create-workspace">Start Free Trial</Link>
-                </Button>
-              </>
-            )}
-          </div>
-
-          {/* Mobile controls */}
-          <div className="flex items-center gap-3 md:hidden">
-            <ModeToggle />
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-900 focus:outline-none"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+          <LandingNavActions />
         </div>
-
-        {/* Mobile Dropdown Menu */}
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-slate-950/95 border-b border-slate-800 px-4 pt-4 pb-6 space-y-4"
-          >
-            <div className="flex flex-col space-y-3 text-sm font-medium text-slate-300">
-              <a
-                href="#features"
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:text-indigo-400 transition-colors py-1"
-              >
-                Features
-              </a>
-              <a
-                href="#how-it-works"
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:text-indigo-400 transition-colors py-1"
-              >
-                How it Works
-              </a>
-              <a
-                href="#pricing"
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:text-indigo-400 transition-colors py-1"
-              >
-                Pricing
-              </a>
-              <a
-                href="#about"
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:text-indigo-400 transition-colors py-1"
-              >
-                About
-              </a>
-              {/* <a
-                href="/docs"
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:text-indigo-400 transition-colors py-1"
-              >
-                Docs
-              </a> */}
-            </div>
-            <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3">
-              {isAuthenticated ? (
-                <Button asChild className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30">
-                  <Link href={isSuperAdmin ? "/super-admin" : "/dashboard"}>
-                    {isSuperAdmin ? "Super Admin" : "Dashboard"} <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
-                </Button>
-              ) : (
-                <>
-                  <Button variant="outline" asChild className="w-full border-slate-800 text-slate-200 hover:bg-slate-900">
-                    <Link href="/sign-in">Sign In</Link>
-                  </Button>
-                  <Button asChild className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30">
-                    <Link href="/create-workspace">Start Free Trial</Link>
-                  </Button>
-                </>
-              )}
-            </div>
-          </motion.div>
-        )}
       </header>
 
       {/* 2. HERO SECTION */}
       <section className="relative pt-28 pb-24 lg:pt-36 lg:pb-32 overflow-hidden">
         {/* Animated Background Gradients & Glows */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none -z-10 animate-pulse" />
-        <div className="absolute top-1/3 left-1/3 w-[450px] h-[450px] bg-violet-600/15 rounded-full blur-[130px] pointer-events-none -z-10" />
+        <div className="absolute inset-0 pointer-events-none -z-10 bg-[radial-gradient(ellipse_50%_40%_at_50%_25%,rgba(79,70,229,0.16),transparent_70%),radial-gradient(ellipse_35%_30%_at_35%_40%,rgba(124,58,237,0.12),transparent_70%)]" />
 
         <div className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center sm:max-w-3xl w-[95vw] sm:w-full mx-auto space-y-6">
             {/* Top Centered Logo Icon */}
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="flex justify-center pb-2"
-            >
+            <div className="flex justify-center pb-2">
               <Logo size="lg" href="/" />
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
+            <div>
               <Badge variant="outline" className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 animate-spin-slow" />
                 <span>Next-Gen Supermarket AI Platform</span>
               </Badge>
-            </motion.div>
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+            <h1
               className="font-heading text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]"
             >
               Smart Inventory.{' '}
               <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 dark:from-indigo-400 dark:via-purple-300 dark:to-violet-400 bg-clip-text text-transparent">
                 AI Driven Decisions.
               </span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+            <p
               className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed font-normal"
             >
               RetailMind AI helps supermarkets predict demand, automate reorders and optimise pricing using artificial intelligence.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
+            <div
               className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
             >
               <Button asChild size="lg" className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-lg shadow-indigo-600/30 px-8 h-12 text-base rounded-xl group">
@@ -309,29 +114,16 @@ export default function Home() {
                 </Link>
               </Button>
 
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setDemoOpen(true)}
-                className="w-full sm:w-auto border-slate-300 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white font-medium px-8 h-12 text-base rounded-xl backdrop-blur-sm gap-2"
-              >
-                <Play className="w-4 h-4 text-indigo-500 dark:text-indigo-400 fill-indigo-500 dark:fill-indigo-400" />
-                Watch Demo
-              </Button>
-            </motion.div>
+              <WatchDemoButton />
+            </div>
           </div>
 
-          {/* Floating Interactive Dashboard Mockup Preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-14 relative max-w-5xl mx-auto"
-          >
+          {/* Dashboard mockup: CSS-only entrance (compositor-friendly, does not gate LCP) */}
+          <div className="mt-14 relative max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700 fill-mode-both motion-reduce:animate-none">
             {/* Glowing Backdrop Border */}
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-600 rounded-xl blur-xl opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
 
-            <div className="relative rounded-lg bg-slate-900/95 border border-slate-800 shadow-2xl overflow-hidden backdrop-blur-xl text-slate-100">
+            <div className="relative rounded-lg bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden text-slate-100">
               {/* Dashboard Header Bar */}
               <div className="px-6 py-4 border-b border-slate-800/80 bg-slate-950/80 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -461,7 +253,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -477,15 +269,9 @@ export default function Home() {
             </p>
           </div>
 
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
-          >
+          <Reveal className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Card 1 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-red-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 dark:text-red-400 group-hover:scale-110 transition-transform">
@@ -499,10 +285,10 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Card 2 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-amber-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
@@ -516,10 +302,10 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Card 3 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
@@ -533,8 +319,8 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
-          </motion.div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -553,15 +339,9 @@ export default function Home() {
             </p>
           </div>
 
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-          >
+          <Reveal className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
@@ -575,10 +355,10 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Feature 2 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-all">
@@ -592,10 +372,10 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Feature 3 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:bg-violet-600 group-hover:text-white transition-all">
@@ -609,10 +389,10 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Feature 4 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
@@ -626,10 +406,10 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Feature 5 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-all">
@@ -643,10 +423,10 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Feature 6 */}
-            <motion.div variants={fadeInVariants}>
+            <div>
               <Card className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-8 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="w-13 h-13 rounded-lg bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:bg-amber-600 group-hover:text-white transition-all">
@@ -660,8 +440,8 @@ export default function Home() {
                   </p>
                 </div>
               </Card>
-            </motion.div>
-          </motion.div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -677,49 +457,43 @@ export default function Home() {
             </p>
           </div>
 
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative"
-          >
+          <Reveal className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
             {/* Step 1 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-indigo-500/60 dark:text-indigo-500/40">01</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">Connect your inventory</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
                 Seamlessly sync your existing POS catalog or upload product CSV datasets in just a few clicks.
               </p>
-            </motion.div>
+            </div>
 
             {/* Step 2 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-purple-500/60 dark:text-purple-500/40">02</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">AI analyses your data</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
                 Neural networks identify sales patterns, consumer trends, seasonal peaks, and stock velocity.
               </p>
-            </motion.div>
+            </div>
 
             {/* Step 3 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-violet-500/60 dark:text-violet-500/40">03</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">Get smart suggestions</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
                 Receive proactive reorder notifications, safety stock limits, and optimal pricing adjustments.
               </p>
-            </motion.div>
+            </div>
 
             {/* Step 4 */}
-            <motion.div variants={fadeInVariants} className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="relative space-y-4 p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <span className="font-heading text-4xl font-extrabold text-emerald-500/60 dark:text-emerald-500/40">04</span>
               <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white">Approve and automate</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
                 Dispatch purchase orders to suppliers with one click and let AI handle routine replenishment.
               </p>
-            </motion.div>
-          </motion.div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -727,24 +501,18 @@ export default function Home() {
       <section className="py-24 bg-indigo-50/50 dark:bg-slate-950 border-y border-indigo-100 dark:border-slate-800/80 relative overflow-hidden transition-colors duration-300">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.06)_0,transparent_70%)] dark:bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.12)_0,transparent_70%)]" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center items-center"
-          >
+          <Reveal className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center items-center">
             {/* Stat 1 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 backdrop-blur-md space-y-2 shadow-lg shadow-slate-200/50 dark:shadow-none hover:-translate-y-1 transition-transform duration-300">
+            <div className="p-8 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 space-y-2 shadow-lg shadow-slate-200/50 dark:shadow-none hover:-translate-y-1 transition-transform duration-300">
               <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-300">
                 500+
               </p>
               <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Products Tracked</h4>
               <p className="text-slate-600 dark:text-slate-400 text-sm">Empowering high-volume supermarket catalogs and multi-category retail inventory.</p>
-            </motion.div>
+            </div>
 
             {/* Stat 2 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-indigo-200 dark:border-indigo-500/30 backdrop-blur-md space-y-2 shadow-xl shadow-indigo-100 dark:shadow-indigo-500/10 hover:-translate-y-1 transition-transform duration-300 md:scale-110 relative z-10">
+            <div className="p-8 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-indigo-200 dark:border-indigo-500/30 space-y-2 shadow-xl shadow-indigo-100 dark:shadow-indigo-500/10 hover:-translate-y-1 transition-transform duration-300 md:scale-110 relative z-10">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <Badge className="bg-indigo-600 hover:bg-indigo-500 text-white border-none shadow-md">Industry Best</Badge>
               </div>
@@ -753,17 +521,17 @@ export default function Home() {
               </p>
               <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Test Pass Rate</h4>
               <p className="text-slate-600 dark:text-slate-400 text-sm">Industry-leading demand prediction precision across all product categories.</p>
-            </motion.div>
+            </div>
 
             {/* Stat 3 */}
-            <motion.div variants={fadeInVariants} className="p-8 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 backdrop-blur-md space-y-2 shadow-lg shadow-slate-200/50 dark:shadow-none hover:-translate-y-1 transition-transform duration-300">
+            <div className="p-8 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 space-y-2 shadow-lg shadow-slate-200/50 dark:shadow-none hover:-translate-y-1 transition-transform duration-300">
               <p className="font-heading text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500 dark:from-purple-400 dark:to-pink-300">
                 30 Day
               </p>
               <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Demand Forecast</h4>
               <p className="text-slate-600 dark:text-slate-400 text-sm">Continuous rolling AI projection window to prevent stockout emergencies.</p>
-            </motion.div>
-          </motion.div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -774,7 +542,7 @@ export default function Home() {
       <section className="py-24 relative overflow-hidden bg-indigo-50/40 dark:bg-slate-950 border-t border-indigo-100 dark:border-slate-800/80 transition-colors duration-300">
         {/* Background Gradients */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] opacity-10 dark:opacity-20 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 blur-[100px] rounded-full" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.9),rgba(168,85,247,0.5)_40%,transparent_70%)] rounded-full" />
         </div>
         
         {/* Ambient Subtle Grid Line Overlay */}
@@ -836,13 +604,13 @@ export default function Home() {
             {/* Right Interactive Element */}
             <div className="relative lg:h-[500px] flex items-center justify-center group perspective-[1000px] mt-10 lg:mt-0">
               {/* Glowing ring */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20 rounded-full blur-3xl group-hover:blur-2xl transition-all duration-700" />
+              <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.14),transparent_65%)] dark:bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.25),transparent_65%)]" />
               
               {/* Floating Cards Mockup */}
               <div className="relative w-full sm:max-w-md w-[95vw] sm:w-full transform-gpu transition-transform duration-700 lg:group-hover:rotate-y-[-10deg] lg:group-hover:rotate-x-[5deg]">
                 <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 rounded-2xl blur opacity-20 dark:opacity-30 group-hover:opacity-40 dark:group-hover:opacity-70 transition duration-1000" />
                 
-                <div className="relative rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-700 shadow-2xl p-6 space-y-6 backdrop-blur-xl">
+                <div className="relative rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-700 shadow-2xl p-6 space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -858,7 +626,7 @@ export default function Home() {
                   
                   <div className="space-y-4">
                     <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 w-[85%] animate-pulse" />
+                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 w-[85%]" />
                     </div>
                     <div className="flex justify-between text-xs font-medium">
                       <span className="text-slate-500 dark:text-slate-400">Accuracy Confidence</span>
@@ -875,7 +643,7 @@ export default function Home() {
                 </div>
                 
                 {/* Floating smaller cards */}
-                <div className="absolute -bottom-6 -left-6 sm:-bottom-10 sm:-left-10 bg-white/90 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700 p-4 rounded-xl shadow-xl backdrop-blur-md transform transition-transform duration-500 lg:group-hover:-translate-y-4 lg:group-hover:-translate-x-4">
+                <div className="absolute -bottom-6 -left-6 sm:-bottom-10 sm:-left-10 bg-white/90 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700 p-4 rounded-xl shadow-xl transform transition-transform duration-500 lg:group-hover:-translate-y-4 lg:group-hover:-translate-x-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-emerald-50 dark:bg-emerald-500/20 rounded-lg text-emerald-600 dark:text-emerald-400">
                       <TrendingUp className="w-5 h-5" />
@@ -887,7 +655,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="absolute -top-6 -right-6 sm:-top-10 sm:-right-10 bg-white/90 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700 p-4 rounded-xl shadow-xl backdrop-blur-md transform transition-transform duration-500 lg:group-hover:translate-y-4 lg:group-hover:translate-x-4">
+                <div className="absolute -top-6 -right-6 sm:-top-10 sm:-right-10 bg-white/90 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700 p-4 rounded-xl shadow-xl transform transition-transform duration-500 lg:group-hover:translate-y-4 lg:group-hover:translate-x-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-50 dark:bg-purple-500/20 rounded-lg text-purple-600 dark:text-purple-400">
                       <Boxes className="w-5 h-5" />
@@ -946,12 +714,7 @@ export default function Home() {
                 <li><a href="#" className="hover:text-indigo-400 transition-colors">Terms of Service</a></li>
                 <li><a href="#" className="hover:text-indigo-400 transition-colors">Security</a></li>
                 <li>
-                  <button
-                    onClick={() => window.dispatchEvent(new Event("open-cookie-preferences"))}
-                    className="hover:text-indigo-400 transition-colors text-left"
-                  >
-                    Cookie Settings
-                  </button>
+                  <CookieSettingsButton />
                 </li>
               </ul>
             </div>
@@ -964,36 +727,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Interactive Watch Demo Dialog */}
-      <Dialog open={demoOpen} onOpenChange={setDemoOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-3xl w-[95vw] sm:w-full">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold font-heading flex items-center gap-2">
-              <BrainCircuit className="w-5 h-5 text-indigo-400" />
-              RetailMind AI Platform Walkthrough
-            </DialogTitle>
-            <DialogDescription className="text-slate-400 text-sm">
-              Discover how AI demand forecasting and automated purchase orders streamline supermarket operations.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="aspect-video w-full rounded-xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center p-6 text-center space-y-4 relative overflow-hidden">
-            <div className="w-16 h-16 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 animate-pulse">
-              <Play className="w-8 h-8 fill-indigo-400 ml-1" />
-            </div>
-            <div>
-              <h4 className="text-base font-semibold text-white">Interactive Product Preview</h4>
-              <p className="text-xs text-slate-400 mt-1 sm:max-w-md w-[95vw] sm:w-full">
-                Experience real-time AI inventory tracking, automated PO generation, and 30-day demand predictions.
-              </p>
-            </div>
-            <Button asChild className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-6">
-              <Link href="/sign-in" onClick={() => setDemoOpen(false)}>
-                Try RetailMind AI Live
-              </Link>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

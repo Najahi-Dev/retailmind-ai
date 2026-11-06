@@ -159,8 +159,7 @@ export function PricingSection({
     >
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:28px_28px] opacity-[0.08] dark:opacity-[0.18]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-violet-600/10 dark:bg-violet-600/15 rounded-full blur-[140px]" />
-        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-indigo-500/10 dark:bg-indigo-500/15 rounded-full blur-[120px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_45%_40%_at_50%_50%,rgba(124,58,237,0.10),transparent_70%),radial-gradient(ellipse_25%_30%_at_70%_10%,rgba(99,102,241,0.10),transparent_70%)] dark:bg-[radial-gradient(ellipse_45%_40%_at_50%_50%,rgba(124,58,237,0.16),transparent_70%),radial-gradient(ellipse_25%_30%_at_70%_10%,rgba(99,102,241,0.15),transparent_70%)]" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
